@@ -1,4 +1,5 @@
-Mochy iOS 0.3.1
+Mochy iOS 0.3.2
 
-- Mới: hiệu ứng "bìa bay" kiểu Apple Music. Chạm thanh phát nhỏ thì ảnh bìa phóng to thành bìa lớn, đóng lại thì thu nhỏ về thanh phát nhỏ.
-- Màn hình phía sau mờ đi, bo góc và lùi lại khi mở trình phát; kéo xuống để đóng, bìa bay từ vị trí đang kéo.
+- Sửa: nhạc bị im giữa chừng. App nay theo dõi luồng nhạc mỗi giây: nếu kẹt thì đẩy nhẹ, kẹt lâu hoặc luồng bị đứt/hết hạn thì tự lấy link mới và phát tiếp đúng vị trí (thử tối đa 3 lần).
+- Sửa: nếu hệ thống tạm dừng ngoài ý muốn, nút phát/tạm dừng cập nhật đúng thay vì hiện "đang phát".
+- Bìa bài hát nhỏ lại: đang phát nhỏ bằng cỡ khi tạm dừng trước đây, tạm dừng nhỏ hơn một chút.

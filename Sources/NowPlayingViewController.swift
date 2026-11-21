@@ -392,8 +392,8 @@ final class NowPlayingViewController: UIViewController {
             applyBackground(from: image)
         }
 
-        // Thu nhỏ bìa khi tạm dừng (giống Apple Music).
-        let scale: CGFloat = engine.isPlaying || engine.isLoading ? 1.0 : 0.84
+        // Bìa nhỏ lại khi đang phát (0.84) và nhỏ hơn nữa khi tạm dừng (0.72).
+        let scale: CGFloat = engine.isPlaying || engine.isLoading ? 0.84 : 0.72
         UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.4,
                        options: [.allowUserInteraction, .beginFromCurrentState], animations: {
             self.artView.transform = CGAffineTransform(scaleX: scale, y: scale)

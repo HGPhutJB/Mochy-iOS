@@ -45,6 +45,12 @@ final class PlayerEngine: NSObject {
     private var requestToken = 0
     private var resumeAfterInterruption = false
     private var sleepTimer: Timer?
+    private var watchdog: Timer?
+    private var failObserver: NSObjectProtocol?
+    private var stallSeconds = 0
+    private var lastWatchTime: Double = -1
+    private var recoveries = 0
+    private var pendingSeek: Double = 0
 
     private override init() {
         super.init()
@@ -252,6 +258,8 @@ final class PlayerEngine: NSObject {
         requestToken += 1
         let token = requestToken
         teardownPlayer()
+        recoveries = 0
+        pendingSeek = 0
         isLoading = true
         isPlaying = false
         duration = 0
@@ -289,6 +297,9 @@ final class PlayerEngine: NSObject {
         }
         let asset = AVURLAsset(url: url, options: options)
         let item = AVPlayerItem(asset: asset)
+        if #available(iOS 10.0, *) {
+            item.preferredForwardBufferDuration = 30
+        }
         let newPlayer = AVPlayer(playerItem: item)
         player = newPlayer
 
@@ -314,7 +325,87 @@ final class PlayerEngine: NSObject {
                 self.advance()
             }
         }
+        failObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: OperationQueue.main
+        ) { [weak self] note in
+            guard let self = self else { return }
+            let error = (note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)
+                ?? MochyError.playback("Luồng nhạc bị ngắt giữa chừng")
+            if !self.recover() { self.fail(error) }
+        }
+        startWatchdog()
         newPlayer.play()
+    }
+
+    /// Phát lại từ vị trí hiện tại bằng link mới khi luồng bị đứt / hết hạn / kẹt. Trả về false nếu đã thử quá 3 lần.
+    @discardableResult
+    private func recover() -> Bool {
+        guard let song = currentSong, recoveries < 3 else { return false }
+        recoveries += 1
+        let resumeAt = currentTime
+        requestToken += 1
+        let token = requestToken
+        teardownPlayer()
+        isLoading = true
+        isPlaying = false
+        postState()
+        if let local = Library.shared.localURL(for: song.videoId) {
+            pendingSeek = resumeAt
+            begin(url: local, headers: nil)
+            return true
+        }
+        InnerTube.shared.resolveStream(videoId: song.videoId) { [weak self] result in
+            guard let self = self, token == self.requestToken else { return }
+            switch result {
+            case .success(let info):
+                self.streamInfo = info
+                self.pendingSeek = resumeAt
+                self.begin(url: info.url, headers: ["User-Agent": info.userAgent])
+            case .failure(let error):
+                self.fail(error)
+            }
+        }
+        return true
+    }
+
+    private func startWatchdog() {
+        watchdog?.invalidate()
+        stallSeconds = 0
+        lastWatchTime = -1
+        watchdog = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.watchTick()
+        }
+    }
+
+    /// Mỗi giây kiểm tra: nếu đang "phát" mà thời gian không chạy thì đẩy nhẹ, kẹt lâu thì lấy link mới.
+    private func watchTick() {
+        guard let p = player, !isLoading, isPlaying else {
+            stallSeconds = 0
+            return
+        }
+        let now = p.currentTime().seconds
+        let advanced = lastWatchTime < 0 || now > lastWatchTime + 0.2
+        lastWatchTime = now
+        if p.timeControlStatus == .playing && advanced {
+            stallSeconds = 0
+            return
+        }
+        if p.timeControlStatus == .paused {
+            // Hệ thống tạm dừng ngoài ý muốn: đồng bộ lại giao diện, không tự phát lại.
+            isPlaying = false
+            postState()
+            updateNowPlayingInfo()
+            return
+        }
+        stallSeconds += 1
+        if stallSeconds == 4 {
+            p.play()
+        } else if stallSeconds >= 12 {
+            stallSeconds = 0
+            if !recover() {
+                fail(MochyError.playback("Mạng bị đứt, nhạc dừng giữa chừng. Hãy thử phát lại."))
+            }
+        }
     }
 
     private func itemStatusChanged(_ item: AVPlayerItem) {
@@ -325,12 +416,18 @@ final class PlayerEngine: NSObject {
             duration = seconds.isFinite ? seconds : 0
             isLoading = false
             isPlaying = true
-            if let song = currentSong { Library.shared.addHistory(song) }
+            if pendingSeek > 1 {
+                let target = pendingSeek
+                pendingSeek = 0
+                player?.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+                currentTime = target
+            }
+            if recoveries == 0, let song = currentSong { Library.shared.addHistory(song) }
             postState()
             updateNowPlayingInfo()
         case .failed:
             let error: Error = item.error ?? MochyError.playback("AVPlayer báo lỗi không rõ")
-            fail(error)
+            if !recover() { fail(error) }
         default:
             break
         }
@@ -374,6 +471,12 @@ final class PlayerEngine: NSObject {
             NotificationCenter.default.removeObserver(end)
             endObserver = nil
         }
+        if let failed = failObserver {
+            NotificationCenter.default.removeObserver(failed)
+            failObserver = nil
+        }
+        watchdog?.invalidate()
+        watchdog = nil
         statusObservation?.invalidate()
         statusObservation = nil
         player?.pause()
