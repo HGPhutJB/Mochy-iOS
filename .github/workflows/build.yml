@@ -1,0 +1,113 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - 'NOTICE'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Kênh phát hành (dev = bản thử nghiệm, stable = bản ổn định)'
+        type: choice
+        options: [dev, stable]
+        default: dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      CHANNEL: ${{ github.event.inputs.channel || 'dev' }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      BUILD_COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          swift --version
+
+      - name: Install ldid and dpkg
+        run: brew install ldid dpkg
+
+      - name: Build .deb and .ipa
+        run: |
+          set -o pipefail
+          chmod +x build.sh
+          BUILD_CHANNEL="$CHANNEL" ./build.sh 2>&1 | tee build.log
+
+      - name: Create update.json (and sign it when a key is configured)
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ "$CHANNEL" = "stable" ]; then TAG="v$VERSION"; else TAG="dev"; fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          VERSION="$VERSION" COMMIT="$BUILD_COMMIT" REPO="$GITHUB_REPOSITORY" TAG="$TAG" python3 tools/make_manifest.py
+          if [ -n "${UPDATE_SIGNING_KEY:-}" ]; then
+            printf '%s\n' "$UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/update_key.pem"
+            openssl dgst -sha256 -sign "$RUNNER_TEMP/update_key.pem" -out dist/update.json.sig dist/update.json
+            rm -f "$RUNNER_TEMP/update_key.pem"
+            openssl dgst -sha256 -verify tools/update_pub.pem -signature dist/update.json.sig dist/update.json
+          else
+            echo "::warning::Secret UPDATE_SIGNING_KEY chưa được đặt: bản phát hành không có chữ ký số (app chỉ kiểm SHA-256)."
+          fi
+          ls -l dist
+
+      - name: Publish GitHub release
+        run: |
+          set -euo pipefail
+          if [ "$CHANNEL" = "dev" ]; then
+            gh release delete dev --cleanup-tag --yes 2>/dev/null || true
+            gh release create dev dist/* --prerelease --target "$GITHUB_SHA" \
+              --title "Bản thử nghiệm (dev), build $BUILD_NUMBER" \
+              --notes "Bản dựng tự động từ commit ${GITHUB_SHA:0:7}. Có thể còn lỗi. Dùng cho kênh Nhà phát triển trong Cài đặt của app."
+          else
+            gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
+            gh release create "$TAG" dist/* --target "$GITHUB_SHA" --latest \
+              --title "Mochy iOS $VERSION" --notes-file RELEASE_NOTES.md
+          fi
+
+      - name: Upload build output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MochyiOS-build
+          path: |
+            dist/*
+            build.log
+          if-no-files-found: warn
+
+      - name: Save build log to branch ci-logs
+        if: always()
+        run: |
+          [ -f build.log ] || echo "no build.log (the build did not start)" > build.log
+          cp build.log /tmp/mochyios-build.log
+          git config user.name "Puc"
+          git config user.email "HGPhutJB@users.noreply.github.com"
+          git fetch --depth=1 origin ci-logs || true
+          if git rev-parse --verify -q origin/ci-logs >/dev/null; then
+            git checkout -f -B ci-logs origin/ci-logs
+          else
+            git checkout --orphan ci-logs
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp /tmp/mochyios-build.log mochyios-build.log
+          git add mochyios-build.log
+          git commit -m "Build log, run ${GITHUB_RUN_ID}, job ${{ job.status }}" || true
+          git push origin ci-logs
