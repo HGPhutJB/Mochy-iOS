@@ -41,6 +41,17 @@ struct PlayerClient {
         origin: "https://music.youtube.com",
         osName: "Android", osVersion: "12", deviceMake: "Oculus", deviceModel: "Quest 3", androidSdkVersion: "32")
 
+    /// Client "VISIONOS": từ giữa tháng 8/2026 YouTube chỉ còn cho ANDROID_VR tải khoảng 1 MB đầu (bắt buộc token),
+    /// nên nhạc dừng ở khoảng 59 giây. VISIONOS vẫn trả link âm thanh AAC đầy đủ, không cần token.
+    /// Thông số lấy từ yt-dlp (INNERTUBE_CLIENTS["visionos"]).
+    static func visionOS(origin: String) -> PlayerClient {
+        return PlayerClient(
+            name: "VISIONOS", clientId: "101", version: "1.02",
+            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+            origin: origin,
+            osName: "visionOS", osVersion: "26.5.23O471", deviceMake: "Apple", deviceModel: "RealityDevice17,1", androidSdkVersion: nil)
+    }
+
     static let ios = PlayerClient(
         name: "IOS", clientId: "5", version: "21.03.1",
         userAgent: "com.google.ios.youtube/21.03.1 (iPhone16,2; U; CPU iOS 18_2 like Mac OS X;)",
@@ -187,7 +198,11 @@ final class InnerTube {
     // MARK: - Lấy link phát
 
     func resolveStream(videoId: String, completion: @escaping (Result<StreamInfo, Error>) -> Void) {
-        let clients: [PlayerClient] = [PlayerClient.androidVR161, PlayerClient.androidVR143, PlayerClient.ios]
+        // ANDROID_VR để cuối: link của nó bị cắt sau ~1 MB, chỉ dùng khi các client khác đều thất bại.
+        let clients: [PlayerClient] = [PlayerClient.visionOS(origin: "https://www.youtube.com"),
+                                       PlayerClient.visionOS(origin: "https://music.youtube.com"),
+                                       PlayerClient.ios,
+                                       PlayerClient.androidVR161, PlayerClient.androidVR143]
         attempt(videoId: videoId, clients: clients, index: 0, notes: [], completion: completion)
     }
 

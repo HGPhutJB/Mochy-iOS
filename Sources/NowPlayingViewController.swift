@@ -223,6 +223,11 @@ final class NowPlayingViewController: UIViewController {
         artView.clipsToBounds = true
         artView.layer.cornerRadius = 14
         artView.backgroundColor = Theme.placeholder
+        // Ảnh có kích thước gốc lớn: không để nó "đẩy" bố cục, nếu không tên bài/nghệ sĩ bị chồng lên nhau.
+        artView.setContentCompressionResistancePriority(UILayoutPriority(1), for: .vertical)
+        artView.setContentCompressionResistancePriority(UILayoutPriority(1), for: .horizontal)
+        artView.setContentHuggingPriority(UILayoutPriority(1), for: .vertical)
+        artView.setContentHuggingPriority(UILayoutPriority(1), for: .horizontal)
         artArea.addSubview(artView)
 
         titleLabel.font = Theme.heavy(22)
@@ -231,6 +236,10 @@ final class NowPlayingViewController: UIViewController {
         artistLabel.textColor = Theme.secondaryText
         badgeLabel.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
         badgeLabel.textColor = Theme.secondaryText
+        for label in [titleLabel, artistLabel, badgeLabel] {
+            label.setContentCompressionResistancePriority(UILayoutPriority.required, for: .vertical)
+        }
+        badgeLabel.text = " "
         let textStack = UIStackView(arrangedSubviews: [titleLabel, artistLabel, badgeLabel])
         textStack.axis = .vertical
         textStack.spacing = 2
@@ -442,7 +451,7 @@ final class NowPlayingViewController: UIViewController {
             downloadButton.setImage(Icons.download(24), for: .normal)
             downloadButton.tintColor = Theme.primaryText
         }
-        badgeLabel.text = info.uppercased()
+        badgeLabel.text = info.isEmpty ? " " : info.uppercased()
     }
 
     @objc private func timeChanged() {

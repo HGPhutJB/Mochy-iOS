@@ -84,6 +84,7 @@ struct StreamInfo {
             parts.append(String(format: "%.1f kHz", Double(sampleRate) / 1000.0).replacingOccurrences(of: ".", with: ","))
         }
         if bitrate > 0 { parts.append("\(bitrate / 1000) kbps") }
+        parts.append(clientName)
         return parts.joined(separator: " · ")
     }
 }

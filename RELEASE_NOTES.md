@@ -1,5 +1,5 @@
-Mochy iOS 0.3.2
+Mochy iOS 0.3.3
 
-- Sửa: nhạc bị im giữa chừng. App nay theo dõi luồng nhạc mỗi giây: nếu kẹt thì đẩy nhẹ, kẹt lâu hoặc luồng bị đứt/hết hạn thì tự lấy link mới và phát tiếp đúng vị trí (thử tối đa 3 lần).
-- Sửa: nếu hệ thống tạm dừng ngoài ý muốn, nút phát/tạm dừng cập nhật đúng thay vì hiện "đang phát".
-- Bìa bài hát nhỏ lại: đang phát nhỏ bằng cỡ khi tạm dừng trước đây, tạm dừng nhỏ hơn một chút.
+- Sửa lỗi nhạc tự dừng ở khoảng 59 giây: YouTube đã chặn client ANDROID_VR (chỉ cho tải khoảng 1 MB đầu nếu không có token). App chuyển sang client VISIONOS (không cần token), ANDROID_VR chỉ còn là phương án cuối.
+- Sửa lỗi bố cục màn hình Đang phát: tên bài và nghệ sĩ bị chồng lên nhau, bố cục nhảy khi kéo.
+- Huy hiệu định dạng giờ ghi thêm client đang dùng (ví dụ "AAC · 44,1 kHz · 129 kbps · VISIONOS") để dễ báo lỗi.
