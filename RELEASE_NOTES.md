@@ -1,8 +1,4 @@
-Mochy iOS 0.3.0 (mốc 1)
+Mochy iOS 0.3.1
 
-- Mới: trang chủ với gợi ý hôm nay, nhạc mới, thịnh hành và "Vì bạn nghe …" theo lịch sử nghe.
-- Mới: thư viện (Yêu thích, playlist, lịch sử), hàng đợi sắp xếp được, ngẫu nhiên, lặp, hẹn giờ tắt.
-- Mới: tải bài về nghe offline.
-- Mới: chế độ sáng/tối (tự động theo hệ thống trên iOS 13+).
-- Mới: thanh tab nổi, màn hình đang phát đổi màu theo bìa, nhiều hiệu ứng chuyển cảnh.
-- Credit tác giả gốc được gom vào Cài đặt > Credit và giấy phép.
+- Mới: hiệu ứng "bìa bay" kiểu Apple Music. Chạm thanh phát nhỏ thì ảnh bìa phóng to thành bìa lớn, đóng lại thì thu nhỏ về thanh phát nhỏ.
+- Màn hình phía sau mờ đi, bo góc và lùi lại khi mở trình phát; kéo xuống để đóng, bìa bay từ vị trí đang kéo.

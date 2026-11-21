@@ -10,6 +10,7 @@ final class RootViewController: UIViewController {
     private let mini = MiniPlayerView()
     private var controllers: [UINavigationController] = []
     private(set) var selectedIndex = 0
+    var miniArtView: UIImageView { return mini.artImageView }
     private var miniVisible = false
     private var lastIsDark = Theme.isDark
 

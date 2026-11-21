@@ -6,6 +6,9 @@ final class MiniPlayerView: UIView {
 
     var onTap: (() -> Void)?
 
+    /// Ảnh bìa nhỏ (điểm xuất phát/kết thúc của hiệu ứng bay).
+    var artImageView: UIImageView { return art }
+
     private let blur = UIVisualEffectView(effect: UIBlurEffect(style: Theme.blurStyle))
     private let art = UIImageView()
     private let titleLabel = UILabel()

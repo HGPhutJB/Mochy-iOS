@@ -14,6 +14,7 @@ final class NowPlayingTransition: NSObject, UIViewControllerTransitioningDelegat
 }
 
 final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning {
+    static let dimTag = 9901
     private let presenting: Bool
 
     init(presenting: Bool) {
@@ -21,38 +22,109 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
     }
 
     func transitionDuration(using transitionContext: UIViewControllerContextTransitioning?) -> TimeInterval {
-        return presenting ? 0.6 : 0.5
+        return presenting ? 0.65 : 0.55
+    }
+
+    /// Khung ảnh bìa của thanh phát nhỏ, tính theo toạ độ của container.
+    private func miniArtFrame(in container: UIView) -> CGRect {
+        if let art = RootViewController.shared?.miniArtView, let parent = art.superview {
+            return parent.convert(art.frame, to: container)
+        }
+        return CGRect(x: 22, y: container.bounds.height - 110, width: 42, height: 42)
     }
 
     func animateTransition(using transitionContext: UIViewControllerContextTransitioning) {
         let container = transitionContext.containerView
+        let miniArt = RootViewController.shared?.miniArtView
+        let duration = transitionDuration(using: transitionContext)
+
         if presenting {
-            guard let toView = transitionContext.view(forKey: .to) else {
+            guard let toVC = transitionContext.viewController(forKey: .to) as? NowPlayingViewController,
+                  let toView = transitionContext.view(forKey: .to) else {
                 transitionContext.completeTransition(false)
                 return
             }
             let fromView = transitionContext.viewController(forKey: .from)?.view
             toView.frame = container.bounds
-            toView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
             container.addSubview(toView)
-            UIView.animate(withDuration: transitionDuration(using: transitionContext), delay: 0,
-                           usingSpringWithDamping: 0.86, initialSpringVelocity: 0.3, options: [], animations: {
+            toView.layoutIfNeeded()
+
+            let realArt = toVC.artImageView
+            let target = realArt.superview?.convert(realArt.frame, to: container) ?? container.bounds
+            let start = miniArtFrame(in: container)
+
+            // Ảnh bìa "bay" từ thanh phát nhỏ lên vị trí bìa lớn.
+            let flying = UIImageView(image: realArt.image ?? miniArt?.image)
+            flying.contentMode = .scaleAspectFill
+            flying.clipsToBounds = true
+            flying.backgroundColor = Theme.placeholder
+            flying.frame = start
+            flying.layer.cornerRadius = 10
+            container.addSubview(flying)
+            realArt.alpha = 0
+            miniArt?.alpha = 0
+
+            // Màn hình phía sau mờ đi, bo góc và lùi lại.
+            let dim = UIView(frame: fromView?.bounds ?? container.bounds)
+            dim.tag = NowPlayingAnimator.dimTag
+            dim.backgroundColor = UIColor.black
+            dim.alpha = 0
+            dim.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            fromView?.addSubview(dim)
+            fromView?.clipsToBounds = true
+            fromView?.window?.backgroundColor = UIColor.black
+
+            toView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
+            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.86, initialSpringVelocity: 0.25,
+                           options: [], animations: {
                 toView.transform = CGAffineTransform.identity
+                flying.frame = target
+                flying.layer.cornerRadius = 14
+                dim.alpha = 0.35
                 fromView?.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
+                fromView?.layer.cornerRadius = 14
             }, completion: { _ in
+                realArt.alpha = 1
+                flying.removeFromSuperview()
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
             })
         } else {
-            guard let fromView = transitionContext.view(forKey: .from) else {
+            guard let fromVC = transitionContext.viewController(forKey: .from) as? NowPlayingViewController,
+                  let fromView = transitionContext.view(forKey: .from) else {
                 transitionContext.completeTransition(false)
                 return
             }
             let toView = transitionContext.viewController(forKey: .to)?.view
-            UIView.animate(withDuration: transitionDuration(using: transitionContext), delay: 0,
-                           usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0, options: [.curveEaseIn], animations: {
+            let realArt = fromVC.artImageView
+            let start = realArt.superview?.convert(realArt.frame, to: container) ?? container.bounds
+            let end = miniArtFrame(in: container)
+
+            // Ảnh bìa thu nhỏ bay về thanh phát nhỏ.
+            let flying = UIImageView(image: realArt.image ?? miniArt?.image)
+            flying.contentMode = .scaleAspectFill
+            flying.clipsToBounds = true
+            flying.backgroundColor = Theme.placeholder
+            flying.frame = start
+            flying.layer.cornerRadius = 14
+            container.addSubview(flying)
+            realArt.alpha = 0
+            miniArt?.alpha = 0
+            let dim = toView?.viewWithTag(NowPlayingAnimator.dimTag)
+
+            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.92, initialSpringVelocity: 0.1,
+                           options: [], animations: {
                 fromView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
+                flying.frame = end
+                flying.layer.cornerRadius = 10
+                dim?.alpha = 0
                 toView?.transform = CGAffineTransform.identity
+                toView?.layer.cornerRadius = 0
             }, completion: { _ in
+                flying.removeFromSuperview()
+                miniArt?.alpha = 1
+                dim?.removeFromSuperview()
+                toView?.clipsToBounds = false
+                toView?.window?.backgroundColor = Theme.background
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
             })
         }
@@ -87,6 +159,9 @@ final class NowPlayingViewController: UIViewController {
     private let sleepButton = PressableButton(type: .custom)
     private let downloadButton = PressableButton(type: .custom)
     private let queueButton = PressableButton(type: .custom)
+
+    /// Ảnh bìa lớn (dùng cho hiệu ứng bay giữa thanh phát nhỏ và màn hình đang phát).
+    var artImageView: UIImageView { return artView }
 
     private var isScrubbing = false
     private var shownVideoId: String?
@@ -506,25 +581,25 @@ final class NowPlayingViewController: UIViewController {
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         let translation = max(0, gesture.translation(in: view).y)
         let height = max(1, view.bounds.height)
+        let behind = presentingViewController?.view
         switch gesture.state {
         case .changed:
             view.transform = CGAffineTransform(translationX: 0, y: translation)
             let progress = min(1, translation / height)
-            presentingViewController?.view.transform = CGAffineTransform(scaleX: 0.94 + 0.06 * progress, y: 0.94 + 0.06 * progress)
+            let scale = 0.94 + 0.06 * progress
+            behind?.transform = CGAffineTransform(scaleX: scale, y: scale)
+            behind?.viewWithTag(NowPlayingAnimator.dimTag)?.alpha = 0.35 * (1 - progress)
         case .ended, .cancelled:
             let velocity = gesture.velocity(in: view).y
-            if translation > height * 0.25 || velocity > 900 {
-                UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn], animations: {
-                    self.view.transform = CGAffineTransform(translationX: 0, y: height)
-                    self.presentingViewController?.view.transform = CGAffineTransform.identity
-                }, completion: { _ in
-                    self.dismiss(animated: false, completion: nil)
-                })
+            if translation > height * 0.22 || velocity > 900 {
+                // Bìa sẽ bay từ vị trí hiện tại về thanh phát nhỏ.
+                dismiss(animated: true, completion: nil)
             } else {
                 UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.4,
                                options: [], animations: {
                     self.view.transform = CGAffineTransform.identity
-                    self.presentingViewController?.view.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
+                    behind?.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
+                    behind?.viewWithTag(NowPlayingAnimator.dimTag)?.alpha = 0.35
                 }, completion: nil)
             }
         default:
