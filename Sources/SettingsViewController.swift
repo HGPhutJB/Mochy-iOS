@@ -3,6 +3,12 @@ import UIKit
 /// Tab "Cài đặt": cập nhật phần mềm (kiểm tra tự động, kênh Ổn định / Nhà phát triển), thông tin bản dựng, giới thiệu.
 final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private enum Row {
+        case theme
+        case quality
+        case downloadsInfo
+        case clearDownloads
+        case clearHistory
+        case credits
         case version
         case channel
         case autoCheck
@@ -25,10 +31,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Cài đặt"
-        view.backgroundColor = Theme.background
+        view.backgroundColor = Theme.groupedBackground
         navigationController?.navigationBar.prefersLargeTitles = true
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = Theme.groupedBackground
+        tableView.separatorColor = Theme.separator
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
@@ -41,6 +49,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
                                                name: .updateStateChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
+                                               name: .libraryChanged, object: nil)
         rebuild()
     }
 
@@ -69,6 +79,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         let installKind = AppInfo.isJailbreakInstall ? "Jailbreak (.deb)" : "Sideload (.ipa)"
         let builtChannel = AppInfo.builtChannel == "dev" ? "Nhà phát triển" : "Ổn định"
         sections = [
+            Section(title: "Giao diện", footer: "\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối.",
+                    rows: [.theme]),
+            Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
+                    rows: [.quality]),
+            Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Cập nhật phần mềm", footer: channelFooter, rows: updateRows),
             Section(title: "Thông tin bản dựng", footer: nil, rows: [
                 .info("Kênh của bản dựng", builtChannel),
@@ -76,13 +91,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 .info("Cách cài", installKind),
                 .info("iOS", AppInfo.osVersion)
             ]),
-            Section(title: "Giới thiệu",
-                    footer: "Mochy iOS là bản chuyển cho iOS 12 trở lên, dựa trên Mochy Music của realidkroo (GPL-3.0).",
-                    rows: [
-                        .link("Mã nguồn và các bản phát hành", "GitHub", UpdateConfig.repoPage),
-                        .link("Mochy Music (bản gốc)", "realidkroo", "https://github.com/realidkroo/mochy-music"),
-                        .link("Giấy phép", "GPL-3.0", "https://www.gnu.org/licenses/gpl-3.0.html")
-                    ])
+            Section(title: "Giới thiệu", footer: nil, rows: [
+                .credits,
+                .link("Mã nguồn Mochy iOS", "GitHub", UpdateConfig.repoPage)
+            ])
         ]
     }
 
@@ -109,6 +121,51 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         let updater = Updater.shared
         let cell: UITableViewCell
         switch row {
+        case .theme:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            let control = UISegmentedControl(items: [ThemeMode.system.title, ThemeMode.light.title, ThemeMode.dark.title])
+            control.selectedSegmentIndex = Theme.mode.rawValue
+            control.tintColor = Theme.accent
+            control.frame = CGRect(x: 0, y: 0, width: 260, height: 30)
+            control.addTarget(self, action: #selector(themeChanged(_:)), for: .valueChanged)
+            cell.accessoryView = control
+            cell.textLabel?.text = "Chế độ"
+            cell.selectionStyle = .none
+
+        case .quality:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            let control = UISegmentedControl(items: ["Cao nhất", "Tiết kiệm"])
+            control.selectedSegmentIndex = AppSettings.audioQuality == .best ? 0 : 1
+            control.tintColor = Theme.accent
+            control.frame = CGRect(x: 0, y: 0, width: 190, height: 30)
+            control.addTarget(self, action: #selector(qualityChanged(_:)), for: .valueChanged)
+            cell.accessoryView = control
+            cell.textLabel?.text = "Chất lượng"
+            cell.selectionStyle = .none
+
+        case .downloadsInfo:
+            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = "Bài đã tải xuống"
+            let size = ByteCountFormatter.string(fromByteCount: Library.shared.totalDownloadBytes(), countStyle: .file)
+            cell.detailTextLabel?.text = "\(Library.shared.downloads.count) bài · \(size)"
+            cell.selectionStyle = .none
+
+        case .clearDownloads:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = "Xoá tất cả bài đã tải"
+            cell.textLabel?.textColor = Theme.accent
+
+        case .clearHistory:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = "Xoá lịch sử nghe"
+            cell.textLabel?.textColor = Theme.accent
+
+        case .credits:
+            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = "Credit và giấy phép"
+            cell.detailTextLabel?.text = "Mochy Music"
+            cell.accessoryType = .disclosureIndicator
+
         case .version:
             cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = "Phiên bản hiện tại"
@@ -144,7 +201,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.detailTextLabel?.textColor = Theme.secondaryText
             if updater.isChecking {
                 cell.detailTextLabel?.text = "Đang kiểm tra…"
-                let spinner = UIActivityIndicatorView(style: .gray)
+                let spinner = UIActivityIndicatorView(style: Theme.spinnerStyle())
                 spinner.startAnimating()
                 cell.accessoryView = spinner
             } else if updater.lastMessage.isEmpty {
@@ -177,6 +234,14 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.detailTextLabel?.text = value
             cell.accessoryType = .disclosureIndicator
         }
+        let keepColor = cell.textLabel?.textColor
+        Theme.style(cell: cell, grouped: true)
+        switch row {
+        case .checkNow, .updateAvailable, .clearDownloads, .clearHistory:
+            cell.textLabel?.textColor = keepColor
+        default:
+            break
+        }
         return cell
     }
 
@@ -184,6 +249,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.deselectRow(at: indexPath, animated: true)
         let row = sections[indexPath.section].rows[indexPath.row]
         switch row {
+        case .credits:
+            navigationController?.pushViewController(CreditsViewController(), animated: true)
+        case .clearDownloads:
+            confirm("Xoá tất cả bài đã tải xuống?", button: "Xoá") { Library.shared.removeAllDownloads() }
+        case .clearHistory:
+            confirm("Xoá toàn bộ lịch sử nghe?", button: "Xoá") { Library.shared.clearHistory() }
         case .checkNow:
             Updater.shared.check(manual: true)
         case .updateAvailable:
@@ -195,7 +266,32 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
 
+    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
+        (view as? UITableViewHeaderFooterView)?.textLabel?.textColor = Theme.secondaryText
+    }
+
+    func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
+        (view as? UITableViewHeaderFooterView)?.textLabel?.textColor = Theme.secondaryText
+    }
+
     // MARK: - Hành động
+
+    @objc private func themeChanged(_ sender: UISegmentedControl) {
+        guard let mode = ThemeMode(rawValue: sender.selectedSegmentIndex) else { return }
+        Theme.mode = mode
+        NotificationCenter.default.post(name: .themeChanged, object: nil)
+    }
+
+    @objc private func qualityChanged(_ sender: UISegmentedControl) {
+        AppSettings.audioQuality = sender.selectedSegmentIndex == 0 ? .best : .saver
+    }
+
+    private func confirm(_ message: String, button: String, _ action: @escaping () -> Void) {
+        let alert = UIAlertController(title: message, message: nil, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: button, style: .destructive) { _ in action() })
+        present(alert, animated: true, completion: nil)
+    }
 
     @objc private func channelChanged(_ sender: UISegmentedControl) {
         AppSettings.channel = sender.selectedSegmentIndex == 0 ? .stable : .dev

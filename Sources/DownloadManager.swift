@@ -1,0 +1,151 @@
+import Foundation
+
+extension Notification.Name {
+    static let downloadChanged = Notification.Name("MochyiOSDownloadChanged")
+    static let downloadFailed = Notification.Name("MochyiOSDownloadFailed")
+}
+
+/// Tải âm thanh về máy để nghe offline. Tải từng khúc 1 MB bằng HTTP Range (YouTube hay chặn tải một lần cả tệp).
+final class DownloadManager {
+    static let shared = DownloadManager()
+
+    /// Tiến độ (0...1) của các bài đang tải.
+    private(set) var progress: [String: Double] = [:]
+    private var cancelled = Set<String>()
+    private let session: URLSession
+    private let chunkSize: Int64 = 1_048_576
+
+    private init() {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        session = URLSession(configuration: config)
+    }
+
+    func isActive(_ videoId: String) -> Bool {
+        return progress[videoId] != nil
+    }
+
+    func start(_ song: Song) {
+        guard progress[song.videoId] == nil, !Library.shared.isDownloaded(song) else { return }
+        progress[song.videoId] = 0
+        cancelled.remove(song.videoId)
+        post()
+        InnerTube.shared.resolveStream(videoId: song.videoId) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.finish(song, error: error.localizedDescription)
+            case .success(let info):
+                self.begin(song, info: info)
+            }
+        }
+    }
+
+    func cancel(_ videoId: String) {
+        if progress[videoId] != nil {
+            cancelled.insert(videoId)
+        }
+    }
+
+    // MARK: - Nội bộ
+
+    private func post() {
+        NotificationCenter.default.post(name: .downloadChanged, object: nil)
+    }
+
+    private func finish(_ song: Song, error: String?) {
+        progress[song.videoId] = nil
+        cancelled.remove(song.videoId)
+        post()
+        if let error = error {
+            NotificationCenter.default.post(name: .downloadFailed, object: nil,
+                                            userInfo: ["message": "\(song.title)\n\(error)"])
+        }
+    }
+
+    private func begin(_ song: Song, info: StreamInfo) {
+        let temp = Library.downloadsDirectory.appendingPathComponent(song.videoId + ".part")
+        try? FileManager.default.removeItem(at: temp)
+        FileManager.default.createFile(atPath: temp.path, contents: nil, attributes: nil)
+        guard let handle = FileHandle(forWritingAtPath: temp.path) else {
+            finish(song, error: "Không tạo được tệp tạm.")
+            return
+        }
+        fetch(song, info: info, handle: handle, temp: temp, offset: 0, total: nil)
+    }
+
+    private func abort(_ song: Song, handle: FileHandle, temp: URL, error: String?) {
+        handle.closeFile()
+        try? FileManager.default.removeItem(at: temp)
+        finish(song, error: error)
+    }
+
+    private func complete(_ song: Song, handle: FileHandle, temp: URL) {
+        handle.closeFile()
+        let target = Library.downloadsDirectory.appendingPathComponent(song.videoId + ".m4a")
+        try? FileManager.default.removeItem(at: target)
+        do {
+            try FileManager.default.moveItem(at: temp, to: target)
+        } catch {
+            finish(song, error: "Không lưu được tệp: \(error.localizedDescription)")
+            return
+        }
+        Library.shared.addDownload(song)
+        progress[song.videoId] = nil
+        post()
+    }
+
+    private func fetch(_ song: Song, info: StreamInfo, handle: FileHandle, temp: URL, offset: Int64, total: Int64?) {
+        if cancelled.contains(song.videoId) {
+            abort(song, handle: handle, temp: temp, error: nil)
+            return
+        }
+        var request = URLRequest(url: info.url)
+        request.setValue(info.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("bytes=\(offset)-\(offset + chunkSize - 1)", forHTTPHeaderField: "Range")
+        session.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let error = error {
+                    self.abort(song, handle: handle, temp: temp, error: error.localizedDescription)
+                    return
+                }
+                guard let http = response as? HTTPURLResponse, let data = data else {
+                    self.abort(song, handle: handle, temp: temp, error: "Không có phản hồi.")
+                    return
+                }
+                if http.statusCode == 416 && offset > 0 {
+                    self.complete(song, handle: handle, temp: temp)
+                    return
+                }
+                if http.statusCode == 200 {
+                    // Máy chủ bỏ qua Range và trả cả tệp.
+                    handle.write(data)
+                    self.complete(song, handle: handle, temp: temp)
+                    return
+                }
+                guard http.statusCode == 206 else {
+                    self.abort(song, handle: handle, temp: temp, error: "Máy chủ trả về HTTP \(http.statusCode).")
+                    return
+                }
+                handle.write(data)
+                let newOffset = offset + Int64(data.count)
+                var totalBytes = total
+                if totalBytes == nil,
+                   let range = http.allHeaderFields["Content-Range"] as? String,
+                   let slash = range.lastIndex(of: "/") {
+                    totalBytes = Int64(range[range.index(after: slash)...])
+                }
+                if let t = totalBytes, t > 0 {
+                    self.progress[song.videoId] = min(1, Double(newOffset) / Double(t))
+                    self.post()
+                }
+                if data.isEmpty || (totalBytes != nil && newOffset >= totalBytes!) {
+                    self.complete(song, handle: handle, temp: temp)
+                } else {
+                    self.fetch(song, info: info, handle: handle, temp: temp, offset: newOffset, total: totalBytes)
+                }
+            }
+        }.resume()
+    }
+}

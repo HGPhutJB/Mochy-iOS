@@ -15,10 +15,23 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         _ = PlayerEngine.shared
         let window = UIWindow(frame: UIScreen.main.bounds)
-        window.rootViewController = MainTabBarController()
+        Theme.applyWindowStyle(window)
+        window.rootViewController = RootViewController()
         window.makeKeyAndVisible()
         self.window = window
+        NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
+                                               name: .themeChanged, object: nil)
         return true
+    }
+
+    /// Đổi sáng/tối: dựng lại toàn bộ giao diện với hiệu ứng mờ dần, giữ nguyên tab đang mở.
+    @objc private func themeChanged() {
+        guard let window = window else { return }
+        let index = (window.rootViewController as? RootViewController)?.selectedIndex ?? 0
+        Theme.applyWindowStyle(window)
+        UIView.transition(with: window, duration: 0.45, options: [.transitionCrossDissolve, .allowAnimatedContent], animations: {
+            window.rootViewController = RootViewController(selectedIndex: index)
+        }, completion: nil)
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {

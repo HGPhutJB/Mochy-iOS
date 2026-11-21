@@ -9,7 +9,13 @@ extension Notification.Name {
     static let playerFailed = Notification.Name("MochyiOSPlayerFailed")
 }
 
-/// Bộ phát nhạc: hàng đợi, AVPlayer, phát nền, điều khiển ở màn hình khoá.
+enum RepeatMode: Int {
+    case off = 0
+    case all = 1
+    case one = 2
+}
+
+/// Bộ phát nhạc: hàng đợi, ngẫu nhiên, lặp, hẹn giờ tắt, AVPlayer, phát nền, điều khiển ở màn hình khoá.
 final class PlayerEngine: NSObject {
     static let shared = PlayerEngine()
 
@@ -21,6 +27,11 @@ final class PlayerEngine: NSObject {
     private(set) var currentTime: Double = 0
     private(set) var artwork: UIImage?
     private(set) var lastError: String?
+    private(set) var repeatMode: RepeatMode = .off
+    private(set) var shuffleOn = false
+    private(set) var streamInfo: StreamInfo?
+    private(set) var isLocal = false
+    private(set) var sleepEnd: Date?
 
     var currentSong: Song? {
         if index >= 0 && index < queue.count { return queue[index] }
@@ -33,6 +44,7 @@ final class PlayerEngine: NSObject {
     private var endObserver: NSObjectProtocol?
     private var requestToken = 0
     private var resumeAfterInterruption = false
+    private var sleepTimer: Timer?
 
     private override init() {
         super.init()
@@ -49,9 +61,129 @@ final class PlayerEngine: NSObject {
 
     func play(queue: [Song], index: Int) {
         guard index >= 0 && index < queue.count else { return }
-        self.queue = queue
-        self.index = index
+        var list = queue
+        var start = index
+        if shuffleOn {
+            let first = list.remove(at: index)
+            list.shuffle()
+            list.insert(first, at: 0)
+            start = 0
+        }
+        self.queue = list
+        self.index = start
         startCurrent()
+    }
+
+    /// Phát ngẫu nhiên cả danh sách.
+    func playShuffled(_ songs: [Song]) {
+        guard !songs.isEmpty else { return }
+        shuffleOn = true
+        play(queue: songs, index: Int(arc4random_uniform(UInt32(songs.count))))
+    }
+
+    func setShuffle(_ on: Bool) {
+        shuffleOn = on
+        if on && index >= 0 && index < queue.count {
+            var rest = Array(queue[(index + 1)...])
+            rest.shuffle()
+            queue = Array(queue[0...index]) + rest
+        }
+        postState()
+    }
+
+    func cycleRepeat() {
+        switch repeatMode {
+        case .off: repeatMode = .all
+        case .all: repeatMode = .one
+        case .one: repeatMode = .off
+        }
+        postState()
+    }
+
+    func playNext(_ song: Song) {
+        if queue.isEmpty || index < 0 {
+            play(queue: [song], index: 0)
+            return
+        }
+        queue.insert(song, at: index + 1)
+        postState()
+    }
+
+    func addToQueue(_ song: Song) {
+        if queue.isEmpty || index < 0 {
+            play(queue: [song], index: 0)
+            return
+        }
+        queue.append(song)
+        postState()
+    }
+
+    func jump(to newIndex: Int) {
+        guard newIndex >= 0 && newIndex < queue.count else { return }
+        index = newIndex
+        startCurrent()
+    }
+
+    func removeFromQueue(at position: Int) {
+        guard position >= 0 && position < queue.count else { return }
+        queue.remove(at: position)
+        if queue.isEmpty {
+            clear()
+        } else if position < index {
+            index -= 1
+            postState()
+        } else if position == index {
+            if index >= queue.count { index = queue.count - 1 }
+            startCurrent()
+        } else {
+            postState()
+        }
+    }
+
+    func moveInQueue(from: Int, to: Int) {
+        guard from >= 0, to >= 0, from < queue.count, to < queue.count, from != to else { return }
+        let song = queue.remove(at: from)
+        queue.insert(song, at: to)
+        if index == from {
+            index = to
+        } else if from < index && to >= index {
+            index -= 1
+        } else if from > index && to <= index {
+            index += 1
+        }
+        postState()
+    }
+
+    func clear() {
+        requestToken += 1
+        teardownPlayer()
+        queue = []
+        index = -1
+        isPlaying = false
+        isLoading = false
+        duration = 0
+        currentTime = 0
+        artwork = nil
+        streamInfo = nil
+        postState()
+        updateNowPlayingInfo()
+    }
+
+    /// Hẹn giờ tắt nhạc; nil hoặc 0 để huỷ.
+    func setSleepTimer(minutes: Int?) {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        sleepEnd = nil
+        if let m = minutes, m > 0 {
+            let seconds = Double(m) * 60.0
+            sleepEnd = Date().addingTimeInterval(seconds)
+            sleepTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
+                self?.sleepEnd = nil
+                self?.sleepTimer = nil
+                self?.pause()
+            }
+        }
+        postState()
     }
 
     func togglePlayPause() {
@@ -76,8 +208,15 @@ final class PlayerEngine: NSObject {
     }
 
     func next() {
+        advance()
+    }
+
+    private func advance() {
         if index + 1 < queue.count {
             index += 1
+            startCurrent()
+        } else if repeatMode == .all && !queue.isEmpty {
+            index = 0
             startCurrent()
         } else {
             pause()
@@ -122,22 +261,33 @@ final class PlayerEngine: NSObject {
         postState()
         updateNowPlayingInfo()
         loadArtwork(for: song, token: token)
+        streamInfo = nil
 
+        if let local = Library.shared.localURL(for: song.videoId) {
+            isLocal = true
+            begin(url: local, headers: nil)
+            return
+        }
+        isLocal = false
         InnerTube.shared.resolveStream(videoId: song.videoId) { [weak self] result in
             guard let self = self, token == self.requestToken else { return }
             switch result {
             case .success(let info):
-                self.begin(info)
+                self.streamInfo = info
+                self.begin(url: info.url, headers: ["User-Agent": info.userAgent])
             case .failure(let error):
                 self.fail(error)
             }
         }
     }
 
-    private func begin(_ info: StreamInfo) {
+    private func begin(url: URL, headers: [String: String]?) {
         try? AVAudioSession.sharedInstance().setActive(true)
-        let options: [String: Any] = ["AVURLAssetHTTPHeaderFieldsKey": ["User-Agent": info.userAgent]]
-        let asset = AVURLAsset(url: info.url, options: options)
+        var options: [String: Any]? = nil
+        if let headers = headers {
+            options = ["AVURLAssetHTTPHeaderFieldsKey": headers]
+        }
+        let asset = AVURLAsset(url: url, options: options)
         let item = AVPlayerItem(asset: asset)
         let newPlayer = AVPlayer(playerItem: item)
         player = newPlayer
@@ -156,7 +306,13 @@ final class PlayerEngine: NSObject {
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: OperationQueue.main
         ) { [weak self] _ in
-            self?.next()
+            guard let self = self else { return }
+            if self.repeatMode == .one {
+                self.seek(to: 0)
+                self.player?.play()
+            } else {
+                self.advance()
+            }
         }
         newPlayer.play()
     }
@@ -169,6 +325,7 @@ final class PlayerEngine: NSObject {
             duration = seconds.isFinite ? seconds : 0
             isLoading = false
             isPlaying = true
+            if let song = currentSong { Library.shared.addHistory(song) }
             postState()
             updateNowPlayingInfo()
         case .failed:
@@ -224,7 +381,7 @@ final class PlayerEngine: NSObject {
     }
 
     private func loadArtwork(for song: Song, token: Int) {
-        guard let url = song.thumbnailURL else { return }
+        guard let url = song.largeThumbnailURL else { return }
         ImageLoader.shared.load(url) { [weak self] image in
             guard let self = self, token == self.requestToken, let image = image else { return }
             self.artwork = image

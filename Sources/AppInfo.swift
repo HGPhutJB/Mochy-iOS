@@ -25,6 +25,11 @@ enum UpdateChannel: String {
     }
 }
 
+enum AudioQuality: Int {
+    case best = 0
+    case saver = 1
+}
+
 /// Cài đặt người dùng, lưu trong UserDefaults.
 enum AppSettings {
     private static let defaults = UserDefaults.standard
@@ -45,6 +50,16 @@ enum AppSettings {
             return AppInfo.builtChannel == "dev" ? .dev : .stable
         }
         set { defaults.set(newValue.rawValue, forKey: "update.channel") }
+    }
+
+    static var audioQuality: AudioQuality {
+        get { return AudioQuality(rawValue: defaults.integer(forKey: "audio.quality")) ?? .best }
+        set { defaults.set(newValue.rawValue, forKey: "audio.quality") }
+    }
+
+    static var recentSearches: [String] {
+        get { return defaults.stringArray(forKey: "search.recent") ?? [] }
+        set { defaults.set(Array(newValue.prefix(12)), forKey: "search.recent") }
     }
 
     /// Build đã được báo bằng hộp thoại, để không làm phiền lặp lại.

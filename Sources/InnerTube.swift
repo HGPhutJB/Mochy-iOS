@@ -149,6 +149,41 @@ final class InnerTube {
         }
     }
 
+    // MARK: - Khám phá (browse)
+
+    func browse(_ browseId: String, formData: [String: Any]? = nil,
+                completion: @escaping (Result<[Shelf], Error>) -> Void) {
+        let client: [String: Any] = [
+            "clientName": "WEB_REMIX",
+            "clientVersion": webRemixVersion,
+            "hl": "vi",
+            "gl": "VN"
+        ]
+        var body: [String: Any] = [
+            "context": ["client": client],
+            "browseId": browseId
+        ]
+        if let formData = formData { body["formData"] = formData }
+        let headers: [String: String] = [
+            "X-Goog-Api-Format-Version": "1",
+            "X-YouTube-Client-Name": "67",
+            "X-YouTube-Client-Version": webRemixVersion,
+            "X-Origin": "https://music.youtube.com",
+            "Referer": "https://music.youtube.com/",
+            "User-Agent": webUserAgent
+        ]
+        postJSON(apiBase + "browse?prettyPrint=false", headers: headers, body: body) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .failure(let error):
+                    completion(.failure(error))
+                case .success(let json):
+                    completion(.success(InnerTube.parseShelves(json)))
+                }
+            }
+        }
+    }
+
     // MARK: - Lấy link phát
 
     func resolveStream(videoId: String, completion: @escaping (Result<StreamInfo, Error>) -> Void) {
@@ -251,35 +286,118 @@ final class InnerTube {
         return list.compactMap { $0["text"] as? String }
     }
 
+    private static func sizedThumbnail(_ thumbs: [[String: Any]]?) -> URL? {
+        guard let raw = thumbs?.last?["url"] as? String else { return nil }
+        let sized = raw.replacingOccurrences(of: "=w\\d+-h\\d+", with: "=w226-h226", options: .regularExpression)
+        return URL(string: sized)
+    }
+
+    private static let typeWords: Set<String> = ["Song", "Video", "Single", "EP", "Album", "Bài hát", "Đĩa đơn", "Băng đĩa"]
+
+    private static func makeSong(fromListItem item: [String: Any]) -> Song? {
+        guard let videoId = findString(item, key: "videoId") else { return nil }
+        let title = runs(item, column: 0).joined()
+        if title.isEmpty { return nil }
+        var parts = runs(item, column: 1).filter { $0.trimmingCharacters(in: .whitespaces) != "•" }
+        if let first = parts.first, typeWords.contains(first) {
+            parts.removeFirst()
+        }
+        let artist = parts.first ?? ""
+        let duration: String? = (parts.last != nil && parts.last!.contains(":")) ? parts.last : nil
+        let subtitle = parts.joined(separator: " · ")
+        let thumbPath: [Any] = ["thumbnail", "musicThumbnailRenderer", "thumbnail", "thumbnails"]
+        let thumb = sizedThumbnail(dig(item, thumbPath) as? [[String: Any]])
+        return Song(videoId: videoId, title: title, artist: artist, subtitle: subtitle, duration: duration, thumbnailURL: thumb)
+    }
+
+    private static func makeSong(fromTwoRow item: [String: Any]) -> Song? {
+        guard let videoId = dig(item, ["navigationEndpoint", "watchEndpoint", "videoId"]) as? String else { return nil }
+        let titleRuns = (dig(item, ["title", "runs"]) as? [[String: Any]]) ?? []
+        let title = titleRuns.compactMap { $0["text"] as? String }.joined()
+        if title.isEmpty { return nil }
+        let subRuns = (dig(item, ["subtitle", "runs"]) as? [[String: Any]]) ?? []
+        var parts = subRuns.compactMap { $0["text"] as? String }.filter { $0.trimmingCharacters(in: .whitespaces) != "•" }
+        if let first = parts.first, typeWords.contains(first) {
+            parts.removeFirst()
+        }
+        let artist = parts.first ?? ""
+        let thumbPath: [Any] = ["thumbnailRenderer", "musicThumbnailRenderer", "thumbnail", "thumbnails"]
+        let thumb = sizedThumbnail(dig(item, thumbPath) as? [[String: Any]])
+        return Song(videoId: videoId, title: title, artist: artist, subtitle: parts.joined(separator: " · "),
+                    duration: nil, thumbnailURL: thumb)
+    }
+
     static func parseSongs(_ json: [String: Any]) -> [Song] {
         var items: [[String: Any]] = []
         collectItems(json, into: &items)
         var songs: [Song] = []
         var seen = Set<String>()
         for item in items {
-            guard let videoId = findString(item, key: "videoId"), !seen.contains(videoId) else { continue }
-            let title = runs(item, column: 0).joined()
-            if title.isEmpty { continue }
-            var parts = runs(item, column: 1).filter { $0.trimmingCharacters(in: .whitespaces) != "•" }
-            if let first = parts.first, first == "Song" || first == "Video" || first == "Bài hát" {
-                parts.removeFirst()
-            }
-            let artist = parts.first ?? ""
-            let duration: String? = (parts.last != nil && parts.last!.contains(":")) ? parts.last : nil
-            let subtitle = parts.joined(separator: " · ")
-
-            var thumbURL: URL? = nil
-            let thumbPath: [Any] = ["thumbnail", "musicThumbnailRenderer", "thumbnail", "thumbnails"]
-            if let thumbs = dig(item, thumbPath) as? [[String: Any]],
-               let raw = thumbs.last?["url"] as? String {
-                let sized = raw.replacingOccurrences(of: "=w\\d+-h\\d+", with: "=w226-h226", options: .regularExpression)
-                thumbURL = URL(string: sized)
-            }
-            seen.insert(videoId)
-            songs.append(Song(videoId: videoId, title: title, artist: artist,
-                              subtitle: subtitle, duration: duration, thumbnailURL: thumbURL))
+            guard let song = makeSong(fromListItem: item), !seen.contains(song.videoId) else { continue }
+            seen.insert(song.videoId)
+            songs.append(song)
         }
         return songs
+    }
+
+    // MARK: - Các hàng (shelf) trên trang Khám phá / Bảng xếp hạng
+
+    private static func collectShelves(_ node: Any, into out: inout [[String: Any]]) {
+        if let dict = node as? [String: Any] {
+            for key in ["musicCarouselShelfRenderer", "musicShelfRenderer", "musicPlaylistShelfRenderer", "musicImmersiveCarouselShelfRenderer"] {
+                if let shelf = dict[key] as? [String: Any] {
+                    out.append(shelf)
+                    return
+                }
+            }
+            for (_, value) in dict {
+                collectShelves(value, into: &out)
+            }
+        } else if let array = node as? [Any] {
+            for value in array {
+                collectShelves(value, into: &out)
+            }
+        }
+    }
+
+    private static func shelfTitle(_ shelf: [String: Any]) -> String {
+        let paths: [[Any]] = [
+            ["header", "musicCarouselShelfBasicHeaderRenderer", "title", "runs", 0, "text"],
+            ["header", "musicImmersiveCarouselShelfBasicHeaderRenderer", "title", "runs", 0, "text"],
+            ["title", "runs", 0, "text"]
+        ]
+        for path in paths {
+            if let text = dig(shelf, path) as? String, !text.isEmpty { return text }
+        }
+        return ""
+    }
+
+    static func parseShelves(_ json: [String: Any]) -> [Shelf] {
+        var rendered: [[String: Any]] = []
+        collectShelves(json, into: &rendered)
+        var shelves: [Shelf] = []
+        for shelf in rendered {
+            guard let contents = shelf["contents"] as? [Any] else { continue }
+            var songs: [Song] = []
+            var seen = Set<String>()
+            for element in contents {
+                guard let dict = element as? [String: Any] else { continue }
+                var found: Song? = nil
+                if let item = dict["musicResponsiveListItemRenderer"] as? [String: Any] {
+                    found = makeSong(fromListItem: item)
+                } else if let item = dict["musicTwoRowItemRenderer"] as? [String: Any] {
+                    found = makeSong(fromTwoRow: item)
+                }
+                if let song = found, !seen.contains(song.videoId) {
+                    seen.insert(song.videoId)
+                    songs.append(song)
+                }
+            }
+            if songs.count >= 3 {
+                shelves.append(Shelf(title: shelfTitle(shelf), songs: songs))
+            }
+        }
+        return shelves
     }
 
     static func pickStream(_ json: [String: Any], client: PlayerClient) -> StreamInfo? {
@@ -288,16 +406,29 @@ final class InnerTube {
         if let adaptive = streaming["adaptiveFormats"] as? [[String: Any]] { all.append(contentsOf: adaptive) }
         if let muxed = streaming["formats"] as? [[String: Any]] { all.append(contentsOf: muxed) }
 
+        func bitrate(_ f: [String: Any]) -> Int {
+            return (f["averageBitrate"] as? Int) ?? (f["bitrate"] as? Int) ?? 0
+        }
+        func make(_ f: [String: Any], _ urlString: String, _ defaultMime: String) -> StreamInfo? {
+            guard let url = URL(string: urlString) else { return nil }
+            let rate = Int((f["audioSampleRate"] as? String) ?? "") ?? 0
+            return StreamInfo(url: url, userAgent: client.userAgent,
+                              mimeType: (f["mimeType"] as? String) ?? defaultMime,
+                              clientName: client.name, bitrate: bitrate(f), sampleRate: rate)
+        }
+
         // 1) Âm thanh AAC (audio/mp4) có link trực tiếp: AVPlayer trên iOS 12 phát được.
         let audio = all.filter { format in
             guard let mime = format["mimeType"] as? String else { return false }
             return mime.hasPrefix("audio/mp4") && (format["url"] as? String) != nil
         }
-        if let best = audio.max(by: { (a, b) in
-            ((a["bitrate"] as? Int) ?? 0) < ((b["bitrate"] as? Int) ?? 0)
-        }), let urlString = best["url"] as? String, let url = URL(string: urlString) {
-            return StreamInfo(url: url, userAgent: client.userAgent,
-                              mimeType: (best["mimeType"] as? String) ?? "audio/mp4", clientName: client.name)
+        let wantLow = AppSettings.audioQuality == .saver
+        let chosen = wantLow
+            ? audio.min(by: { bitrate($0) < bitrate($1) })
+            : audio.max(by: { bitrate($0) < bitrate($1) })
+        if let best = chosen, let urlString = best["url"] as? String,
+           let info = make(best, urlString, "audio/mp4") {
+            return info
         }
 
         // 2) Dự phòng: luồng ghép hình + tiếng (itag 18) nếu không có âm thanh riêng.
@@ -305,11 +436,9 @@ final class InnerTube {
             guard let mime = format["mimeType"] as? String else { return false }
             return mime.hasPrefix("video/mp4") && (format["url"] as? String) != nil && format["audioQuality"] != nil
         }
-        if let low = muxedOnly.min(by: { (a, b) in
-            ((a["bitrate"] as? Int) ?? 0) < ((b["bitrate"] as? Int) ?? 0)
-        }), let urlString = low["url"] as? String, let url = URL(string: urlString) {
-            return StreamInfo(url: url, userAgent: client.userAgent,
-                              mimeType: (low["mimeType"] as? String) ?? "video/mp4", clientName: client.name)
+        if let low = muxedOnly.min(by: { bitrate($0) < bitrate($1) }),
+           let urlString = low["url"] as? String, let info = make(low, urlString, "video/mp4") {
+            return info
         }
         return nil
     }
