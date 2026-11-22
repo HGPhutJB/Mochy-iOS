@@ -513,6 +513,11 @@ final class InnerTube {
                                   mimeType: (f["mimeType"] as? String) ?? defaultMime,
                                   clientName: client.name, bitrate: bitrate(f), sampleRate: rate)
             info.contentLength = Int64((f["contentLength"] as? String) ?? "") ?? 0
+            if let ms = Double((f["approxDurationMs"] as? String) ?? "") {
+                info.durationSeconds = ms / 1000
+            } else if let len = Double((dig(json, ["videoDetails", "lengthSeconds"]) as? String) ?? "") {
+                info.durationSeconds = len
+            }
             return info
         }
 

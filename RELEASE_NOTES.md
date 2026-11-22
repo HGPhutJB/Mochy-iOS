@@ -1,5 +1,5 @@
-Mochy iOS 0.4.0 (mốc 2 - phần 1: lời bài hát)
+Mochy iOS 0.4.1
 
-- Lời bài hát đồng bộ theo từng dòng trong màn hình đang phát: bấm nút lời (hình khung chat) cạnh nút ngẫu nhiên/lặp để chuyển giữa bìa và lời.
-- Dòng đang hát to và sáng, tự cuộn theo; chạm vào một dòng để tua tới đó; tự cuộn lại sau 3 giây khi bạn vuốt tay.
-- Nguồn lời: SimpMusic (theo video) rồi LRCLIB; không có lời đồng bộ thì hiện lời thường.
+- Sửa độ dài bài sai (bài 3:54 hiện 6:50): dùng độ dài thật YouTube trả về; hết bài thì tự chuyển bài đúng lúc, không phát đoạn thừa.
+- Lời bài hát: thêm YouLy+ (gom từ Apple Music / Musixmatch / Spotify, có nhạc Việt) và KuGou; thứ tự thử: YouLy+ → SimpMusic → LRCLIB → KuGou.
+- Lời cuộn mượt kiểu Apple Music: dòng đang hát to, rõ; các dòng khác nhỏ hơn và mờ dần theo khoảng cách.

@@ -33,10 +33,18 @@ final class LyricsService {
         if known { completion(nil); return }
         DispatchQueue.global(qos: .userInitiated).async {
             let duration = durationHint > 0 ? durationHint : LyricsService.seconds(song.duration)
-            var best: LyricsResult? = self.fromSimpMusic(song)
-            if best == nil || best!.synced.isEmpty {
-                if let lrc = self.fromLRCLIB(song, duration: duration) {
-                    if best == nil || !lrc.synced.isEmpty { best = lrc }
+            // Thử lần lượt; nguồn nào có lời đồng bộ trước thì dùng, không có thì giữ lời thường đầu tiên.
+            let sources: [() -> LyricsResult?] = [
+                { self.fromYouLyPlus(song, duration: duration) },
+                { self.fromSimpMusic(song) },
+                { self.fromLRCLIB(song, duration: duration) },
+                { self.fromKuGou(song, duration: duration) }
+            ]
+            var best: LyricsResult?
+            for source in sources {
+                if let r = source() {
+                    if !r.synced.isEmpty { best = r; break }
+                    if best == nil { best = r }
                 }
             }
             self.lock.lock()
@@ -65,6 +73,88 @@ final class LyricsService {
         }.resume()
         sem.wait()
         return out
+    }
+
+    /// YouLy+: gom lời từ Apple Music / Musixmatch / Spotify, không cần khoá; có cả nhạc Việt.
+    private func fromYouLyPlus(_ song: Song, duration: Double) -> LyricsResult? {
+        let title = LyricsService.cleanTitle(song.title)
+        let artist = LyricsService.cleanArtist(song.artist)
+        for base in ["https://lyricsplus.prjktla.my.id", "https://lyricsplus.binimum.org"] {
+            var c = URLComponents(string: base + "/v2/lyrics/get")
+            var items = [URLQueryItem(name: "title", value: title), URLQueryItem(name: "artist", value: artist)]
+            items.append(URLQueryItem(name: "duration", value: String(Int(duration.rounded()))))
+            c?.queryItems = items
+            guard let url = c?.url, let json = getJSON(url) as? [String: Any] else { continue }
+            var lines: [LyricLine] = []
+            if let list = json["lyrics"] as? [[String: Any]] {
+                for item in list {
+                    guard let ms = item["time"] as? Double ?? (item["time"] as? Int).map(Double.init) else { continue }
+                    var text = (item["text"] as? String) ?? ""
+                    if text.isEmpty, let syl = item["syllabus"] as? [[String: Any]] {
+                        text = syl.compactMap { $0["text"] as? String }.joined()
+                    }
+                    lines.append(LyricLine(time: ms / 1000, text: text.trimmingCharacters(in: .whitespaces)))
+                }
+            }
+            if lines.isEmpty, let lrc = json["syncedLyrics"] as? String { lines = LyricsService.parseLRC(lrc) }
+            if !lines.isEmpty { return LyricsResult(synced: lines.sorted { $0.time < $1.time }, plain: json["plainLyrics"] as? String, source: "YouLy+") }
+            if let plain = json["plainLyrics"] as? String, !plain.isEmpty {
+                return LyricsResult(synced: [], plain: plain, source: "YouLy+")
+            }
+        }
+        return nil
+    }
+
+    /// KuGou: nguồn lời LRC lớn, hay có nhạc Việt/Hoa.
+    private func fromKuGou(_ song: Song, duration: Double) -> LyricsResult? {
+        let title = LyricsService.cleanTitle(song.title)
+        let artist = LyricsService.cleanArtist(song.artist)
+        func object(_ url: URL) -> [String: Any]? {
+            let sem = DispatchSemaphore(value: 0)
+            var out: [String: Any]?
+            session.dataTask(with: url) { data, _, _ in
+                if var text = data.flatMap({ String(data: $0, encoding: .utf8) }),
+                   let s = text.firstIndex(of: "{"), let e = text.lastIndex(of: "}") {
+                    text = String(text[s...e])
+                    out = (try? JSONSerialization.jsonObject(with: Data(text.utf8), options: [])) as? [String: Any]
+                }
+                sem.signal()
+            }.resume()
+            sem.wait()
+            return out
+        }
+        func url(_ base: String, _ items: [(String, String)]) -> URL? {
+            var c = URLComponents(string: base)
+            c?.queryItems = items.map { URLQueryItem(name: $0.0, value: $0.1) }
+            return c?.url
+        }
+        var candidate: (Int, String)?
+        if let u = url("https://mobileservice.kugou.com/api/v3/search/song",
+                       [("version", "9108"), ("plat", "0"), ("pagesize", "8"), ("showtype", "0"), ("keyword", title + " - " + artist)]),
+           let info = (object(u)?["data"] as? [String: Any])?["info"] as? [[String: Any]] {
+            for item in info {
+                let d = (item["duration"] as? Double) ?? Double((item["duration"] as? Int) ?? 0)
+                if duration > 0 && d > 0 && abs(d - duration) > 8 { continue }
+                guard let hash = item["hash"] as? String,
+                      let u2 = url("https://lyrics.kugou.com/search", [("ver", "1"), ("man", "yes"), ("client", "pc"), ("hash", hash)]),
+                      let cands = object(u2)?["candidates"] as? [[String: Any]], let first = cands.first,
+                      let id = (first["id"] as? Int) ?? Int((first["id"] as? String) ?? ""),
+                      let key = first["accesskey"] as? String else { continue }
+                candidate = (id, key)
+                break
+            }
+        }
+        guard let (id, key) = candidate,
+              let u3 = url("https://lyrics.kugou.com/download",
+                           [("fmt", "lrc"), ("charset", "utf8"), ("client", "pc"), ("ver", "1"), ("id", String(id)), ("accesskey", key)]),
+              let content = object(u3)?["content"] as? String,
+              let data = Data(base64Encoded: content), let text = String(data: data, encoding: .utf8) else { return nil }
+        // bỏ các dòng đầu dạng "Nhạc sĩ: ..." / "Lời: ..."
+        var lines = LyricsService.parseLRC(text)
+        var head = 0
+        while head < min(lines.count, 8), lines[head].text.range(of: "[:：]", options: .regularExpression) != nil { head += 1 }
+        lines.removeFirst(head)
+        return lines.isEmpty ? nil : LyricsResult(synced: lines, plain: nil, source: "KuGou")
     }
 
     private func fromSimpMusic(_ song: Song) -> LyricsResult? {
@@ -175,7 +265,63 @@ final class LyricsService {
     }
 }
 
-/// Khu vực hiển thị lời: cuộn tự động theo dòng đang hát, chạm vào dòng để tua tới đó.
+/// Một dòng lời: nhãn rõ nét cho dòng đang hát, ảnh làm mờ cho các dòng khác (mờ dần theo khoảng cách như Apple Music).
+final class LyricCell: UITableViewCell {
+    let box = UIView()
+    let label = UILabel()
+    let blurView = UIImageView()
+    private(set) var row = -1
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        backgroundColor = .clear
+        selectionStyle = .none
+        box.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(box)
+        label.numberOfLines = 0
+        label.font = Theme.heavy(30)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        blurView.contentMode = .topLeft
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        box.addSubview(label)
+        box.addSubview(blurView)
+        NSLayoutConstraint.activate([
+            box.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 9),
+            box.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -9),
+            box.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            box.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            label.topAnchor.constraint(equalTo: box.topAnchor),
+            label.bottomAnchor.constraint(equalTo: box.bottomAnchor),
+            label.leadingAnchor.constraint(equalTo: box.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+            blurView.topAnchor.constraint(equalTo: label.topAnchor),
+            blurView.leadingAnchor.constraint(equalTo: label.leadingAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    func configure(text: String, row: Int) {
+        self.row = row
+        label.text = text
+        label.textColor = Theme.primaryText
+        blurView.image = nil
+    }
+
+    /// distance: số dòng cách dòng đang hát (0 = đang hát). Dòng chưa tới hát và đã hát đều mờ dần.
+    func apply(distance: Int, blurImage: UIImage?) {
+        let active = distance == 0
+        let scale: CGFloat = active ? 1 : 0.9
+        var t = CGAffineTransform(scaleX: scale, y: scale)
+        t.tx = -(box.bounds.width / 2) * (1 - scale)
+        box.transform = t
+        label.alpha = active ? 1 : 0
+        blurView.alpha = active ? 0 : max(0.28, 0.62 - 0.1 * CGFloat(distance - 1))
+        if !active { blurView.image = blurImage }
+    }
+}
+
+/// Khu vực hiển thị lời: cuộn mượt theo dòng đang hát, dòng khác làm mờ, chạm vào dòng để tua.
 final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private let table = UITableView(frame: .zero, style: .plain)
     private let statusLabel = UILabel()
@@ -183,6 +329,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private var plain: String?
     private var current = -1
     private var userScrolledAt = Date.distantPast
+    private var blurCache: [String: UIImage] = [:]
+    private let ciContext = CIContext(options: nil)
     var onSeek: ((Double) -> Void)?
 
     override init(frame: CGRect) {
@@ -192,8 +340,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         table.showsVerticalScrollIndicator = false
         table.dataSource = self
         table.delegate = self
-        table.register(UITableViewCell.self, forCellReuseIdentifier: "line")
-        table.estimatedRowHeight = 60
+        table.register(LyricCell.self, forCellReuseIdentifier: "line")
+        table.estimatedRowHeight = 70
         table.rowHeight = UITableView.automaticDimension
         table.translatesAutoresizingMaskIntoConstraints = false
         addSubview(table)
@@ -227,6 +375,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         self.lines = lines
         self.plain = plain
         current = -1
+        blurCache.removeAll()
         statusLabel.text = message
         statusLabel.isHidden = message == nil
         table.reloadData()
@@ -235,9 +384,10 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let pad = bounds.height * 0.35
-        if table.contentInset.top != pad {
-            table.contentInset = UIEdgeInsets(top: pad, left: 0, bottom: pad, right: 0)
+        let top = bounds.height * 0.3
+        let bottom = bounds.height * 0.55
+        if table.contentInset.top != top {
+            table.contentInset = UIEdgeInsets(top: top, left: 0, bottom: bottom, right: 0)
         }
     }
 
@@ -247,16 +397,32 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         var lo = 0, hi = lines.count - 1, idx = -1
         while lo <= hi {
             let mid = (lo + hi) / 2
-            if lines[mid].time <= time + 0.15 { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
+            if lines[mid].time <= time + 0.2 { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
         guard idx != current else { return }
-        let old = current
         current = idx
-        for row in [old, idx] where row >= 0 {
-            if let cell = table.cellForRow(at: IndexPath(row: row, section: 0)) { style(cell, row: row) }
-        }
+        UIView.animate(withDuration: 0.4, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+            for case let cell as LyricCell in self.table.visibleCells { self.style(cell) }
+        }, completion: nil)
         if idx >= 0, Date().timeIntervalSince(userScrolledAt) > 3 {
-            table.scrollToRow(at: IndexPath(row: idx, section: 0), at: .middle, animated: true)
+            scrollToCurrent(animated: true)
+        }
+    }
+
+    private func scrollToCurrent(animated: Bool) {
+        guard current >= 0 else { return }
+        let path = IndexPath(row: current, section: 0)
+        let rect = table.rectForRow(at: path)
+        let target = rect.midY - table.bounds.height * 0.3 - 10
+        let minY = -table.contentInset.top
+        let maxY = max(minY, table.contentSize.height - table.bounds.height + table.contentInset.bottom)
+        let y = min(max(target, minY), maxY)
+        if animated {
+            UIView.animate(withDuration: 0.6, delay: 0, options: [.allowUserInteraction, .curveEaseInOut, .beginFromCurrentState], animations: {
+                self.table.contentOffset = CGPoint(x: 0, y: y)
+            }, completion: nil)
+        } else {
+            table.contentOffset = CGPoint(x: 0, y: y)
         }
     }
 
@@ -275,29 +441,55 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "line", for: indexPath)
-        cell.backgroundColor = .clear
-        cell.selectionStyle = .none
-        cell.textLabel?.numberOfLines = 0
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "line", for: indexPath) as? LyricCell else {
+            return UITableViewCell()
+        }
         if lines.isEmpty {
-            cell.textLabel?.text = plain
-            cell.textLabel?.font = Theme.bold(20)
-            cell.textLabel?.textColor = Theme.primaryText
-            cell.textLabel?.textAlignment = .left
-            cell.textLabel?.alpha = 1
+            cell.configure(text: plain ?? "", row: -1)
+            cell.label.font = Theme.bold(20)
+            cell.apply(distance: 0, blurImage: nil)
         } else {
-            cell.textLabel?.text = lines[indexPath.row].text.isEmpty ? "♪" : lines[indexPath.row].text
-            style(cell, row: indexPath.row)
+            let text = lines[indexPath.row].text
+            cell.configure(text: text.isEmpty ? "♪" : text, row: indexPath.row)
+            cell.label.font = Theme.heavy(30)
+            style(cell)
         }
         return cell
     }
 
-    private func style(_ cell: UITableViewCell, row: Int) {
-        let active = row == current
-        cell.textLabel?.font = Theme.heavy(active ? 28 : 24)
-        cell.textLabel?.textColor = Theme.primaryText
-        cell.textLabel?.alpha = active ? 1 : 0.38
-        cell.textLabel?.textAlignment = .left
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if let c = cell as? LyricCell, !lines.isEmpty { style(c) }
+    }
+
+    private func style(_ cell: LyricCell) {
+        guard cell.row >= 0 else { return }
+        // Chưa có dòng nào đang hát (đầu bài): mọi dòng ở mức mờ nhẹ.
+        let distance = current < 0 ? max(1, cell.row + 1) : abs(cell.row - current)
+        let bucket = min(distance, 4)
+        cell.apply(distance: distance, blurImage: distance == 0 ? nil : blurred(row: cell.row, bucket: bucket, cell: cell))
+    }
+
+    private func blurred(row: Int, bucket: Int, cell: LyricCell) -> UIImage? {
+        let width = max(40, table.bounds.width - 40)
+        let key = "\(row)-\(bucket)-\(Int(width))-\(Theme.isDark)"
+        if let hit = blurCache[key] { return hit }
+        let text = (cell.label.text ?? "") as NSString
+        let attrs: [NSAttributedString.Key: Any] = [.font: Theme.heavy(30), .foregroundColor: Theme.primaryText]
+        let rect = text.boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                                     options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
+        let size = CGSize(width: width, height: ceil(rect.height))
+        guard size.height > 1 else { return nil }
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let flat = renderer.image { _ in text.draw(with: CGRect(origin: .zero, size: size), options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil) }
+        let radius = [0, 1.2, 2.4, 3.6, 4.8][bucket]
+        guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return flat }
+        filter.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)
+        filter.setValue(radius, forKey: kCIInputRadiusKey)
+        guard let output = filter.outputImage,
+              let cg = ciContext.createCGImage(output, from: input.extent) else { return flat }
+        let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
+        blurCache[key] = image
+        return image
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

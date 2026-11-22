@@ -72,6 +72,7 @@ struct StreamInfo {
     let clientName: String
     let bitrate: Int       // bit/giây, 0 nếu không rõ
     let sampleRate: Int    // Hz, 0 nếu không rõ
+    var durationSeconds: Double = 0  // độ dài thật theo YouTube, 0 nếu không rõ
     var unverified = false      // không client nào qua kiểm tra byte cuối
     var contentLength: Int64 = 0  // byte, 0 nếu không rõ
 

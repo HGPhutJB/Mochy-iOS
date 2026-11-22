@@ -290,6 +290,7 @@ final class PlayerEngine: NSObject {
     }
 
     private var chunkLoader: ChunkedLoader?
+    private var durationCapped = false
 
     private func begin(url: URL, headers: [String: String]?, stream: StreamInfo? = nil) {
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -421,6 +422,14 @@ final class PlayerEngine: NSObject {
         case .readyToPlay:
             let seconds = item.duration.seconds
             duration = seconds.isFinite ? seconds : 0
+            // Tệp DASH của YouTube đôi khi khai độ dài sai (bài 3:54 hiện 6:50): tin độ dài YouTube trả về.
+            let real = streamInfo?.durationSeconds ?? 0
+            if real > 0 && (duration <= 0 || abs(duration - real) > 2) {
+                duration = real
+                durationCapped = true
+            } else {
+                durationCapped = false
+            }
             isLoading = false
             isPlaying = true
             if pendingSeek > 1 {
@@ -443,6 +452,18 @@ final class PlayerEngine: NSObject {
     private func tick(_ time: CMTime) {
         let seconds = time.seconds
         if seconds.isFinite { currentTime = seconds }
+        if durationCapped, duration > 0, seconds.isFinite, seconds >= duration - 0.3, isPlaying {
+            durationCapped = false
+            player?.pause()
+            if repeatMode == .one {
+                seek(to: 0)
+                player?.play()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.durationCapped = true }
+            } else {
+                advance()
+            }
+            return
+        }
         NotificationCenter.default.post(name: .playerTimeChanged, object: nil)
     }
 
