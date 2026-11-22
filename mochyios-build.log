@@ -1,4 +1,4 @@
-Version 0.5.4, package version 0.5.4, build 33, channel stable, commit 085a4b6
+Version 0.5.5, package version 0.5.5.34, build 34, channel dev, commit 1dec6af
 SDK: /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk
 swift-driver version: 1.148.6 <unknown>:0: warning: using sysroot for 'iPhoneOS' but targeting 'MacOSX'
 Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
@@ -55,20 +55,20 @@ LaunchScreen.storyboardc OK
 ==> Preparing the .ipa payload (before the jailbreak entitlements are applied)
 ==> Pseudo-signing the .deb binary with ldid (jailbreak entitlements)
 ==> Packaging .deb
-dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.5.4_iphoneos-arm.deb'.
+dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.5.5.34_iphoneos-arm.deb'.
 ==> Packaging .ipa
 ==> Done
-total 2368
--rw-r--r--  1 runner  staff  598374 Nov 22 16:36 com.puc.mochyios_0.5.4_iphoneos-arm.deb
--rw-r--r--  1 runner  staff  607593 Nov 22 16:36 MochyiOS_0.5.4.ipa
+total 2416
+-rw-r--r--  1 runner  staff  610846 Nov 22 22:49 com.puc.mochyios_0.5.5.34_iphoneos-arm.deb
+-rw-r--r--  1 runner  staff  621137 Nov 22 22:49 MochyiOS_0.5.5.34.ipa
  new Debian package, version 2.0.
- size 598374 bytes: control archive=607 bytes.
-     443 bytes,    10 lines      control
+ size 610846 bytes: control archive=611 bytes.
+     446 bytes,    10 lines      control
      183 bytes,     5 lines   *  postinst             #!/bin/sh
       86 bytes,     5 lines   *  postrm               #!/bin/sh
  Package: com.puc.mochyios
  Name: Mochy iOS
- Version: 0.5.4
+ Version: 0.5.5.34
  Architecture: iphoneos-arm
  Description: Music player for iOS 12+ (rootful), a Swift port of Mochy Music. Search and stream from YouTube Music, background playback and lock screen controls.
  Depends: firmware (>= 12.2)
