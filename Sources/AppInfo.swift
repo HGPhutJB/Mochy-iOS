@@ -31,6 +31,17 @@ enum AudioQuality: Int {
 }
 
 /// Cài đặt người dùng, lưu trong UserDefaults.
+enum PlayerBlur: Int {
+    case auto = 0, light, dark
+    var title: String {
+        switch self {
+        case .auto: return "Tự động theo ảnh bìa"
+        case .light: return "Sáng"
+        case .dark: return "Tối"
+        }
+    }
+}
+
 enum AppSettings {
     private static let defaults = UserDefaults.standard
 
@@ -64,6 +75,12 @@ enum AppSettings {
             return defaults.bool(forKey: "player.video")
         }
         set { defaults.set(newValue, forKey: "player.video") }
+    }
+
+    /// Kiểu làm mờ phía dưới màn hình đang phát khi chưa bật lời.
+    static var playerBlur: PlayerBlur {
+        get { return PlayerBlur(rawValue: defaults.integer(forKey: "player.blur")) ?? .auto }
+        set { defaults.set(newValue.rawValue, forKey: "player.blur") }
     }
 
     static var recentSearches: [String] {

@@ -126,6 +126,19 @@ final class NowPlayingViewController: UIViewController {
     private static let green = Theme.accent   // màu nhấn của Mochy
     private var tone = UIColor.white           // màu nhấn lấy từ ảnh bìa
     private var toneLight: UIColor { return tone.mixed(with: .white, amount: 0.3) }   // bản sáng hơn cho nút
+    private var coverLuminance: CGFloat = 0.2   // độ sáng phần dưới ảnh bìa
+    /// Nền phía dưới (khi chưa bật lời) có sáng không: theo cài đặt hoặc tự động theo ảnh bìa.
+    private var backdropLight: Bool {
+        switch AppSettings.playerBlur {
+        case .light: return true
+        case .dark: return false
+        case .auto: return coverLuminance > 0.58
+        }
+    }
+    /// Nền sáng thì nút/chữ dùng màu tối (lấy tông của bìa), nền tối thì dùng bản sáng.
+    private var iconColor: UIColor {
+        return mode == .cover && backdropLight ? tone.mixed(with: .black, amount: 0.65) : toneLight
+    }
 
     private let mediaView = UIView()
     private let artView = UIImageView()
@@ -471,7 +484,8 @@ final class NowPlayingViewController: UIViewController {
             changes()
         }
         lyricsButton.setImage(Icons.lyrics(28, filled: lyr), for: .normal)
-        lyricsButton.tintColor = lyr ? NowPlayingViewController.green : toneLight
+        lyricsButton.tintColor = lyr ? NowPlayingViewController.green : iconColor
+        refreshBackdrop(animated: animated)
         artPan?.isEnabled = !lyr
         infoA.isUserInteractionEnabled = new == .cover
         infoB.isUserInteractionEnabled = new == .lyrics
@@ -546,12 +560,12 @@ final class NowPlayingViewController: UIViewController {
         }
 
         playButton.setImage(engine.isPlaying || engine.isLoading ? Icons.pause(64) : Icons.play(64), for: .normal)
-        shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : toneLight.withAlphaComponent(0.7)
+        shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : iconColor.withAlphaComponent(0.7)
         shuffleDot.alpha = engine.shuffleOn && mode != .immersive ? 1 : 0
         switch engine.repeatMode {
         case .off:
             repeatButton.setImage(Icons.repeatAll(28), for: .normal)
-            repeatButton.tintColor = toneLight.withAlphaComponent(0.7)
+            repeatButton.tintColor = iconColor.withAlphaComponent(0.7)
         case .all:
             repeatButton.setImage(Icons.repeatAll(28), for: .normal)
             repeatButton.tintColor = NowPlayingViewController.green
@@ -563,26 +577,37 @@ final class NowPlayingViewController: UIViewController {
         timeChanged()
     }
 
-    /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa; nút dùng bản sáng hơn để rõ trên nền tối.
+    /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa.
     private func applyTone(from image: UIImage) {
         guard let color = image.songTone() else { return }
         tone = color
-        progress.setTone(toneLight)
-        elapsedLabel.textColor = toneLight.withAlphaComponent(0.8)
-        remainingLabel.textColor = toneLight.withAlphaComponent(0.8)
+        coverLuminance = image.bottomLuminance() ?? 0.2
+        refreshBackdrop(animated: true)
+    }
+
+    /// Chỉnh dải mờ, bóng, chữ và nút theo độ sáng của nền (bìa sáng → mờ sáng + chữ tối).
+    private func refreshBackdrop(animated: Bool) {
+        let light = backdropLight
+        bandBlur.setLight(light, animated: animated)
+        bandShade.gradientLayer.colors = [UIColor.clear.cgColor,
+                                          (light ? UIColor(white: 1, alpha: 0.28) : UIColor(white: 0, alpha: 0.32)).cgColor]
+        infoA.setInk(dark: light)
         applyIconTints()
     }
 
     private func applyIconTints() {
         let engine = PlayerEngine.shared
-        let light = toneLight
+        let color = iconColor
         UIView.animate(withDuration: 0.4) {
+            self.progress.setTone(color)
+            self.elapsedLabel.textColor = color.withAlphaComponent(0.8)
+            self.remainingLabel.textColor = color.withAlphaComponent(0.8)
             for b in [self.prevButton, self.playButton, self.nextButton, self.deviceButton, self.queueButton] {
-                b.tintColor = light
+                b.tintColor = color
             }
-            self.lyricsButton.tintColor = self.mode == .cover ? light : NowPlayingViewController.green
-            self.shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : light.withAlphaComponent(0.7)
-            self.repeatButton.tintColor = engine.repeatMode == .off ? light.withAlphaComponent(0.7) : NowPlayingViewController.green
+            self.lyricsButton.tintColor = self.mode == .cover ? color : NowPlayingViewController.green
+            self.shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : color.withAlphaComponent(0.7)
+            self.repeatButton.tintColor = engine.repeatMode == .off ? color.withAlphaComponent(0.7) : NowPlayingViewController.green
         }
     }
 
@@ -689,6 +714,27 @@ final class NowPlayingViewController: UIViewController {
             guard let self = self else { return }
             SongActions.present(for: song, from: self, sourceView: self.moreGlass)
         })
+        sheet.addAction(UIAlertAction(title: "Làm mờ nền: \(AppSettings.playerBlur.title)…", style: .default) { [weak self] _ in
+            self?.blurTapped()
+        })
+        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = moreGlass
+            popover.sourceRect = moreGlass.bounds
+        }
+        present(sheet, animated: true, completion: nil)
+    }
+
+    /// Chọn kiểu làm mờ phía dưới màn hình bìa: tự động theo ảnh bìa, luôn sáng hoặc luôn tối.
+    private func blurTapped() {
+        let sheet = UIAlertController(title: "Làm mờ nền", message: "Áp dụng cho phần dưới màn hình đang phát khi chưa bật lời.", preferredStyle: .actionSheet)
+        for option in [PlayerBlur.auto, .light, .dark] {
+            let mark = AppSettings.playerBlur == option ? "✓ " : ""
+            sheet.addAction(UIAlertAction(title: mark + option.title, style: .default) { [weak self] _ in
+                AppSettings.playerBlur = option
+                self?.refreshBackdrop(animated: true)
+            })
+        }
         sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = moreGlass

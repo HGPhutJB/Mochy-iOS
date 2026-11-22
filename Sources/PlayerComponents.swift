@@ -39,6 +39,13 @@ final class ProgressiveBlurView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
+    /// Sáng cho bìa sáng, tối cho bìa tối.
+    func setLight(_ light: Bool, animated: Bool) {
+        let effect = UIBlurEffect(style: light ? .light : .dark)
+        let change = { self.effects.forEach { $0.effect = effect } }
+        if animated { UIView.animate(withDuration: 0.5, animations: change) } else { change() }
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         for (i, v) in effects.enumerated() {
@@ -236,6 +243,12 @@ final class InfoRow: UIView {
     let titleLabel = MarqueeLabel()
     let artistLabel = UILabel()
     let explicitBadge = UILabel()
+
+    /// Màu chữ theo nền: nền sáng dùng chữ tối.
+    func setInk(dark: Bool) {
+        titleLabel.label.textColor = dark ? UIColor(white: 0.06, alpha: 1) : .white
+        artistLabel.textColor = dark ? UIColor(white: 0.06, alpha: 0.6) : UIColor(white: 1, alpha: 0.6)
+    }
     let checkButton = UIButton(type: .custom)
     private let textColumn = UIView()
     private var artistLeading: NSLayoutConstraint?

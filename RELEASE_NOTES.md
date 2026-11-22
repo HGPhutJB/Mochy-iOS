@@ -1,3 +1,10 @@
+Mochy iOS 0.5.6 — vầng sáng chữ, nền sáng/tối theo bìa
+
+- Từ đang hát: vầng sáng là ảnh chữ làm mờ nằm sau chữ nên loang đều quanh chữ, không còn bị cắt thành khung chữ nhật.
+- Màn hình bìa: làm mờ và nút tự chuyển sáng/tối theo độ sáng của ảnh bìa (bìa sáng → mờ sáng, chữ và nút màu tối; bìa tối → mờ tối, nút sáng).
+- Menu ba chấm: thêm "Làm mờ nền" để chọn Tự động / Sáng / Tối.
+- Nền gradient khi mở lời tối hơn một chút để nút và chữ luôn dễ đọc.
+
 Mochy iOS 0.5.5 — nền lời, làm mờ tăng dần, icon lời
 
 - Lời: vầng mờ quanh chữ lan đủ rộng, không còn bị cắt thành khung.

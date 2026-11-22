@@ -323,6 +323,10 @@ final class LyricsService {
 final class WordView: UIView {
     private let dim = UILabel()
     private let bright = UILabel()
+    private let glow = UIImageView()
+    private static let ciContext = CIContext(options: nil)
+    private static let glowCache = NSCache<NSString, UIImage>()
+    private static let glowPad: CGFloat = 32
     private let maskLayer = CAGradientLayer()
     private let edge: CGFloat
     private let total: CGFloat
@@ -333,6 +337,12 @@ final class WordView: UIView {
         total = frame.width + edge
         super.init(frame: frame)
         isUserInteractionEnabled = false
+        // Vầng sáng là ảnh chữ đã làm mờ, nằm sau chữ và không bị mặt nạ/khung nào cắt nên loang đều quanh chữ.
+        let pad = WordView.glowPad
+        glow.frame = CGRect(x: -pad, y: -pad, width: frame.width + 3 + pad * 2, height: frame.height + pad * 2)
+        glow.image = WordView.glowImage(text: text, font: font, width: frame.width + 3, height: frame.height)
+        glow.alpha = 0
+        addSubview(glow)
         for label in [dim, bright] {
             label.text = text
             label.font = font
@@ -343,10 +353,6 @@ final class WordView: UIView {
         }
         dim.textColor = UIColor.white.withAlphaComponent(0.4)
         bright.textColor = .white
-        bright.layer.shadowColor = UIColor.white.cgColor
-        bright.layer.shadowOffset = .zero
-        bright.layer.shadowRadius = 9
-        bright.layer.shadowOpacity = 0
         maskLayer.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
         maskLayer.locations = [0, NSNumber(value: Double(frame.width / total)), 1]
         maskLayer.startPoint = CGPoint(x: 0, y: 0.5)
@@ -358,6 +364,25 @@ final class WordView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
     private var lastLift: CGFloat = -1
+
+    private static func glowImage(text: String, font: UIFont, width: CGFloat, height: CGFloat) -> UIImage? {
+        let key = "\(text)|\(font.pointSize)|\(Int(width))" as NSString
+        if let hit = glowCache.object(forKey: key) { return hit }
+        let pad = glowPad
+        let size = CGSize(width: width + pad * 2, height: height + pad * 2)
+        let flat = UIGraphicsImageRenderer(size: size).image { _ in
+            (text as NSString).draw(in: CGRect(x: pad, y: pad, width: width, height: height),
+                                    withAttributes: [.font: font, .foregroundColor: UIColor.white])
+        }
+        guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return nil }
+        filter.setValue(input, forKey: kCIInputImageKey)
+        filter.setValue(Double(9 * flat.scale), forKey: kCIInputRadiusKey)
+        guard let output = filter.outputImage,
+              let cg = ciContext.createCGImage(output, from: input.extent) else { return nil }
+        let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
+        glowCache.setObject(image, forKey: key)
+        return image
+    }
 
     /// Cập nhật theo thời gian bài hát: tô dần từ trái sang phải; từ nổi lên nhanh khi tới lượt (ease-out)
     /// rồi hạ xuống chậm, mượt sau khi hát xong — giống Apple Music.
@@ -380,8 +405,8 @@ final class WordView: UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         maskLayer.frame = CGRect(x: (p - 1) * total, y: -16, width: total, height: bounds.height + 32)
-        bright.layer.shadowOpacity = Float(0.7 * lift)
         CATransaction.commit()
+        glow.alpha = 0.9 * lift
         let scale = 1 + 0.075 * lift
         transform = CGAffineTransform(translationX: 0, y: -4.5 * lift).scaledBy(x: scale, y: scale)
     }
@@ -969,7 +994,7 @@ final class FluidBackgroundView: UIView {
         var i = 0
         while picked.count < 4 { picked.append(ranked[i % ranked.count]); i += 1 }
         return picked.map { c in
-            UIColor(hue: c.h, saturation: min(1, max(0.35, c.s * 1.25)), brightness: min(0.78, max(0.42, c.b * 1.05)), alpha: 1)
+            UIColor(hue: c.h, saturation: min(1, max(0.35, c.s * 1.25)), brightness: min(0.62, max(0.38, c.b * 0.95)), alpha: 1)
         }
     }
 

@@ -53,6 +53,19 @@ extension UIImage {
     }
 }
 
+extension UIImage {
+    /// Độ sáng cảm nhận (0...1) của phần dưới ảnh, nơi dải làm mờ và các nút nằm.
+    func bottomLuminance() -> CGFloat? {
+        guard let cg = cgImage else { return nil }
+        let top = Int(Double(cg.height) * 0.55)
+        guard let part = cg.cropping(to: CGRect(x: 0, y: top, width: cg.width, height: cg.height - top)),
+              let color = UIImage(cgImage: part).averageColor() else { return nil }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+}
+
 extension UIColor {
     /// Pha màu với màu khác theo tỉ lệ (0...1).
     func mixed(with other: UIColor, amount: CGFloat) -> UIColor {
