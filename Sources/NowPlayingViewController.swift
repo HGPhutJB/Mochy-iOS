@@ -75,8 +75,8 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             fromView?.window?.backgroundColor = UIColor.black
 
             toView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
-            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.86, initialSpringVelocity: 0.25,
-                           options: [], animations: {
+            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0,
+                           options: [.curveEaseOut], animations: {
                 toView.transform = CGAffineTransform.identity
                 flying.frame = target
                 flying.layer.cornerRadius = 14
@@ -111,8 +111,8 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             miniArt?.alpha = 0
             let dim = toView?.viewWithTag(NowPlayingAnimator.dimTag)
 
-            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.92, initialSpringVelocity: 0.1,
-                           options: [], animations: {
+            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0,
+                           options: [.curveEaseInOut], animations: {
                 fromView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
                 flying.frame = end
                 flying.layer.cornerRadius = 10

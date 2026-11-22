@@ -1,4 +1,5 @@
-Mochy iOS 0.3.4
+Mochy iOS 0.3.5
 
-- Sửa lỗi nhạc đứng ở khoảng 59 giây: app giờ tải nhạc theo từng đoạn nhỏ (như yt-dlp) nên YouTube không cắt luồng ở ~1 MB nữa.
-- Sửa lỗi bìa nhạc bị giật khi vuốt lên/xuống ở màn hình Đang phát (đo vị trí ngón tay sai hệ tọa độ), và bỏ animation thu/phóng bìa bị lặp lại.
+- Sửa lỗi nhạc dừng ở ~59 giây: client VISIONOS giờ dùng đúng thông số của Mochy Music (phiên bản 1.04, UA native, visitor id riêng, header đúng) nên không còn bị loại và rơi xuống client IOS bị cắt luồng.
+- Header Origin/Referer khi tải nhạc theo đoạn giống Mochy.
+- Làm mượt animation mở/đóng màn hình Đang phát: bìa và màn hình chạy cùng nhịp, không nảy/giật.

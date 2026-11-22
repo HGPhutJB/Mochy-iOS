@@ -13,6 +13,10 @@ struct PlayerClient {
     let deviceMake: String?
     let deviceModel: String?
     let androidSdkVersion: String?
+    var clientScreen: String? = nil
+    var platform: String? = nil
+    var apiFormat: String = "1"
+    var ownVisitor: Bool = false
 
     var contextClient: [String: Any] {
         var c: [String: Any] = [
@@ -26,6 +30,8 @@ struct PlayerClient {
         if let v = deviceMake { c["deviceMake"] = v }
         if let v = deviceModel { c["deviceModel"] = v }
         if let v = androidSdkVersion { c["androidSdkVersion"] = v }
+        if let v = clientScreen { c["clientScreen"] = v; c["utcOffsetMinutes"] = 0 }
+        if let v = platform { c["platform"] = v }
         return c
     }
 
@@ -45,11 +51,13 @@ struct PlayerClient {
     /// nên nhạc dừng ở khoảng 59 giây. VISIONOS vẫn trả link âm thanh AAC đầy đủ, không cần token.
     /// Thông số lấy từ yt-dlp (INNERTUBE_CLIENTS["visionos"]).
     static func visionOS(origin: String) -> PlayerClient {
+        // Thông số y hệt Mochy Music (YouTubeClient.VISIONOS): app YouTube trên Apple Vision Pro, có visitor id riêng.
         return PlayerClient(
-            name: "VISIONOS", clientId: "101", version: "1.02",
-            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+            name: "VISIONOS", clientId: "101", version: "1.04",
+            userAgent: "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; US)",
             origin: origin,
-            osName: "visionOS", osVersion: "26.5.23O471", deviceMake: "Apple", deviceModel: "RealityDevice17,1", androidSdkVersion: nil)
+            osName: "visionOS", osVersion: "26.6.0.23O770", deviceMake: "Apple", deviceModel: "RealityDevice17,1", androidSdkVersion: nil,
+            clientScreen: "WATCH", platform: "MOBILE", apiFormat: "2", ownVisitor: true)
     }
 
     static let ios = PlayerClient(
@@ -200,7 +208,6 @@ final class InnerTube {
     func resolveStream(videoId: String, completion: @escaping (Result<StreamInfo, Error>) -> Void) {
         // ANDROID_VR để cuối: link của nó bị cắt sau ~1 MB, chỉ dùng khi các client khác đều thất bại.
         let clients: [PlayerClient] = [PlayerClient.visionOS(origin: "https://www.youtube.com"),
-                                       PlayerClient.visionOS(origin: "https://music.youtube.com"),
                                        PlayerClient.ios,
                                        PlayerClient.androidVR161, PlayerClient.androidVR143]
         attempt(videoId: videoId, clients: clients, index: 0, notes: [], completion: completion)
@@ -217,18 +224,59 @@ final class InnerTube {
             return
         }
         let client = clients[index]
-        let body: [String: Any] = [
-            "context": ["client": client.contextClient],
-            "videoId": videoId,
-            "contentCheckOk": true,
-            "racyCheckOk": true
-        ]
+        if client.ownVisitor {
+            visitorId(for: client) { [weak self] visitor in
+                self?.send(videoId: videoId, client: client, visitor: visitor, clients: clients, index: index, notes: notes, completion: completion)
+            }
+        } else {
+            send(videoId: videoId, client: client, visitor: nil, clients: clients, index: index, notes: notes, completion: completion)
+        }
+    }
+
+    private var visitorCache: [String: String] = [:]
+    private let visitorLock = NSLock()
+
+    /// Xin visitor id riêng cho client (giống mintVisitorId của Mochy), lưu lại dùng tiếp.
+    private func visitorId(for client: PlayerClient, completion: @escaping (String?) -> Void) {
+        visitorLock.lock(); let cached = visitorCache[client.name]; visitorLock.unlock()
+        if let cached = cached { completion(cached); return }
+        let body: [String: Any] = ["context": ["client": client.contextClient]]
         let headers: [String: String] = [
-            "X-Goog-Api-Format-Version": "1",
+            "X-Goog-Api-Format-Version": client.apiFormat,
             "X-YouTube-Client-Name": client.clientId,
             "X-YouTube-Client-Version": client.version,
             "User-Agent": client.userAgent
         ]
+        postJSON(client.origin + "/youtubei/v1/visitor_id?prettyPrint=false", headers: headers, body: body) { [weak self] result in
+            var found: String?
+            if case .success(let json) = result {
+                found = InnerTube.dig(json, ["responseContext", "visitorData"]) as? String
+            }
+            if let v = found, let self = self {
+                self.visitorLock.lock(); self.visitorCache[client.name] = v; self.visitorLock.unlock()
+            }
+            completion(found)
+        }
+    }
+
+    private func send(videoId: String, client: PlayerClient, visitor: String?,
+                      clients: [PlayerClient], index: Int, notes: [String],
+                      completion: @escaping (Result<StreamInfo, Error>) -> Void) {
+        var ctx = client.contextClient
+        if let v = visitor { ctx["visitorData"] = v }
+        let body: [String: Any] = [
+            "context": ["client": ctx],
+            "videoId": videoId,
+            "contentCheckOk": true,
+            "racyCheckOk": true
+        ]
+        var headers: [String: String] = [
+            "X-Goog-Api-Format-Version": client.apiFormat,
+            "X-YouTube-Client-Name": client.clientId,
+            "X-YouTube-Client-Version": client.version,
+            "User-Agent": client.userAgent
+        ]
+        if let v = visitor { headers["X-Goog-Visitor-Id"] = v }
         let url = client.origin + "/youtubei/v1/player?prettyPrint=false"
         postJSON(url, headers: headers, body: body) { result in
             var next = notes

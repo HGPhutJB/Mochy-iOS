@@ -26,7 +26,11 @@ final class ChunkedLoader: NSObject, AVAssetResourceLoaderDelegate {
         self.totalLength = stream.contentLength
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 20
-        config.httpAdditionalHeaders = ["User-Agent": stream.userAgent]
+        config.httpAdditionalHeaders = ["User-Agent": stream.userAgent,
+                                         "Accept": "*/*",
+                                         "Accept-Language": "en-US,en;q=0.9",
+                                         "Referer": "https://www.youtube.com/",
+                                         "Origin": "https://www.youtube.com"]
         self.session = URLSession(configuration: config)
         super.init()
     }
