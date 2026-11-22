@@ -124,14 +124,14 @@ final class NowPlayingViewController: UIViewController {
     private enum Mode { case cover, lyrics, immersive }
     private var mode: Mode = .cover
     private static let green = Theme.accent   // màu nhấn của Mochy
-    private var tone = UIColor.white           // màu icon lấy từ ảnh bìa
+    private var tone = UIColor.white           // màu nhấn lấy từ ảnh bìa
+    private var toneLight: UIColor { return tone.mixed(with: .white, amount: 0.3) }   // bản sáng hơn cho nút
 
     private let mediaView = UIView()
     private let artView = UIImageView()
     private let video = VideoBackdrop()
     private let fluidView = FluidBackgroundView()
-    private let bandBlur = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
-    private let bandMask = CAGradientLayer()
+    private let bandBlur = ProgressiveBlurView(layers: 4)
     private let bandShade = GradientView()
     private let topShade = GradientView()
     private let dragZone = UIView()
@@ -139,7 +139,7 @@ final class NowPlayingViewController: UIViewController {
 
     private let chevron = GlassView(tint: nil)
     private let contextPill = GlassView(tint: nil)
-    private let moreGlass = GlassView(tint: UIColor(red: 0.95, green: 0.22, blue: 0.32, alpha: 0.42))
+    private let moreGlass = GlassView(tint: nil)
     private let infoA = InfoRow(withThumb: false)
     private let infoB = InfoRow(withThumb: true, compact: true)
 
@@ -214,9 +214,8 @@ final class NowPlayingViewController: UIViewController {
         mediaView.frame = view.bounds
         artView.frame = mediaView.bounds
         video.layer.frame = mediaView.bounds
-        let bandTop = h * 0.46
+        let bandTop = h * 0.42
         bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
-        bandMask.frame = bandBlur.bounds
         bandShade.frame = bandBlur.frame
         topShade.frame = CGRect(x: 0, y: 0, width: w, height: 170)
         updateLyricsFrame()
@@ -256,13 +255,10 @@ final class NowPlayingViewController: UIViewController {
         view.addSubview(fluidView)
 
         bandBlur.isUserInteractionEnabled = false
-        bandMask.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor]
-        bandMask.locations = [0, 0.42, 1]
-        bandBlur.layer.mask = bandMask
         view.addSubview(bandBlur)
         bandShade.isUserInteractionEnabled = false
-        bandShade.gradientLayer.colors = [UIColor.clear.cgColor, UIColor(white: 0, alpha: 0.5).cgColor]
-        bandShade.gradientLayer.locations = [0, 0.7]
+        bandShade.gradientLayer.colors = [UIColor.clear.cgColor, UIColor(white: 0, alpha: 0.32).cgColor]
+        bandShade.gradientLayer.locations = [0.3, 1]
         view.addSubview(bandShade)
         topShade.isUserInteractionEnabled = false
         topShade.gradientLayer.colors = [UIColor(white: 0, alpha: 0.45).cgColor, UIColor.clear.cgColor]
@@ -474,7 +470,8 @@ final class NowPlayingViewController: UIViewController {
         } else {
             changes()
         }
-        lyricsButton.tintColor = lyr ? NowPlayingViewController.green : tone
+        lyricsButton.setImage(Icons.lyrics(28, filled: lyr), for: .normal)
+        lyricsButton.tintColor = lyr ? NowPlayingViewController.green : toneLight
         artPan?.isEnabled = !lyr
         infoA.isUserInteractionEnabled = new == .cover
         infoB.isUserInteractionEnabled = new == .lyrics
@@ -549,12 +546,12 @@ final class NowPlayingViewController: UIViewController {
         }
 
         playButton.setImage(engine.isPlaying || engine.isLoading ? Icons.pause(64) : Icons.play(64), for: .normal)
-        shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : tone
+        shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : toneLight.withAlphaComponent(0.7)
         shuffleDot.alpha = engine.shuffleOn && mode != .immersive ? 1 : 0
         switch engine.repeatMode {
         case .off:
             repeatButton.setImage(Icons.repeatAll(28), for: .normal)
-            repeatButton.tintColor = tone
+            repeatButton.tintColor = toneLight.withAlphaComponent(0.7)
         case .all:
             repeatButton.setImage(Icons.repeatAll(28), for: .normal)
             repeatButton.tintColor = NowPlayingViewController.green
@@ -566,25 +563,26 @@ final class NowPlayingViewController: UIViewController {
         timeChanged()
     }
 
-    /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa (bản sáng của màu nền bài hát).
+    /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa; nút dùng bản sáng hơn để rõ trên nền tối.
     private func applyTone(from image: UIImage) {
         guard let color = image.songTone() else { return }
         tone = color
-        progress.setTone(tone)
-        elapsedLabel.textColor = tone.withAlphaComponent(0.75)
-        remainingLabel.textColor = tone.withAlphaComponent(0.75)
+        progress.setTone(toneLight)
+        elapsedLabel.textColor = toneLight.withAlphaComponent(0.8)
+        remainingLabel.textColor = toneLight.withAlphaComponent(0.8)
         applyIconTints()
     }
 
     private func applyIconTints() {
         let engine = PlayerEngine.shared
+        let light = toneLight
         UIView.animate(withDuration: 0.4) {
             for b in [self.prevButton, self.playButton, self.nextButton, self.deviceButton, self.queueButton] {
-                b.tintColor = self.tone
+                b.tintColor = light
             }
-            self.lyricsButton.tintColor = self.mode == .cover ? self.tone : NowPlayingViewController.green
-            self.shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : self.tone
-            self.repeatButton.tintColor = engine.repeatMode == .off ? self.tone : NowPlayingViewController.green
+            self.lyricsButton.tintColor = self.mode == .cover ? light : NowPlayingViewController.green
+            self.shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : light.withAlphaComponent(0.7)
+            self.repeatButton.tintColor = engine.repeatMode == .off ? light.withAlphaComponent(0.7) : NowPlayingViewController.green
         }
     }
 

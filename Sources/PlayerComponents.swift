@@ -12,6 +12,42 @@ final class PlayerRootView: UIView {
     }
 }
 
+/// Làm mờ tăng dần: trên cùng không mờ, càng xuống càng mờ đậm. Xếp chồng nhiều lớp mờ, mỗi lớp hiện dần
+/// bằng một mặt nạ chuyển sắc nên độ mờ tăng liên tục, không có chỗ "dừng" hay dải màu phủ lên.
+final class ProgressiveBlurView: UIView {
+    private var effects: [UIVisualEffectView] = []
+    private var masks: [CAGradientLayer] = []
+
+    init(layers count: Int = 4) {
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        for i in 0..<count {
+            let v = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+            v.isUserInteractionEnabled = false
+            let m = CAGradientLayer()
+            m.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
+            m.startPoint = CGPoint(x: 0.5, y: 0)
+            m.endPoint = CGPoint(x: 0.5, y: 1)
+            let start = Double(i) * 0.15
+            m.locations = [NSNumber(value: start), NSNumber(value: start + 0.45)]
+            v.layer.mask = m
+            addSubview(v)
+            effects.append(v)
+            masks.append(m)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        for (i, v) in effects.enumerated() {
+            v.frame = bounds
+            masks[i].frame = v.bounds
+        }
+    }
+}
+
 /// Nút/nhãn kính mờ (nền làm mờ + viền sáng mảnh), bo tròn theo chiều cao.
 final class GlassView: UIView {
     private let blur = UIVisualEffectView(effect: UIBlurEffect(style: .dark))

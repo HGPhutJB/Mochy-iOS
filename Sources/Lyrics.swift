@@ -393,7 +393,7 @@ final class LyricCell: UITableViewCell {
     static let inactiveScale: CGFloat = 0.78
     static let sideInset: CGFloat = 26
     static let vPad: CGFloat = 11
-    static let blurPad: CGFloat = 16
+    static let blurPad: CGFloat = 44   // đủ rộng để vầng mờ lan hết, không bị cắt
 
     static func attributes(font: UIFont, color: UIColor) -> [NSAttributedString.Key: Any] {
         let p = NSMutableParagraphStyle()
@@ -425,6 +425,8 @@ final class LyricCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = .clear
         selectionStyle = .none
+        clipsToBounds = false
+        contentView.clipsToBounds = false
         holder.layer.anchorPoint = .zero
         holder.isUserInteractionEnabled = false
         label.numberOfLines = 0
@@ -830,7 +832,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
         let radius = Double(points[bucket] * (immersive ? 1.5 : 1.0) * flat.scale)
         guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return flat }
-        filter.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)
+        filter.setValue(input, forKey: kCIInputImageKey)
         filter.setValue(radius, forKey: kCIInputRadiusKey)
         guard let output = filter.outputImage,
               let cg = ciContext.createCGImage(output, from: input.extent) else { return flat }
@@ -846,71 +848,145 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     }
 }
 
-/// Nền chuyển động kiểu Apple Music: bìa làm mờ rất mạnh, nhiều lớp xoay chậm chồng lên nhau.
+/// Nền gradient từ màu của bìa: vài đốm màu mềm (gradient tròn) trôi chậm trên nền tối, không còn các lớp ảnh mờ xoay.
 final class FluidBackgroundView: UIView {
-    private var layers: [UIImageView] = []
+    private var blobs: [CAGradientLayer] = []
+    private let shade = CAGradientLayer()
+    private var palette: [UIColor] = []
     private var token = 0
+    // vị trí tương đối và biên độ trôi của từng đốm màu
+    private let spots: [(x: CGFloat, y: CGFloat, dx: CGFloat, dy: CGFloat, seconds: Double)] = [
+        (0.18, 0.16, 0.10, 0.07, 17), (0.86, 0.30, -0.09, 0.09, 21), (0.22, 0.80, 0.11, -0.08, 19), (0.82, 0.86, -0.10, -0.07, 23)
+    ]
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         clipsToBounds = true
-        backgroundColor = UIColor(white: 0.08, alpha: 1)
+        backgroundColor = UIColor(white: 0.07, alpha: 1)
+        for _ in spots {
+            let g = CAGradientLayer()
+            g.type = .radial
+            g.startPoint = CGPoint(x: 0.5, y: 0.5)
+            g.endPoint = CGPoint(x: 1, y: 1)
+            g.locations = [0, 0.5, 1]
+            layer.addSublayer(g)
+            blobs.append(g)
+        }
+        shade.colors = [UIColor(white: 0, alpha: 0.18).cgColor, UIColor(white: 0, alpha: 0.05).cgColor, UIColor(white: 0, alpha: 0.5).cgColor]
+        shade.locations = [0, 0.4, 1]
+        layer.addSublayer(shade)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let size = max(bounds.width, bounds.height) * 1.25
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for (i, g) in blobs.enumerated() {
+            g.bounds = CGRect(x: 0, y: 0, width: size, height: size)
+            g.position = CGPoint(x: bounds.width * spots[i].x, y: bounds.height * spots[i].y)
+        }
+        shade.frame = bounds
+        CATransaction.commit()
+        startDrifting()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { startDrifting() }
+    }
+
+    /// Cho từng đốm màu trôi chậm qua lại (ease-in-out, lặp vô hạn).
+    private func startDrifting() {
+        guard bounds.width > 0 else { return }
+        for (i, g) in blobs.enumerated() where g.animation(forKey: "drift") == nil {
+            let s = spots[i]
+            let move = CABasicAnimation(keyPath: "position")
+            move.fromValue = NSValue(cgPoint: CGPoint(x: bounds.width * s.x, y: bounds.height * s.y))
+            move.toValue = NSValue(cgPoint: CGPoint(x: bounds.width * (s.x + s.dx), y: bounds.height * (s.y + s.dy)))
+            move.duration = s.seconds
+            move.autoreverses = true
+            move.repeatCount = .infinity
+            move.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            g.add(move, forKey: "drift")
+            let pulse = CABasicAnimation(keyPath: "transform.scale")
+            pulse.fromValue = 0.92
+            pulse.toValue = 1.12
+            pulse.duration = s.seconds * 0.8
+            pulse.autoreverses = true
+            pulse.repeatCount = .infinity
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            g.add(pulse, forKey: "pulse")
+        }
+    }
 
     func setImage(_ image: UIImage) {
         token += 1
         let mine = token
         DispatchQueue.global(qos: .userInitiated).async {
-            let blurred = FluidBackgroundView.makeBlurred(image)
+            let colors = FluidBackgroundView.makePalette(image)
             DispatchQueue.main.async {
-                guard mine == self.token, let blurred = blurred else { return }
-                self.apply(blurred)
+                guard mine == self.token else { return }
+                self.apply(colors)
             }
         }
     }
 
-    private static func makeBlurred(_ image: UIImage) -> UIImage? {
-        let side: CGFloat = 80
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side))
-        let small = renderer.image { _ in image.draw(in: CGRect(x: 0, y: 0, width: side, height: side)) }
-        guard let input = CIImage(image: small),
-              let blur = CIFilter(name: "CIGaussianBlur"),
-              let color = CIFilter(name: "CIColorControls") else { return nil }
-        blur.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)
-        blur.setValue(9.0, forKey: kCIInputRadiusKey)
-        guard let blurred = blur.outputImage else { return nil }
-        color.setValue(blurred.cropped(to: input.extent), forKey: kCIInputImageKey)
-        color.setValue(1.7, forKey: kCIInputSaturationKey)
-        color.setValue(-0.04, forKey: kCIInputBrightnessKey)
-        guard let out = color.outputImage,
-              let cg = CIContext(options: nil).createCGImage(out, from: input.extent) else { return nil }
-        return UIImage(cgImage: cg)
+    /// Lấy bốn màu nổi bật, khác nhau của bìa rồi chỉnh sao cho đậm màu nhưng đủ tối để chữ trắng đọc rõ.
+    private static func makePalette(_ image: UIImage) -> [UIColor] {
+        let n = 6
+        var pixels = [UInt8](repeating: 0, count: n * n * 4)
+        let space = CGColorSpaceCreateDeviceRGB()
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+        var samples: [(h: CGFloat, s: CGFloat, b: CGFloat)] = []
+        if let cg = image.cgImage,
+           let ctx = CGContext(data: &pixels, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4, space: space, bitmapInfo: info) {
+            ctx.interpolationQuality = .medium
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: n, height: n))
+            for i in 0..<(n * n) {
+                let c = UIColor(red: CGFloat(pixels[i * 4]) / 255, green: CGFloat(pixels[i * 4 + 1]) / 255,
+                                blue: CGFloat(pixels[i * 4 + 2]) / 255, alpha: 1)
+                var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                c.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+                samples.append((h, s, b))
+            }
+        }
+        if samples.isEmpty { return [UIColor(white: 0.3, alpha: 1)] }
+        // điểm nổi bật: ưu tiên màu sặc sỡ, không quá tối
+        let ranked = samples.sorted { ($0.s * min(1, $0.b * 1.6)) > ($1.s * min(1, $1.b * 1.6)) }
+        var picked: [(h: CGFloat, s: CGFloat, b: CGFloat)] = []
+        for c in ranked {
+            let far = picked.allSatisfy { p in
+                let d = abs(p.h - c.h)
+                return min(d, 1 - d) > 0.06 || abs(p.b - c.b) > 0.3
+            }
+            if far { picked.append(c) }
+            if picked.count == 4 { break }
+        }
+        var i = 0
+        while picked.count < 4 { picked.append(ranked[i % ranked.count]); i += 1 }
+        return picked.map { c in
+            UIColor(hue: c.h, saturation: min(1, max(0.35, c.s * 1.25)), brightness: min(0.78, max(0.42, c.b * 1.05)), alpha: 1)
+        }
     }
 
-    private func apply(_ image: UIImage) {
-        layers.forEach { $0.removeFromSuperview() }
-        layers = []
-        let big = max(bounds.width, bounds.height) * 1.8
-        let specs: [(alpha: CGFloat, dx: CGFloat, dy: CGFloat, start: CGFloat, seconds: Double, dir: Double)] = [
-            (1.0, 0, 0, 0, 70, 1), (0.8, -0.25, 0.2, 2.1, 95, -1), (0.65, 0.25, -0.2, 4.2, 120, 1)
-        ]
-        for spec in specs {
-            let v = UIImageView(image: image)
-            v.bounds = CGRect(x: 0, y: 0, width: big, height: big)
-            v.center = CGPoint(x: bounds.midX + bounds.width * spec.dx, y: bounds.midY + bounds.height * spec.dy)
-            v.alpha = spec.alpha
-            v.transform = CGAffineTransform(rotationAngle: spec.start)
-            addSubview(v)
-            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
-            spin.fromValue = Double(spec.start)
-            spin.toValue = Double(spec.start) + 2 * Double.pi * spec.dir
-            spin.duration = spec.seconds
-            spin.repeatCount = .infinity
-            v.layer.add(spin, forKey: "spin")
-            layers.append(v)
+    private func apply(_ colors: [UIColor]) {
+        guard !colors.isEmpty else { return }
+        palette = colors
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        colors[0].getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(1.4)
+        UIView.animate(withDuration: 1.4) {
+            self.backgroundColor = UIColor(hue: h, saturation: min(1, s * 0.9), brightness: 0.2, alpha: 1)
         }
+        for (i, g) in blobs.enumerated() {
+            let c = colors[i % colors.count]
+            g.colors = [c.withAlphaComponent(0.95).cgColor, c.withAlphaComponent(0.5).cgColor, c.withAlphaComponent(0).cgColor]
+        }
+        CATransaction.commit()
     }
 }

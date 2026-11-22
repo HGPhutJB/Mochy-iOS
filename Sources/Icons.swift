@@ -265,8 +265,8 @@ enum Icons {
         }
     }
 
-    /// Khung chat có dấu trích dẫn (lời bài hát).
-    static func lyrics(_ size: CGFloat, filled: Bool = false) -> UIImage { return png(IconData.lyrics, size) }
+    /// Khung chat có dấu trích dẫn: đang chọn = logo gốc đặc; chưa chọn = bản viền rỗng vẽ lại cùng hình dạng.
+    static func lyrics(_ size: CGFloat, filled: Bool = false) -> UIImage { return png(filled ? IconData.lyrics : IconData.lyricsOutline, size) }
 
     /// Biểu tượng "thiết bị này" (laptop) cho nút chọn nơi phát.
     static func device(_ size: CGFloat) -> UIImage { return png(IconData.laptop, size) }

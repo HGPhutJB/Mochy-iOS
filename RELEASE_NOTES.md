@@ -1,3 +1,11 @@
+Mochy iOS 0.5.5 — nền lời, làm mờ tăng dần, icon lời
+
+- Lời: vầng mờ quanh chữ lan đủ rộng, không còn bị cắt thành khung.
+- Nền khi mở lời: gradient từ màu bìa (các đốm màu mềm trôi chậm), thay cho các lớp ảnh mờ xoay.
+- Màn hình bìa: làm mờ tăng dần từ không mờ ở trên đến mờ đậm ở dưới (nhiều lớp mờ chồng nhau), bỏ dải màu phủ.
+- Icon lời: đang chọn dùng logo gốc, chưa chọn là bản viền rỗng vẽ lại cùng hình dạng.
+- Nút ba chấm cùng kiểu kính xám như nút còn lại; màu các nút sáng và rõ hơn, nút tắt dịu hơn nút bật.
+
 Mochy iOS 0.5.4 — lời trôi kiểu sóng
 
 - Đổi dòng: các dòng trượt về chỗ mới theo hiệu ứng sóng (dòng càng xa phía dưới càng trễ), chuyển bằng lò xo nên mượt, không còn cứng.
