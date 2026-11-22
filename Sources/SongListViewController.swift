@@ -221,7 +221,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         let list = songs
         guard !list.isEmpty else { return }
         PlayerEngine.shared.setShuffle(false)
-        PlayerEngine.shared.play(queue: list, index: 0)
+        PlayerEngine.shared.play(queue: list, index: 0, context: listTitle)
     }
 
     @objc private func shuffleAll() {
@@ -305,7 +305,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        PlayerEngine.shared.play(queue: songs, index: indexPath.row)
+        PlayerEngine.shared.play(queue: songs, index: indexPath.row, context: listTitle)
     }
 
     func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {

@@ -5,6 +5,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     private enum Row {
         case theme
         case quality
+        case videoBackdrop
         case downloadsInfo
         case clearDownloads
         case clearHistory
@@ -82,7 +83,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             Section(title: "Giao diện", footer: "\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối.",
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
-                    rows: [.quality]),
+                    rows: [.quality, .videoBackdrop]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Cập nhật phần mềm", footer: channelFooter, rows: updateRows),
             Section(title: "Thông tin bản dựng", footer: nil, rows: [
@@ -181,6 +182,16 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             control.frame = CGRect(x: 0, y: 0, width: 200, height: 30)
             control.addTarget(self, action: #selector(channelChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
+            cell.selectionStyle = .none
+
+        case .videoBackdrop:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = "Video làm nền khi phát (nếu có)"
+            let toggle = UISwitch()
+            toggle.isOn = AppSettings.videoBackdrop
+            toggle.onTintColor = Theme.accent
+            toggle.addTarget(self, action: #selector(videoBackdropChanged(_:)), for: .valueChanged)
+            cell.accessoryView = toggle
             cell.selectionStyle = .none
 
         case .autoCheck:
@@ -296,6 +307,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     @objc private func channelChanged(_ sender: UISegmentedControl) {
         AppSettings.channel = sender.selectedSegmentIndex == 0 ? .stable : .dev
         Updater.shared.channelDidChange()
+    }
+
+    @objc private func videoBackdropChanged(_ sender: UISwitch) {
+        AppSettings.videoBackdrop = sender.isOn
     }
 
     @objc private func autoCheckChanged(_ sender: UISwitch) {

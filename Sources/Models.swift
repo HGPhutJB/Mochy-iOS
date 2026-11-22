@@ -8,6 +8,7 @@ struct Song: Codable, Hashable {
     let subtitle: String      // "Nghệ sĩ · Album · 3:45"
     let duration: String?     // "3:45" nếu có
     let thumbnailURL: URL?
+    var explicit: Bool? = nil
 
     /// Ảnh bìa lớn hơn (dùng cho màn hình đang phát).
     var largeThumbnailURL: URL? {
@@ -73,6 +74,7 @@ struct StreamInfo {
     let bitrate: Int       // bit/giây, 0 nếu không rõ
     let sampleRate: Int    // Hz, 0 nếu không rõ
     var durationSeconds: Double = 0  // độ dài thật theo YouTube, 0 nếu không rõ
+    var videoURL: URL? = nil    // luồng video (không tiếng) của MV, nếu có
     var unverified = false      // không client nào qua kiểm tra byte cuối
     var contentLength: Int64 = 0  // byte, 0 nếu không rõ
 

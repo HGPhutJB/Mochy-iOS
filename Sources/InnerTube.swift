@@ -404,7 +404,9 @@ final class InnerTube {
         let subtitle = parts.joined(separator: " · ")
         let thumbPath: [Any] = ["thumbnail", "musicThumbnailRenderer", "thumbnail", "thumbnails"]
         let thumb = sizedThumbnail(dig(item, thumbPath) as? [[String: Any]])
-        return Song(videoId: videoId, title: title, artist: artist, subtitle: subtitle, duration: duration, thumbnailURL: thumb)
+        var song = Song(videoId: videoId, title: title, artist: artist, subtitle: subtitle, duration: duration, thumbnailURL: thumb)
+        song.explicit = String(describing: item).contains("MUSIC_EXPLICIT_BADGE")
+        return song
     }
 
     private static func makeSong(fromTwoRow item: [String: Any]) -> Song? {
@@ -531,7 +533,8 @@ final class InnerTube {
             ? audio.min(by: { bitrate($0) < bitrate($1) })
             : audio.max(by: { bitrate($0) < bitrate($1) })
         if let best = chosen, let urlString = best["url"] as? String,
-           let info = make(best, urlString, "audio/mp4") {
+           var info = make(best, urlString, "audio/mp4") {
+            info.videoURL = pickVideo(json, all)
             return info
         }
 
@@ -544,6 +547,22 @@ final class InnerTube {
            let urlString = low["url"] as? String, let info = make(low, urlString, "video/mp4") {
             return info
         }
+        return nil
+    }
+
+    /// Luồng video-only H.264 (≤ 480p) để làm nền; bỏ qua nhạc chỉ có ảnh tĩnh (loại ATV).
+    static func pickVideo(_ json: [String: Any], _ all: [[String: Any]]) -> URL? {
+        let type = (dig(json, ["videoDetails", "musicVideoType"]) as? String) ?? ""
+        if type == "MUSIC_VIDEO_TYPE_ATV" || type == "MUSIC_VIDEO_TYPE_PODCAST_EPISODE" { return nil }
+        let candidates = all.filter { f in
+            guard let mime = f["mimeType"] as? String, (f["url"] as? String) != nil else { return false }
+            let h = (f["height"] as? Int) ?? 0
+            return mime.hasPrefix("video/mp4") && mime.contains("avc1") && f["audioQuality"] == nil && h > 0 && h <= 480
+        }
+        let best = candidates.max { a, b in
+            ((a["height"] as? Int) ?? 0) < ((b["height"] as? Int) ?? 0)
+        }
+        if let urlString = best?["url"] as? String { return URL(string: urlString) }
         return nil
     }
 

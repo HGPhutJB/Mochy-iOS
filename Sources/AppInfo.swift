@@ -57,6 +57,15 @@ enum AppSettings {
         set { defaults.set(newValue.rawValue, forKey: "audio.quality") }
     }
 
+    /// Dùng video MV làm nền màn hình đang phát (nếu bài có).
+    static var videoBackdrop: Bool {
+        get {
+            if defaults.object(forKey: "player.video") == nil { return true }
+            return defaults.bool(forKey: "player.video")
+        }
+        set { defaults.set(newValue, forKey: "player.video") }
+    }
+
     static var recentSearches: [String] {
         get { return defaults.stringArray(forKey: "search.recent") ?? [] }
         set { defaults.set(Array(newValue.prefix(12)), forKey: "search.recent") }

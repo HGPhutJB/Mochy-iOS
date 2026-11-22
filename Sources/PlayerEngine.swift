@@ -65,8 +65,11 @@ final class PlayerEngine: NSObject {
 
     // MARK: - Điều khiển
 
-    func play(queue: [Song], index: Int) {
+    private(set) var contextTitle: String?
+
+    func play(queue: [Song], index: Int, context: String? = nil) {
         guard index >= 0 && index < queue.count else { return }
+        contextTitle = context
         var list = queue
         var start = index
         if shuffleOn {

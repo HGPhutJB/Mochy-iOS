@@ -266,15 +266,42 @@ enum Icons {
         }
     }
 
-    static func lyrics(_ size: CGFloat) -> UIImage {
+    /// Khung chat có dấu trích dẫn ("99"); filled = tô đặc khi đang bật.
+    static func lyrics(_ size: CGFloat, filled: Bool = false) -> UIImage {
         return make(size) { s in
-            let bubble = UIBezierPath(roundedRect: CGRect(x: s * 0.1, y: s * 0.14, width: s * 0.8, height: s * 0.6), cornerRadius: s * 0.16)
-            bubble.move(to: CGPoint(x: s * 0.3, y: s * 0.74))
-            bubble.addLine(to: CGPoint(x: s * 0.24, y: s * 0.92))
-            bubble.addLine(to: CGPoint(x: s * 0.5, y: s * 0.74))
-            line(bubble, s)
-            let l1 = UIBezierPath(); l1.move(to: CGPoint(x: s * 0.28, y: s * 0.34)); l1.addLine(to: CGPoint(x: s * 0.72, y: s * 0.34)); line(l1, s)
-            let l2 = UIBezierPath(); l2.move(to: CGPoint(x: s * 0.28, y: s * 0.52)); l2.addLine(to: CGPoint(x: s * 0.56, y: s * 0.52)); line(l2, s)
+            let bubble = UIBezierPath(roundedRect: CGRect(x: s * 0.08, y: s * 0.1, width: s * 0.84, height: s * 0.68), cornerRadius: s * 0.2)
+            bubble.move(to: CGPoint(x: s * 0.28, y: s * 0.76))
+            bubble.addLine(to: CGPoint(x: s * 0.2, y: s * 0.95))
+            bubble.addLine(to: CGPoint(x: s * 0.5, y: s * 0.77))
+            if filled { bubble.fill() } else { line(bubble, s) }
+            // hai dấu trích dẫn
+            for x in [0.36, 0.62] as [CGFloat] {
+                let q = UIBezierPath(ovalIn: CGRect(x: s * x - s * 0.07, y: s * 0.32, width: s * 0.14, height: s * 0.14))
+                if let ctx = UIGraphicsGetCurrentContext() {
+                    ctx.saveGState()
+                    ctx.setBlendMode(filled ? .clear : .normal)
+                    q.fill()
+                    let tail = UIBezierPath()
+                    tail.move(to: CGPoint(x: s * x + s * 0.06, y: s * 0.43))
+                    tail.addLine(to: CGPoint(x: s * x - s * 0.03, y: s * 0.56))
+                    tail.lineWidth = s * 0.075
+                    tail.lineCapStyle = .round
+                    tail.stroke()
+                    ctx.restoreGState()
+                }
+            }
+        }
+    }
+
+    /// Biểu tượng "thiết bị này" (laptop) cho nút chọn nơi phát.
+    static func device(_ size: CGFloat) -> UIImage {
+        return make(size) { s in
+            let screen = UIBezierPath(roundedRect: CGRect(x: s * 0.14, y: s * 0.18, width: s * 0.72, height: s * 0.5), cornerRadius: s * 0.08)
+            line(screen, s)
+            let base = UIBezierPath()
+            base.move(to: CGPoint(x: s * 0.06, y: s * 0.8))
+            base.addLine(to: CGPoint(x: s * 0.94, y: s * 0.8))
+            line(base, s)
         }
     }
 
