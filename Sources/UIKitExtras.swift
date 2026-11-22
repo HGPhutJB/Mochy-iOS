@@ -43,6 +43,16 @@ extension UIImage {
     }
 }
 
+extension UIImage {
+    /// Màu nhấn của bài hát: tông màu của ảnh bìa, đẩy sáng và đậm lên để nổi trên nền tối.
+    func songTone() -> UIColor? {
+        guard let average = averageColor() else { return nil }
+        var h: CGFloat = 0, sat: CGFloat = 0, br: CGFloat = 0, a: CGFloat = 0
+        average.getHue(&h, saturation: &sat, brightness: &br, alpha: &a)
+        return UIColor(hue: h, saturation: max(0.3, min(1, sat * 1.1)), brightness: 0.95, alpha: 1)
+    }
+}
+
 extension UIColor {
     /// Pha màu với màu khác theo tỉ lệ (0...1).
     func mixed(with other: UIColor, amount: CGFloat) -> UIColor {

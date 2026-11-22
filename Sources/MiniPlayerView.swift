@@ -147,6 +147,9 @@ final class MiniPlayerView: UIView {
                     self.art.image = image
                 }, completion: nil)
             }
+            if let tone = image.songTone() {
+                UIView.animate(withDuration: 0.4) { self.progressFill.backgroundColor = tone }
+            }
         }
         updateProgress()
     }

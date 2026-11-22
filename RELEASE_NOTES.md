@@ -1,3 +1,8 @@
+Mochy iOS 0.5.3 — thanh thời lượng theo màu bài hát
+
+- Thanh tiến trình ở thanh phát nhỏ (trước đây màu đỏ cố định) giờ lấy màu nhấn của bài hát.
+- Màu nhấn của bài hát sáng và đậm hơn để nổi trên nền tối; dùng chung cho thanh, số giây và icon ở màn hình đang phát.
+
 Mochy iOS 0.5.2 — làm lại lời bài hát
 
 - Dùng 3 icon mới (lời, thiết bị, danh sách phát), đổi màu theo ảnh bìa.

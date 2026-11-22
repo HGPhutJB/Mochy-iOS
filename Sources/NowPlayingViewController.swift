@@ -568,10 +568,8 @@ final class NowPlayingViewController: UIViewController {
 
     /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa (bản sáng của màu nền bài hát).
     private func applyTone(from image: UIImage) {
-        guard let average = image.averageColor() else { return }
-        var h: CGFloat = 0, sat: CGFloat = 0, br: CGFloat = 0, a: CGFloat = 0
-        average.getHue(&h, saturation: &sat, brightness: &br, alpha: &a)
-        tone = UIColor(hue: h, saturation: min(1, sat * 0.85), brightness: 0.92, alpha: 1)
+        guard let color = image.songTone() else { return }
+        tone = color
         progress.setTone(tone)
         elapsedLabel.textColor = tone.withAlphaComponent(0.75)
         remainingLabel.textColor = tone.withAlphaComponent(0.75)
