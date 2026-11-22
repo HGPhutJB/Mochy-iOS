@@ -470,7 +470,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     func setRunning(_ on: Bool) {
         if on {
             guard link == nil else { return }
-            let l = CADisplayLink(target: self, selector: #selector(frame))
+            let l = CADisplayLink(target: self, selector: #selector(displayTick))
             l.add(to: .main, forMode: .common)
             link = l
         } else {
@@ -479,7 +479,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         }
     }
 
-    @objc private func frame() {
+    @objc private func displayTick() {
         update(time: PlayerEngine.shared.livePosition)
     }
 
