@@ -414,7 +414,7 @@ final class WordView: UIView {
 
 /// Một dòng lời: dòng đang hát to, rõ, tô dần từng từ (từ đang hát nổi lên); dòng khác thu nhỏ và làm mờ như Apple Music.
 final class LyricCell: UITableViewCell {
-    static let font = UIFont.systemFont(ofSize: 30, weight: .heavy)
+    static var font: UIFont { return RoundedFont.font(30, index: AppSettings.lyricWeight) }
     static let inactiveScale: CGFloat = 0.78
     static let sideInset: CGFloat = 26
     static let vPad: CGFloat = 11
@@ -509,7 +509,7 @@ final class LyricCell: UITableViewCell {
     /// Tính vị trí từng từ bằng đúng cách UILabel xếp chữ rồi dựng các WordView.
     private func buildWordsIfNeeded(width: CGFloat) {
         guard canKaraoke, row >= 0 else { return }
-        let key = "\(text)|\(Int(width))"
+        let key = "\(text)|\(Int(width))|\(textFont.fontName)"
         if key == builtKey { return }
         builtKey = key
         wordViews.forEach { $0.removeFromSuperview() }
@@ -585,7 +585,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private let ciContext = CIContext(options: nil)
     private var heightCache: [String: CGFloat] = [:]
     private var lastWidth: CGFloat = 0
-    private static let plainFont = UIFont.systemFont(ofSize: 22, weight: .bold)
+    private static var plainFont: UIFont { return RoundedFont.font(22, index: AppSettings.lyricWeight - 1) }
     private var link: CADisplayLink?
     private let fadeMask = CAGradientLayer()
     var onSeek: ((Double) -> Void)?
@@ -748,6 +748,15 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
                 self.style(cell, time: time)
             }, completion: nil)
         }
+    }
+
+    /// Đổi độ đậm/font: tính lại chiều cao, ảnh mờ và dựng lại các dòng.
+    func reloadStyle() {
+        heightCache.removeAll()
+        blurCache.removeAll()
+        table.reloadData()
+        table.layoutIfNeeded()
+        scrollToCurrent(animated: false)
     }
 
     private func targetOffset() -> CGFloat {

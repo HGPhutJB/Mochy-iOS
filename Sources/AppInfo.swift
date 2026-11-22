@@ -83,6 +83,15 @@ enum AppSettings {
         set { defaults.set(newValue.rawValue, forKey: "player.blur") }
     }
 
+    /// Độ đậm của lời bài hát: 0 (Light) ... 6 (Black).
+    static var lyricWeight: Int {
+        get {
+            if defaults.object(forKey: "lyrics.weight") == nil { return RoundedFont.defaultLyricIndex }
+            return min(max(defaults.integer(forKey: "lyrics.weight"), 0), 6)
+        }
+        set { defaults.set(min(max(newValue, 0), 6), forKey: "lyrics.weight") }
+    }
+
     static var recentSearches: [String] {
         get { return defaults.stringArray(forKey: "search.recent") ?? [] }
         set { defaults.set(Array(newValue.prefix(12)), forKey: "search.recent") }

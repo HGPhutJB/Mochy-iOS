@@ -55,6 +55,84 @@ final class ProgressiveBlurView: UIView {
     }
 }
 
+/// Bảng chỉnh độ đậm nhạt của lời: kéo thanh trượt, lời đổi ngay theo bảy mức.
+final class WeightPanel: UIView {
+    var onChange: ((Int) -> Void)?
+    var onClose: (() -> Void)?
+    private let blur = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+    private let titleLabel = UILabel()
+    private let valueLabel = UILabel()
+    private let slider = UISlider()
+    private let small = UILabel()
+    private let big = UILabel()
+    private let done = UIButton(type: .system)
+    private var index: Int
+
+    init(index: Int) {
+        self.index = index
+        super.init(frame: .zero)
+        layer.cornerRadius = 22
+        clipsToBounds = true
+        layer.borderWidth = 1
+        layer.borderColor = UIColor(white: 1, alpha: 0.2).cgColor
+        blur.frame = bounds
+        blur.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(blur)
+        titleLabel.text = "Độ đậm lời"
+        titleLabel.font = RoundedFont.font(16, index: 5)
+        titleLabel.textColor = .white
+        valueLabel.text = RoundedFont.titles[index]
+        valueLabel.font = RoundedFont.font(13, index: 3)
+        valueLabel.textColor = UIColor(white: 1, alpha: 0.6)
+        done.setTitle("Xong", for: .normal)
+        done.titleLabel?.font = RoundedFont.font(16, index: 5)
+        done.setTitleColor(Theme.accent, for: .normal)
+        done.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        small.text = "Aa"
+        small.font = RoundedFont.font(15, index: 0)
+        big.text = "Aa"
+        big.font = RoundedFont.font(24, index: 6)
+        small.textColor = .white
+        big.textColor = .white
+        slider.minimumValue = 0
+        slider.maximumValue = 6
+        slider.value = Float(index)
+        slider.minimumTrackTintColor = .white
+        slider.maximumTrackTintColor = UIColor(white: 1, alpha: 0.3)
+        slider.addTarget(self, action: #selector(changed), for: .valueChanged)
+        slider.addTarget(self, action: #selector(snap), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        [titleLabel, valueLabel, done, small, slider, big].forEach { addSubview($0) }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let w = bounds.width
+        titleLabel.frame = CGRect(x: 20, y: 14, width: w - 120, height: 22)
+        done.frame = CGRect(x: w - 20 - 60, y: 10, width: 60, height: 30)
+        valueLabel.frame = CGRect(x: 20, y: 38, width: w - 40, height: 18)
+        small.frame = CGRect(x: 20, y: 66, width: 30, height: 28)
+        big.frame = CGRect(x: w - 20 - 34, y: 62, width: 34, height: 34)
+        slider.frame = CGRect(x: 56, y: 66, width: w - 56 - 60, height: 28)
+    }
+
+    @objc private func changed() {
+        let i = min(6, max(0, Int(slider.value.rounded())))
+        guard i != index else { return }
+        index = i
+        valueLabel.text = RoundedFont.titles[i]
+        Haptics.tap()
+        onChange?(i)
+    }
+
+    @objc private func snap() {
+        slider.setValue(Float(index), animated: true)
+    }
+
+    @objc private func closeTapped() { onClose?() }
+}
+
 /// Nút/nhãn kính mờ (nền làm mờ + viền sáng mảnh), bo tròn theo chiều cao.
 final class GlassView: UIView {
     private let blur = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
@@ -266,7 +344,7 @@ final class InfoRow: UIView {
         textColumn.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textColumn)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.label.font = UIFont.systemFont(ofSize: compact ? 18 : 25, weight: .heavy)
+        titleLabel.label.font = RoundedFont.font(compact ? 18 : 25, index: 5)
         titleLabel.label.textColor = .white
         textColumn.addSubview(titleLabel)
 
@@ -281,7 +359,7 @@ final class InfoRow: UIView {
         textColumn.addSubview(explicitBadge)
 
         artistLabel.translatesAutoresizingMaskIntoConstraints = false
-        artistLabel.font = UIFont.systemFont(ofSize: compact ? 15 : 20, weight: .bold)
+        artistLabel.font = RoundedFont.font(compact ? 15 : 20, index: 4)
         artistLabel.textColor = UIColor(white: 1, alpha: 0.6)
         textColumn.addSubview(artistLabel)
 

@@ -43,6 +43,16 @@
 	<string>local</string>
 	<key>MochyChannel</key>
 	<string>dev</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/SF-Pro-Rounded-Light.otf</string>
+		<string>Fonts/SF-Pro-Rounded-Regular.otf</string>
+		<string>Fonts/SF-Pro-Rounded-Medium.otf</string>
+		<string>Fonts/SF-Pro-Rounded-Semibold.otf</string>
+		<string>Fonts/SF-Pro-Rounded-Bold.otf</string>
+		<string>Fonts/SF-Pro-Rounded-Heavy.otf</string>
+		<string>Fonts/SF-Pro-Rounded-Black.otf</string>
+	</array>
 	<key>MinimumOSVersion</key>
 	<string>12.2</string>
 	<key>UIBackgroundModes</key>

@@ -126,6 +126,7 @@ final class NowPlayingViewController: UIViewController {
     private static let green = Theme.accent   // màu nhấn của Mochy
     private var tone = UIColor.white           // màu nhấn lấy từ ảnh bìa
     private var toneLight: UIColor { return tone.mixed(with: .white, amount: 0.3) }   // bản sáng hơn cho nút
+    private var weightPanel: WeightPanel?
     private var coverLuminance: CGFloat = 0.2   // độ sáng phần dưới ảnh bìa
     /// Nền phía dưới (khi chưa bật lời) có sáng không: theo cài đặt hoặc tự động theo ảnh bìa.
     private var backdropLight: Bool {
@@ -303,7 +304,7 @@ final class NowPlayingViewController: UIViewController {
         chevron.iconView.image = Icons.chevronDown(26)
         chevron.onTap = { [weak self] in self?.dismiss(animated: true, completion: nil) }
         contextPill.translatesAutoresizingMaskIntoConstraints = false
-        contextPill.titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .heavy)
+        contextPill.titleLabel.font = RoundedFont.font(15, index: 5)
         contextPill.onTap = nil
         moreGlass.translatesAutoresizingMaskIntoConstraints = false
         moreGlass.iconView.image = Icons.more(26)
@@ -316,7 +317,7 @@ final class NowPlayingViewController: UIViewController {
         progress.onScrub = { [weak self] value, ended in self?.scrubbed(value, ended: ended) }
         for label in [elapsedLabel, remainingLabel] {
             label.translatesAutoresizingMaskIntoConstraints = false
-            label.font = UIFont.systemFont(ofSize: 13, weight: .heavy)
+            label.font = RoundedFont.font(13, index: 5)
             label.textColor = UIColor(white: 1, alpha: 0.6)
         }
         elapsedLabel.text = "0:00"
@@ -501,7 +502,7 @@ final class NowPlayingViewController: UIViewController {
     private func scheduleIdle() {
         idleTimer?.invalidate()
         idleTimer = nil
-        guard mode == .lyrics else { return }
+        guard mode == .lyrics, weightPanel == nil else { return }
         idleTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
             guard let self = self, self.mode == .lyrics, !self.progress.isDragging else { return }
             self.apply(mode: .immersive, animated: true)
@@ -714,6 +715,9 @@ final class NowPlayingViewController: UIViewController {
             guard let self = self else { return }
             SongActions.present(for: song, from: self, sourceView: self.moreGlass)
         })
+        sheet.addAction(UIAlertAction(title: "Độ đậm lời: \(RoundedFont.titles[AppSettings.lyricWeight])…", style: .default) { [weak self] _ in
+            self?.showWeightPanel()
+        })
         sheet.addAction(UIAlertAction(title: "Làm mờ nền: \(AppSettings.playerBlur.title)…", style: .default) { [weak self] _ in
             self?.blurTapped()
         })
@@ -723,6 +727,50 @@ final class NowPlayingViewController: UIViewController {
             popover.sourceRect = moreGlass.bounds
         }
         present(sheet, animated: true, completion: nil)
+    }
+
+    /// Hiện bảng chỉnh độ đậm của lời (tự mở lời nếu đang ở màn hình bìa).
+    private func showWeightPanel() {
+        guard weightPanel == nil else { return }
+        if mode == .cover {
+            lyricsView.resetFollow()
+            loadLyrics()
+            apply(mode: .lyrics, animated: true)
+        } else if mode == .immersive {
+            apply(mode: .lyrics, animated: true)
+        }
+        let panel = WeightPanel(index: AppSettings.lyricWeight)
+        panel.onChange = { [weak self] index in
+            AppSettings.lyricWeight = index
+            self?.lyricsView.reloadStyle()
+        }
+        panel.onClose = { [weak self] in self?.hideWeightPanel() }
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(panel)
+        NSLayoutConstraint.activate([
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 17),
+            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -17),
+            panel.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -(view.safeAreaInsets.bottom + 24)),
+            panel.heightAnchor.constraint(equalToConstant: 108)
+        ])
+        panel.alpha = 0
+        panel.transform = CGAffineTransform(translationX: 0, y: 30)
+        weightPanel = panel
+        idleTimer?.invalidate()
+        UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0, options: [], animations: {
+            panel.alpha = 1
+            panel.transform = .identity
+        }, completion: nil)
+    }
+
+    private func hideWeightPanel() {
+        guard let panel = weightPanel else { return }
+        weightPanel = nil
+        UIView.animate(withDuration: 0.25, animations: {
+            panel.alpha = 0
+            panel.transform = CGAffineTransform(translationX: 0, y: 30)
+        }, completion: { _ in panel.removeFromSuperview() })
+        scheduleIdle()
     }
 
     /// Chọn kiểu làm mờ phía dưới màn hình bìa: tự động theo ảnh bìa, luôn sáng hoặc luôn tối.

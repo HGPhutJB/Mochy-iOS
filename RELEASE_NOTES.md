@@ -1,3 +1,8 @@
+Mochy iOS 0.5.7 — font SF Pro Rounded, chỉnh độ đậm lời
+
+- Đóng kèm font SF Pro Rounded (7 mức đậm, đã cắt còn chữ Latin và tiếng Việt), dùng cho lời và chữ ở màn hình đang phát.
+- Menu ba chấm: "Độ đậm lời…" mở thanh trượt chọn 7 mức từ rất nhạt đến đậm nhất, lời đổi ngay khi kéo và được lưu lại; mặc định tự chọn mức đậm nhất.
+
 Mochy iOS 0.5.6 — vầng sáng chữ, nền sáng/tối theo bìa
 
 - Từ đang hát: vầng sáng là ảnh chữ làm mờ nằm sau chữ nên loang đều quanh chữ, không còn bị cắt thành khung chữ nhật.
