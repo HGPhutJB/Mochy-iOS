@@ -204,12 +204,12 @@ final class InfoRow: UIView {
     private let textColumn = UIView()
     private var artistLeading: NSLayoutConstraint?
 
-    init(withThumb: Bool) {
+    init(withThumb: Bool, compact: Bool = false) {
         super.init(frame: .zero)
         thumb.translatesAutoresizingMaskIntoConstraints = false
         thumb.contentMode = .scaleAspectFill
         thumb.clipsToBounds = true
-        thumb.layer.cornerRadius = 14
+        thumb.layer.cornerRadius = compact ? 9 : 14
         thumb.backgroundColor = UIColor(white: 1, alpha: 0.1)
         thumb.isHidden = !withThumb
         addSubview(thumb)
@@ -217,7 +217,7 @@ final class InfoRow: UIView {
         textColumn.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textColumn)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.label.font = UIFont.systemFont(ofSize: 25, weight: .heavy)
+        titleLabel.label.font = UIFont.systemFont(ofSize: compact ? 18 : 25, weight: .heavy)
         titleLabel.label.textColor = .white
         textColumn.addSubview(titleLabel)
 
@@ -232,14 +232,14 @@ final class InfoRow: UIView {
         textColumn.addSubview(explicitBadge)
 
         artistLabel.translatesAutoresizingMaskIntoConstraints = false
-        artistLabel.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+        artistLabel.font = UIFont.systemFont(ofSize: compact ? 15 : 20, weight: .bold)
         artistLabel.textColor = UIColor(white: 1, alpha: 0.6)
         textColumn.addSubview(artistLabel)
 
         checkButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(checkButton)
 
-        let thumbSize: CGFloat = 88
+        let thumbSize: CGFloat = compact ? 58 : 88
         var constraints: [NSLayoutConstraint] = [
             checkButton.trailingAnchor.constraint(equalTo: trailingAnchor),
             checkButton.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -250,7 +250,7 @@ final class InfoRow: UIView {
             titleLabel.topAnchor.constraint(equalTo: textColumn.topAnchor),
             titleLabel.leadingAnchor.constraint(equalTo: textColumn.leadingAnchor),
             titleLabel.trailingAnchor.constraint(equalTo: textColumn.trailingAnchor),
-            titleLabel.heightAnchor.constraint(equalToConstant: 31),
+            titleLabel.heightAnchor.constraint(equalToConstant: compact ? 23 : 31),
             explicitBadge.leadingAnchor.constraint(equalTo: textColumn.leadingAnchor),
             explicitBadge.centerYAnchor.constraint(equalTo: artistLabel.centerYAnchor),
             explicitBadge.widthAnchor.constraint(equalToConstant: 17),
@@ -291,13 +291,13 @@ final class InfoRow: UIView {
         return UIGraphicsImageRenderer(size: size).image { _ in
             let circle = UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1))
             if liked {
-                UIColor(red: 0.25, green: 0.92, blue: 0.2, alpha: 1).setFill()
+                Theme.accent.setFill()
                 circle.fill()
                 let tick = UIBezierPath()
                 tick.move(to: CGPoint(x: 11, y: 19.5))
                 tick.addLine(to: CGPoint(x: 16.5, y: 25))
                 tick.addLine(to: CGPoint(x: 27, y: 13.5))
-                UIColor(white: 0, alpha: 0.55).setStroke()
+                UIColor.white.setStroke()
                 tick.lineWidth = 3.4
                 tick.lineCapStyle = .round
                 tick.lineJoinStyle = .round

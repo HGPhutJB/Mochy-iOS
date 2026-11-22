@@ -112,17 +112,16 @@ enum Icons {
         }
     }
 
-    static func queue(_ size: CGFloat) -> UIImage {
-        return make(size) { s in
-            for y in [CGFloat(0.28), 0.5, 0.72] {
-                let p = UIBezierPath()
-                p.move(to: CGPoint(x: s * 0.4, y: s * y))
-                p.addLine(to: CGPoint(x: s * 0.9, y: s * y))
-                Icons.line(p, s)
-                UIBezierPath(ovalIn: CGRect(x: s * 0.1, y: s * y - s * 0.05, width: s * 0.1, height: s * 0.1)).fill()
-            }
+    /// Icon dựng từ ảnh PNG người dùng cung cấp (dạng template để đổi màu).
+    private static func png(_ base64: String, _ size: CGFloat) -> UIImage {
+        guard let data = Data(base64Encoded: base64), let raw = UIImage(data: data), let cg = raw.cgImage else {
+            return make(size) { _ in }
         }
+        let image = UIImage(cgImage: cg, scale: CGFloat(cg.width) / size, orientation: .up)
+        return image.withRenderingMode(.alwaysTemplate)
     }
+
+    static func queue(_ size: CGFloat) -> UIImage { return png(IconData.list, size) }
 
     static func timer(_ size: CGFloat) -> UIImage {
         return make(size) { s in
@@ -266,44 +265,11 @@ enum Icons {
         }
     }
 
-    /// Khung chat có dấu trích dẫn ("99"); filled = tô đặc khi đang bật.
-    static func lyrics(_ size: CGFloat, filled: Bool = false) -> UIImage {
-        return make(size) { s in
-            let bubble = UIBezierPath(roundedRect: CGRect(x: s * 0.08, y: s * 0.1, width: s * 0.84, height: s * 0.68), cornerRadius: s * 0.2)
-            bubble.move(to: CGPoint(x: s * 0.28, y: s * 0.76))
-            bubble.addLine(to: CGPoint(x: s * 0.2, y: s * 0.95))
-            bubble.addLine(to: CGPoint(x: s * 0.5, y: s * 0.77))
-            if filled { bubble.fill() } else { line(bubble, s) }
-            // hai dấu trích dẫn
-            for x in [0.36, 0.62] as [CGFloat] {
-                let q = UIBezierPath(ovalIn: CGRect(x: s * x - s * 0.07, y: s * 0.32, width: s * 0.14, height: s * 0.14))
-                if let ctx = UIGraphicsGetCurrentContext() {
-                    ctx.saveGState()
-                    ctx.setBlendMode(filled ? .clear : .normal)
-                    q.fill()
-                    let tail = UIBezierPath()
-                    tail.move(to: CGPoint(x: s * x + s * 0.06, y: s * 0.43))
-                    tail.addLine(to: CGPoint(x: s * x - s * 0.03, y: s * 0.56))
-                    tail.lineWidth = s * 0.075
-                    tail.lineCapStyle = .round
-                    tail.stroke()
-                    ctx.restoreGState()
-                }
-            }
-        }
-    }
+    /// Khung chat có dấu trích dẫn (lời bài hát).
+    static func lyrics(_ size: CGFloat, filled: Bool = false) -> UIImage { return png(IconData.lyrics, size) }
 
     /// Biểu tượng "thiết bị này" (laptop) cho nút chọn nơi phát.
-    static func device(_ size: CGFloat) -> UIImage {
-        return make(size) { s in
-            let screen = UIBezierPath(roundedRect: CGRect(x: s * 0.14, y: s * 0.18, width: s * 0.72, height: s * 0.5), cornerRadius: s * 0.08)
-            line(screen, s)
-            let base = UIBezierPath()
-            base.move(to: CGPoint(x: s * 0.06, y: s * 0.8))
-            base.addLine(to: CGPoint(x: s * 0.94, y: s * 0.8))
-            line(base, s)
-        }
-    }
+    static func device(_ size: CGFloat) -> UIImage { return png(IconData.laptop, size) }
 
     static func sliders(_ size: CGFloat) -> UIImage {
         return make(size) { s in

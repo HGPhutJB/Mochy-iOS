@@ -1,3 +1,11 @@
+Mochy iOS 0.5.2 — làm lại lời bài hát
+
+- Dùng 3 icon mới (lời, thiết bị, danh sách phát), đổi màu theo ảnh bìa.
+- Màu xanh lá đổi thành màu nhấn của Mochy (nút ngẫu nhiên/lặp, gạch dưới thiết bị, dấu đã thích).
+- Lời: dòng đang hát phóng to, các dòng khác thu nhỏ (~0,6 lần), giảm độ mờ; dòng đổi mượt kèm cuộn.
+- Chữ chạy theo từng từ: mép tô mềm, từ đang hát nổi lên, phóng nhẹ và phát sáng.
+- Chế độ lời: ảnh bìa và tên bài ở đầu trang thu nhỏ lại.
+
 Mochy iOS 0.5.1 — sửa hiệu ứng mở/đóng màn hình đang phát
 
 - Vuốt xuống / mở lên: ảnh bìa và màn hình đi cùng nhau, không còn lệch rồi nhảy về chỗ cũ.

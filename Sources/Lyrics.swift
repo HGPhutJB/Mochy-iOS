@@ -318,51 +318,126 @@ final class LyricsService {
     }
 }
 
-/// Một dòng lời: dòng đang hát trắng rõ (tô dần theo từng từ nếu có), các dòng khác làm mờ mạnh như Apple Music.
-final class LyricCell: UITableViewCell {
-    static let font = UIFont.systemFont(ofSize: 32, weight: .heavy)
-    static let sideInset: CGFloat = 30
-    static let blurPad: CGFloat = 20
+/// Một từ đang hát: hai lớp chữ (mờ + sáng), lớp sáng có mặt nạ chạy từ trái sang phải với mép mềm;
+/// từ nổi nhẹ lên, phóng to một chút và phát sáng khi đang được hát.
+final class WordView: UIView {
+    private let dim = UILabel()
+    private let bright = UILabel()
+    private let maskLayer = CAGradientLayer()
+    private let edge: CGFloat
+    private let total: CGFloat
+    private var lastP: CGFloat = -1
 
-    static var paragraph: NSParagraphStyle {
-        let p = NSMutableParagraphStyle()
-        p.minimumLineHeight = 37
-        p.maximumLineHeight = 37
-        return p
+    init(frame: CGRect, text: String, font: UIFont) {
+        edge = max(10, frame.width * 0.4)
+        total = frame.width + edge
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        for label in [dim, bright] {
+            label.text = text
+            label.font = font
+            label.numberOfLines = 1
+            label.lineBreakMode = .byClipping
+            label.frame = CGRect(x: 0, y: 0, width: frame.width + 3, height: frame.height)
+            addSubview(label)
+        }
+        dim.textColor = UIColor.white.withAlphaComponent(0.4)
+        bright.textColor = .white
+        bright.layer.shadowColor = UIColor.white.cgColor
+        bright.layer.shadowOffset = .zero
+        bright.layer.shadowRadius = 9
+        bright.layer.shadowOpacity = 0
+        maskLayer.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+        maskLayer.locations = [0, NSNumber(value: Double(frame.width / total)), 1]
+        maskLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        maskLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        bright.layer.mask = maskLayer
+        setProgress(0, force: true)
     }
 
+    required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    func setProgress(_ p: CGFloat, force: Bool = false) {
+        let value = min(1, max(0, p))
+        if !force && abs(value - lastP) < 0.003 { return }
+        lastP = value
+        let lift = value > 0 && value < 1 ? CGFloat(sin(Double(value) * Double.pi)) : 0
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        maskLayer.frame = CGRect(x: (value - 1) * total, y: -16, width: total, height: bounds.height + 32)
+        bright.layer.shadowOpacity = Float(0.6 * lift)
+        CATransaction.commit()
+        let scale = 1 + 0.06 * lift
+        transform = CGAffineTransform(translationX: 0, y: -4 * lift).scaledBy(x: scale, y: scale)
+    }
+}
+
+/// Một dòng lời: dòng đang hát to, rõ, tô dần từng từ (từ đang hát nổi lên); dòng khác thu nhỏ và làm mờ như Apple Music.
+final class LyricCell: UITableViewCell {
+    static let font = UIFont.systemFont(ofSize: 30, weight: .heavy)
+    static let inactiveScale: CGFloat = 0.62
+    static let sideInset: CGFloat = 26
+    static let vPad: CGFloat = 11
+    static let blurPad: CGFloat = 16
+
+    static func attributes(font: UIFont, color: UIColor) -> [NSAttributedString.Key: Any] {
+        let p = NSMutableParagraphStyle()
+        p.lineSpacing = 5
+        return [.font: font, .foregroundColor: color, .paragraphStyle: p]
+    }
+
+    static func measure(_ text: String, width: CGFloat, font: UIFont) -> CGFloat {
+        let rect = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                                                   options: [.usesLineFragmentOrigin, .usesFontLeading],
+                                                   attributes: attributes(font: font, color: .white), context: nil)
+        return ceil(rect.height) + 2
+    }
+
+    let holder = UIView()
     let label = UILabel()
     let blurView = UIImageView()
+    private let wordsHost = UIView()
     private(set) var row = -1
     private var text = ""
+    private var textFont = LyricCell.font
     private var words: [LyricWord] = []
     private var wordRanges: [NSRange] = []
+    private var wordViews: [WordView] = []
+    private var builtKey = ""
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = .clear
         selectionStyle = .none
+        holder.layer.anchorPoint = .zero
+        holder.isUserInteractionEnabled = false
         label.numberOfLines = 0
-        label.translatesAutoresizingMaskIntoConstraints = false
-        blurView.contentMode = .topLeft
-        blurView.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(label)
-        contentView.addSubview(blurView)
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
-            label.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -14),
-            label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: LyricCell.sideInset),
-            label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -LyricCell.sideInset),
-            blurView.topAnchor.constraint(equalTo: label.topAnchor, constant: -LyricCell.blurPad),
-            blurView.leadingAnchor.constraint(equalTo: label.leadingAnchor, constant: -LyricCell.blurPad)
-        ])
+        blurView.contentMode = .scaleToFill
+        contentView.addSubview(holder)
+        holder.addSubview(blurView)
+        holder.addSubview(label)
+        holder.addSubview(wordsHost)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let w = max(10, bounds.width - LyricCell.sideInset * 2)
+        let h = LyricCell.measure(text, width: w, font: textFont)
+        holder.bounds = CGRect(x: 0, y: 0, width: w, height: h)
+        holder.layer.position = CGPoint(x: LyricCell.sideInset, y: LyricCell.vPad)
+        label.frame = holder.bounds
+        wordsHost.frame = holder.bounds
+        let pad = LyricCell.blurPad
+        blurView.frame = CGRect(x: -pad, y: -pad, width: w + pad * 2, height: h + pad * 2)
+        buildWordsIfNeeded(width: w)
+    }
+
     func configure(line: LyricLine?, text: String, row: Int, plainFont: UIFont? = nil) {
         self.row = row
         self.text = text
+        textFont = plainFont ?? LyricCell.font
         words = line?.words ?? []
         wordRanges = []
         if !words.isEmpty {
@@ -376,43 +451,70 @@ final class LyricCell: UITableViewCell {
             }
         }
         blurView.image = nil
-        label.attributedText = NSAttributedString(string: text, attributes: [
-            .font: plainFont ?? LyricCell.font, .foregroundColor: UIColor.white, .paragraphStyle: LyricCell.paragraph])
+        builtKey = ""
+        wordViews.forEach { $0.removeFromSuperview() }
+        wordViews = []
+        label.attributedText = NSAttributedString(string: text, attributes: LyricCell.attributes(font: textFont, color: .white))
+        setNeedsLayout()
+    }
+
+    private var canKaraoke: Bool { return !words.isEmpty && wordRanges.count == words.count }
+
+    /// Tính vị trí từng từ bằng đúng cách UILabel xếp chữ rồi dựng các WordView.
+    private func buildWordsIfNeeded(width: CGFloat) {
+        guard canKaraoke, row >= 0 else { return }
+        let key = "\(text)|\(Int(width))"
+        if key == builtKey { return }
+        builtKey = key
+        wordViews.forEach { $0.removeFromSuperview() }
+        wordViews = []
+        let storage = NSTextStorage(attributedString: NSAttributedString(string: text, attributes: LyricCell.attributes(font: textFont, color: .white)))
+        let manager = NSLayoutManager()
+        let container = NSTextContainer(size: CGSize(width: width, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        manager.addTextContainer(container)
+        storage.addLayoutManager(manager)
+        manager.ensureLayout(for: container)
+        let ns = text as NSString
+        for r in wordRanges {
+            let glyphs = manager.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+            let rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
+            let frame = CGRect(x: rect.minX, y: rect.minY, width: ceil(rect.width), height: textFont.lineHeight)
+            let v = WordView(frame: frame, text: ns.substring(with: r), font: textFont)
+            wordsHost.addSubview(v)
+            wordViews.append(v)
+        }
+    }
+
+    /// Dòng đang hát thì giữ cỡ lớn, các dòng khác thu nhỏ (neo ở mép trái-trên).
+    func setActive(_ active: Bool) {
+        let s = active || row < 0 ? 1 : LyricCell.inactiveScale
+        holder.transform = CGAffineTransform(scaleX: s, y: s)
     }
 
     func showDim(image: UIImage?, alpha: CGFloat) {
         label.alpha = 0
+        wordsHost.alpha = 0
         blurView.image = image
         blurView.alpha = alpha
     }
 
-    /// Dòng đang hát: trắng; có thời gian từng từ thì tô dần từ trái sang phải.
+    /// Dòng đang hát: trắng rõ; có thời gian từng từ thì mỗi từ tô dần và nổi lên khi tới lượt.
     func showActive(time: Double) {
-        label.alpha = 1
         blurView.alpha = 0
-        let full = UIColor.white.withAlphaComponent(0.94)
-        let dim = UIColor.white.withAlphaComponent(0.42)
-        let attr = NSMutableAttributedString(string: text, attributes: [
-            .font: LyricCell.font, .paragraphStyle: LyricCell.paragraph, .foregroundColor: words.isEmpty ? full : dim])
-        if !words.isEmpty {
-            for (i, w) in words.enumerated() {
-                let r = wordRanges[i]
-                let p = min(1, max(0, (time - w.start) / max(0.05, w.end - w.start)))
-                if p >= 1 {
-                    attr.addAttribute(.foregroundColor, value: full, range: r)
-                } else if p > 0 {
-                    let n = r.length
-                    let exact = p * Double(n)
-                    let whole = Int(exact)
-                    if whole > 0 { attr.addAttribute(.foregroundColor, value: full, range: NSRange(location: r.location, length: whole)) }
-                    if whole < n {
-                        let frac = CGFloat(exact - Double(whole))
-                        attr.addAttribute(.foregroundColor, value: dim.mixedWith(full, frac), range: NSRange(location: r.location + whole, length: 1))
-                    }
-                }
-            }
+        guard canKaraoke else {
+            label.alpha = 1
+            wordsHost.alpha = 0
+            return
         }
-        label.attributedText = attr
+        if wordViews.isEmpty, bounds.width > 0 { buildWordsIfNeeded(width: max(10, bounds.width - LyricCell.sideInset * 2)) }
+        label.alpha = 0
+        wordsHost.alpha = 1
+        for (i, v) in wordViews.enumerated() where i < words.count {
+            let w = words[i]
+            let p = (time - w.start) / max(0.08, w.end - w.start)
+            v.setProgress(CGFloat(p))
+        }
     }
 }
 
@@ -436,6 +538,9 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private var userScrolledAt = Date.distantPast
     private var blurCache: [String: UIImage] = [:]
     private let ciContext = CIContext(options: nil)
+    private var heightCache: [String: CGFloat] = [:]
+    private var lastWidth: CGFloat = 0
+    private static let plainFont = UIFont.systemFont(ofSize: 22, weight: .bold)
     private var link: CADisplayLink?
     private let fadeMask = CAGradientLayer()
     var onSeek: ((Double) -> Void)?
@@ -469,8 +574,9 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         table.dataSource = self
         table.delegate = self
         table.register(LyricCell.self, forCellReuseIdentifier: "line")
-        table.estimatedRowHeight = 80
-        table.rowHeight = UITableView.automaticDimension
+        table.estimatedRowHeight = 0
+        table.estimatedSectionHeaderHeight = 0
+        table.estimatedSectionFooterHeight = 0
         table.translatesAutoresizingMaskIntoConstraints = false
         addSubview(table)
         statusLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
@@ -525,6 +631,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         self.plain = plain
         current = -1
         blurCache.removeAll()
+        heightCache.removeAll()
         statusLabel.text = message
         statusLabel.isHidden = message == nil
         table.reloadData()
@@ -533,6 +640,12 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        if abs(table.bounds.width - lastWidth) > 0.5 && table.bounds.width > 0 {
+            lastWidth = table.bounds.width
+            heightCache.removeAll()
+            blurCache.removeAll()
+            table.reloadData()
+        }
         let top = bounds.height * anchorFraction
         let bottom = bounds.height * 0.55
         if table.contentInset.top != top || table.contentInset.bottom != bottom {
@@ -554,23 +667,31 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         }
         if idx != current {
             current = idx
-            UIView.animate(withDuration: 0.4, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+            let follow = idx >= 0 && Date().timeIntervalSince(userScrolledAt) > 3
+            UIView.animate(withDuration: 0.6, delay: 0, options: [.allowUserInteraction, .curveEaseInOut, .beginFromCurrentState], animations: {
+                // đổi chiều cao các dòng (dòng mới to lên, dòng cũ nhỏ lại) rồi cuộn tới dòng mới
+                self.table.beginUpdates()
+                self.table.endUpdates()
                 for case let cell as LyricCell in self.table.visibleCells { self.style(cell, time: time) }
+                if follow { self.table.contentOffset = CGPoint(x: 0, y: self.targetOffset()) }
             }, completion: nil)
-            if idx >= 0, Date().timeIntervalSince(userScrolledAt) > 3 { scrollToCurrent(animated: true) }
         }
         if current >= 0, let cell = table.cellForRow(at: IndexPath(row: current, section: 0)) as? LyricCell {
             cell.showActive(time: time)
         }
     }
 
-    private func scrollToCurrent(animated: Bool) {
-        guard current >= 0 else { return }
+    private func targetOffset() -> CGFloat {
         let rect = table.rectForRow(at: IndexPath(row: current, section: 0))
         let target = rect.minY - table.bounds.height * anchorFraction
         let minY = -table.contentInset.top
         let maxY = max(minY, table.contentSize.height - table.bounds.height + table.contentInset.bottom)
-        let y = min(max(target, minY), maxY)
+        return min(max(target, minY), maxY)
+    }
+
+    private func scrollToCurrent(animated: Bool) {
+        guard current >= 0 else { return }
+        let y = targetOffset()
         if animated {
             UIView.animate(withDuration: 0.7, delay: 0, options: [.allowUserInteraction, .curveEaseInOut, .beginFromCurrentState], animations: {
                 self.table.contentOffset = CGPoint(x: 0, y: y)
@@ -595,12 +716,31 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         return plain == nil ? 0 : 1
     }
 
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        let w = max(10, tableView.bounds.width - LyricCell.sideInset * 2)
+        if lines.isEmpty {
+            return LyricCell.measure(plain ?? "", width: w, font: LyricsView.plainFont) + LyricCell.vPad * 2 + 20
+        }
+        let key = "\(indexPath.row)-\(Int(w))"
+        let base: CGFloat
+        if let hit = heightCache[key] {
+            base = hit
+        } else {
+            let t = lines[indexPath.row].text
+            base = LyricCell.measure(t.isEmpty ? "♪" : t, width: w, font: LyricCell.font)
+            heightCache[key] = base
+        }
+        let scale = indexPath.row == current ? 1 : LyricCell.inactiveScale
+        return LyricCell.vPad * 2 + base * scale
+    }
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "line", for: indexPath) as? LyricCell else {
             return UITableViewCell()
         }
         if lines.isEmpty {
-            cell.configure(line: nil, text: plain ?? "", row: -1, plainFont: UIFont.systemFont(ofSize: 22, weight: .bold))
+            cell.configure(line: nil, text: plain ?? "", row: -1, plainFont: LyricsView.plainFont)
+            cell.setActive(true)
             cell.label.alpha = 1
             cell.blurView.alpha = 0
         } else {
@@ -618,13 +758,15 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private func style(_ cell: LyricCell, time: Double) {
         guard cell.row >= 0 else { return }
         if cell.row == current {
+            cell.setActive(true)
             cell.showActive(time: time)
             return
         }
+        cell.setActive(false)
         let distance = current < 0 ? cell.row + 1 : abs(cell.row - current)
         let bucket = min(max(distance, 1), 4)
-        let base: [CGFloat] = [0, 0.6, 0.48, 0.4, 0.33]
-        let alpha = immersive ? base[bucket] * 0.8 : base[bucket]
+        let base: [CGFloat] = [0, 0.72, 0.6, 0.5, 0.42]
+        let alpha = immersive ? base[bucket] * 0.85 : base[bucket]
         cell.showDim(image: blurred(row: cell.row, bucket: bucket, text: cell.label.text ?? ""), alpha: alpha)
     }
 
@@ -633,18 +775,17 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         let key = "\(row)-\(bucket)-\(Int(width))-\(immersive)"
         if let hit = blurCache[key] { return hit }
         let ns = text as NSString
-        let attrs: [NSAttributedString.Key: Any] = [.font: LyricCell.font, .foregroundColor: UIColor.white, .paragraphStyle: LyricCell.paragraph]
-        let rect = ns.boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
-                                   options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
+        let attrs = LyricCell.attributes(font: LyricCell.font, color: .white)
+        let height = LyricCell.measure(text, width: width, font: LyricCell.font)
         let pad = LyricCell.blurPad
-        let size = CGSize(width: width + pad * 2, height: ceil(rect.height) + pad * 2)
-        guard size.height > pad * 2 + 1 else { return nil }
+        let size = CGSize(width: width + pad * 2, height: height + pad * 2)
         let renderer = UIGraphicsImageRenderer(size: size)
         let flat = renderer.image { _ in
-            ns.draw(with: CGRect(x: pad, y: pad, width: width, height: size.height - pad * 2),
+            ns.draw(with: CGRect(x: pad, y: pad, width: width, height: height),
                     options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
         }
-        let points: [CGFloat] = [0, 3.5, 5, 6.5, 8]
+        // Làm mờ nhẹ hơn trước (ảnh còn bị thu nhỏ ~0,62 lần khi hiển thị).
+        let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
         let radius = Double(points[bucket] * (immersive ? 1.5 : 1.0) * flat.scale)
         guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return flat }
         filter.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)

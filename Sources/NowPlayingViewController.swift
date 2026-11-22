@@ -123,7 +123,8 @@ final class NowPlayingViewController: UIViewController {
 
     private enum Mode { case cover, lyrics, immersive }
     private var mode: Mode = .cover
-    private static let green = UIColor(red: 0.25, green: 0.92, blue: 0.2, alpha: 1)
+    private static let green = Theme.accent   // màu nhấn của Mochy
+    private var tone = UIColor.white           // màu icon lấy từ ảnh bìa
 
     private let mediaView = UIView()
     private let artView = UIImageView()
@@ -140,7 +141,7 @@ final class NowPlayingViewController: UIViewController {
     private let contextPill = GlassView(tint: nil)
     private let moreGlass = GlassView(tint: UIColor(red: 0.95, green: 0.22, blue: 0.32, alpha: 0.42))
     private let infoA = InfoRow(withThumb: false)
-    private let infoB = InfoRow(withThumb: true)
+    private let infoB = InfoRow(withThumb: true, compact: true)
 
     private let progress = ProgressBar()
     private let elapsedLabel = UILabel()
@@ -327,7 +328,6 @@ final class NowPlayingViewController: UIViewController {
         icon(lyricsButton, Icons.lyrics(28), #selector(lyricsTapped))
         icon(deviceButton, Icons.device(28), #selector(noop))
         icon(queueButton, Icons.queue(28), #selector(queueTapped))
-        deviceButton.tintColor = NowPlayingViewController.green
         deviceUnderline.translatesAutoresizingMaskIntoConstraints = false
         deviceUnderline.backgroundColor = NowPlayingViewController.green
         deviceUnderline.layer.cornerRadius = 1.5
@@ -369,7 +369,7 @@ final class NowPlayingViewController: UIViewController {
             infoB.topAnchor.constraint(equalTo: chevron.bottomAnchor, constant: 13),
             infoB.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: side),
             infoB.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -side),
-            infoB.heightAnchor.constraint(equalToConstant: 88),
+            infoB.heightAnchor.constraint(equalToConstant: 62),
 
             lyricsView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             lyricsView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -442,7 +442,7 @@ final class NowPlayingViewController: UIViewController {
             lyricsTop?.constant = 0
             lyricsBottom?.constant = 0
         } else {
-            lyricsTop?.constant = safe.top + 16 + 52 + 13 + 88 + 8
+            lyricsTop?.constant = safe.top + 16 + 52 + 13 + 62 + 8
             lyricsBottom?.constant = -(safe.bottom + 236)
         }
     }
@@ -474,7 +474,7 @@ final class NowPlayingViewController: UIViewController {
         } else {
             changes()
         }
-        lyricsButton.setImage(Icons.lyrics(28, filled: lyr), for: .normal)
+        lyricsButton.tintColor = lyr ? NowPlayingViewController.green : tone
         artPan?.isEnabled = !lyr
         infoA.isUserInteractionEnabled = new == .cover
         infoB.isUserInteractionEnabled = new == .lyrics
@@ -549,12 +549,12 @@ final class NowPlayingViewController: UIViewController {
         }
 
         playButton.setImage(engine.isPlaying || engine.isLoading ? Icons.pause(64) : Icons.play(64), for: .normal)
-        shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : .white
+        shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : tone
         shuffleDot.alpha = engine.shuffleOn && mode != .immersive ? 1 : 0
         switch engine.repeatMode {
         case .off:
             repeatButton.setImage(Icons.repeatAll(28), for: .normal)
-            repeatButton.tintColor = .white
+            repeatButton.tintColor = tone
         case .all:
             repeatButton.setImage(Icons.repeatAll(28), for: .normal)
             repeatButton.tintColor = NowPlayingViewController.green
@@ -566,15 +566,28 @@ final class NowPlayingViewController: UIViewController {
         timeChanged()
     }
 
-    /// Thanh tiến trình và nhãn thời gian lấy màu từ bìa (bản sáng của màu nền bài hát).
+    /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa (bản sáng của màu nền bài hát).
     private func applyTone(from image: UIImage) {
         guard let average = image.averageColor() else { return }
         var h: CGFloat = 0, sat: CGFloat = 0, br: CGFloat = 0, a: CGFloat = 0
         average.getHue(&h, saturation: &sat, brightness: &br, alpha: &a)
-        let tone = UIColor(hue: h, saturation: min(1, sat * 0.85), brightness: 0.92, alpha: 1)
+        tone = UIColor(hue: h, saturation: min(1, sat * 0.85), brightness: 0.92, alpha: 1)
         progress.setTone(tone)
         elapsedLabel.textColor = tone.withAlphaComponent(0.75)
         remainingLabel.textColor = tone.withAlphaComponent(0.75)
+        applyIconTints()
+    }
+
+    private func applyIconTints() {
+        let engine = PlayerEngine.shared
+        UIView.animate(withDuration: 0.4) {
+            for b in [self.prevButton, self.playButton, self.nextButton, self.deviceButton, self.queueButton] {
+                b.tintColor = self.tone
+            }
+            self.lyricsButton.tintColor = self.mode == .cover ? self.tone : NowPlayingViewController.green
+            self.shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : self.tone
+            self.repeatButton.tintColor = engine.repeatMode == .off ? self.tone : NowPlayingViewController.green
+        }
     }
 
     @objc private func libraryChanged() {
