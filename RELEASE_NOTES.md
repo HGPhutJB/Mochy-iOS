@@ -1,3 +1,10 @@
+Mochy iOS 0.5.1 — sửa hiệu ứng mở/đóng màn hình đang phát
+
+- Vuốt xuống / mở lên: ảnh bìa và màn hình đi cùng nhau, không còn lệch rồi nhảy về chỗ cũ.
+- Không còn làm mờ/thu nhỏ màn hình phía sau, nên thanh trên cùng (nút quay lại, tên playlist) không bị mất.
+- Chụp sẵn màn hình khi kéo nên mượt hơn, hết giật.
+- Thanh thời lượng và số giây đổi màu theo màu bìa bài hát.
+
 Mochy iOS 0.5.0 — làm lại màn hình đang phát
 
 - Giao diện mới theo mẫu: bìa tràn màn hình, nút kính mờ (đóng, tên danh sách, tuỳ chọn), tên bài chạy ngang, huy hiệu E, nút đã thích tròn, thanh tiến trình dày, dải mờ phía sau các nút.

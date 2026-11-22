@@ -184,6 +184,14 @@ final class ProgressBar: UIView {
     }
 
     var isDragging: Bool { return dragging }
+
+    /// Màu thanh: phần đã chạy đặc, phần còn lại cùng màu nhưng mờ.
+    func setTone(_ color: UIColor) {
+        UIView.animate(withDuration: 0.5) {
+            self.fill.backgroundColor = color
+            self.track.backgroundColor = color.withAlphaComponent(0.28)
+        }
+    }
 }
 
 /// Hàng thông tin bài: (ảnh nhỏ) + tên chạy ngang + huy hiệu E + nghệ sĩ + nút đã thích tròn.

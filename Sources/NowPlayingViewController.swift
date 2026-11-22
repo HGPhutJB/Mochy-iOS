@@ -15,7 +15,6 @@ final class NowPlayingTransition: NSObject, UIViewControllerTransitioningDelegat
 }
 
 final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning {
-    static let dimTag = 9901
     private let presenting: Bool
 
     init(presenting: Bool) {
@@ -45,7 +44,6 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
                 transitionContext.completeTransition(false)
                 return
             }
-            let fromView = transitionContext.viewController(forKey: .from)?.view
             toView.frame = container.bounds
             container.addSubview(toView)
             toView.layoutIfNeeded()
@@ -65,24 +63,17 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             realArt.alpha = 0
             miniArt?.alpha = 0
 
-            // Màn hình phía sau mờ đi, bo góc và lùi lại.
-            let dim = UIView(frame: fromView?.bounds ?? container.bounds)
-            dim.tag = NowPlayingAnimator.dimTag
-            dim.backgroundColor = UIColor.black
-            dim.alpha = 0
-            dim.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            fromView?.addSubview(dim)
-            fromView?.window?.backgroundColor = UIColor.black
-
+            // Không biến đổi màn hình phía sau (tránh vẽ lại cả ứng dụng mỗi khung hình → giật, mất thanh điều hướng).
+            toView.layer.shouldRasterize = true
+            toView.layer.rasterizationScale = UIScreen.main.scale
             toView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
             UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0,
                            options: [.curveEaseOut], animations: {
                 toView.transform = CGAffineTransform.identity
                 flying.frame = target
                 flying.layer.cornerRadius = 0
-                dim.alpha = 0.35
-                fromView?.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
             }, completion: { _ in
+                toView.layer.shouldRasterize = false
                 realArt.alpha = 1
                 flying.removeFromSuperview()
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
@@ -93,7 +84,6 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
                 transitionContext.completeTransition(false)
                 return
             }
-            let toView = transitionContext.viewController(forKey: .to)?.view
             let realArt = fromVC.artImageView
             let start = realArt.superview?.convert(realArt.frame, to: container) ?? container.bounds
             let end = miniArtFrame(in: container)
@@ -108,20 +98,18 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             container.addSubview(flying)
             realArt.alpha = 0
             miniArt?.alpha = 0
-            let dim = toView?.viewWithTag(NowPlayingAnimator.dimTag)
+            fromView.layer.shouldRasterize = true
+            fromView.layer.rasterizationScale = UIScreen.main.scale
 
             UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0,
                            options: [.curveEaseInOut], animations: {
                 fromView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
                 flying.frame = end
                 flying.layer.cornerRadius = 10
-                dim?.alpha = 0
-                toView?.transform = CGAffineTransform.identity
             }, completion: { _ in
+                fromView.layer.shouldRasterize = false
                 flying.removeFromSuperview()
                 miniArt?.alpha = 1
-                dim?.removeFromSuperview()
-                toView?.window?.backgroundColor = Theme.background
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
             })
         }
@@ -197,9 +185,6 @@ final class NowPlayingViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor.black
-        view.layer.cornerRadius = 22
-        view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        view.clipsToBounds = true
         buildLayout()
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(stateChanged), name: .playerStateChanged, object: nil)
@@ -560,6 +545,7 @@ final class NowPlayingViewController: UIViewController {
             infoA.thumb.image = image
             infoB.thumb.image = image
             fluidView.setImage(image)
+            applyTone(from: image)
         }
 
         playButton.setImage(engine.isPlaying || engine.isLoading ? Icons.pause(64) : Icons.play(64), for: .normal)
@@ -578,6 +564,17 @@ final class NowPlayingViewController: UIViewController {
         }
         refreshVideo()
         timeChanged()
+    }
+
+    /// Thanh tiến trình và nhãn thời gian lấy màu từ bìa (bản sáng của màu nền bài hát).
+    private func applyTone(from image: UIImage) {
+        guard let average = image.averageColor() else { return }
+        var h: CGFloat = 0, sat: CGFloat = 0, br: CGFloat = 0, a: CGFloat = 0
+        average.getHue(&h, saturation: &sat, brightness: &br, alpha: &a)
+        let tone = UIColor(hue: h, saturation: min(1, sat * 0.85), brightness: 0.92, alpha: 1)
+        progress.setTone(tone)
+        elapsedLabel.textColor = tone.withAlphaComponent(0.75)
+        remainingLabel.textColor = tone.withAlphaComponent(0.75)
     }
 
     @objc private func libraryChanged() {
@@ -758,27 +755,27 @@ final class NowPlayingViewController: UIViewController {
     // MARK: - Kéo xuống để đóng
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let translation = max(0, gesture.translation(in: view.superview ?? view.window).y)
+        let space = view.superview ?? view.window
+        let translation = max(0, gesture.translation(in: space).y)
         let height = max(1, view.bounds.height)
-        let behind = presentingViewController?.view
         switch gesture.state {
+        case .began:
+            // Chụp sẵn thành một ảnh để kéo mượt (video/làm mờ không phải vẽ lại mỗi khung hình).
+            view.layer.shouldRasterize = true
+            view.layer.rasterizationScale = UIScreen.main.scale
         case .changed:
             view.transform = CGAffineTransform(translationX: 0, y: translation)
-            let progress = min(1, translation / height)
-            let scale = 0.94 + 0.06 * progress
-            behind?.transform = CGAffineTransform(scaleX: scale, y: scale)
-            behind?.viewWithTag(NowPlayingAnimator.dimTag)?.alpha = 0.35 * (1 - progress)
         case .ended, .cancelled:
-            let velocity = gesture.velocity(in: view.superview ?? view.window).y
+            let velocity = gesture.velocity(in: space).y
             if translation > height * 0.22 || velocity > 900 {
                 dismiss(animated: true, completion: nil)
             } else {
-                UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.4,
+                UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0.3,
                                options: [], animations: {
                     self.view.transform = CGAffineTransform.identity
-                    behind?.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
-                    behind?.viewWithTag(NowPlayingAnimator.dimTag)?.alpha = 0.35
-                }, completion: nil)
+                }, completion: { _ in
+                    self.view.layer.shouldRasterize = false
+                })
             }
         default:
             break
