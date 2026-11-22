@@ -290,6 +290,13 @@ final class PlayerEngine: NSObject {
     }
 
     private var chunkLoader: ChunkedLoader?
+
+    /// Vị trí phát chính xác (cập nhật từng khung hình), dùng cho lời chạy từng từ.
+    var livePosition: Double {
+        guard let p = player else { return currentTime }
+        let t = p.currentTime().seconds
+        return t.isFinite ? t : currentTime
+    }
     private var durationCapped = false
 
     private func begin(url: URL, headers: [String: String]?, stream: StreamInfo? = nil) {

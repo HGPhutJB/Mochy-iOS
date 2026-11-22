@@ -158,6 +158,7 @@ final class NowPlayingViewController: UIViewController {
     private let queueButton = PressableButton(type: .custom)
     private let lyricsButton = PressableButton(type: .custom)
     private let lyricsView = LyricsView()
+    private let fluidView = FluidBackgroundView()
     private var showLyrics = false
     private var lyricsVideoId: String?
     private var artPan: UIPanGestureRecognizer?
@@ -169,6 +170,11 @@ final class NowPlayingViewController: UIViewController {
     private var shownVideoId: String?
     private var shownArtwork: UIImage?
     private var dragStartTransform = CGAffineTransform.identity
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        lyricsView.setRunning(false)
+    }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return Theme.statusBarStyle
@@ -203,6 +209,10 @@ final class NowPlayingViewController: UIViewController {
         tintView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         tintView.backgroundColor = Theme.background
         view.addSubview(tintView)
+        fluidView.frame = view.bounds
+        fluidView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        fluidView.alpha = 0
+        view.addSubview(fluidView)
 
         fadeView.frame = view.bounds
         fadeView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -483,7 +493,6 @@ final class NowPlayingViewController: UIViewController {
         slider.value = total > 0 ? Float(min(engine.currentTime, total)) : 0
         elapsedLabel.text = formatTime(engine.currentTime)
         remainingLabel.text = total > 0 ? "-" + formatTime(max(0, total - engine.currentTime)) : "-:--"
-        if showLyrics { lyricsView.update(time: engine.currentTime) }
     }
 
     @objc private func lyricsTapped() {
@@ -496,8 +505,10 @@ final class NowPlayingViewController: UIViewController {
             lyricsView.resetFollow()
             loadLyrics()
         }
+        lyricsView.setRunning(showLyrics)
         UIView.animate(withDuration: 0.3, animations: {
             self.lyricsView.alpha = self.showLyrics ? 1 : 0
+            self.fluidView.alpha = self.showLyrics ? 1 : 0
             self.artView.alpha = self.showLyrics ? 0 : 1
         }, completion: { _ in
             if !self.showLyrics { self.lyricsView.isHidden = true }
@@ -530,6 +541,7 @@ final class NowPlayingViewController: UIViewController {
         UIView.animate(withDuration: 0.8) {
             self.tintView.backgroundColor = base
         }
+        fluidView.setPalette(LyricsPalette.colors(from: image, dark: Theme.isDark))
     }
 
     // MARK: - Hành động

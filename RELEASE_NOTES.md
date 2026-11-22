@@ -1,5 +1,5 @@
-Mochy iOS 0.4.1
+Mochy iOS 0.4.2
 
-- Sửa độ dài bài sai (bài 3:54 hiện 6:50): dùng độ dài thật YouTube trả về; hết bài thì tự chuyển bài đúng lúc, không phát đoạn thừa.
-- Lời bài hát: thêm YouLy+ (gom từ Apple Music / Musixmatch / Spotify, có nhạc Việt) và KuGou; thứ tự thử: YouLy+ → SimpMusic → LRCLIB → KuGou.
-- Lời cuộn mượt kiểu Apple Music: dòng đang hát to, rõ; các dòng khác nhỏ hơn và mờ dần theo khoảng cách.
+- Lời bài hát làm lại theo video mẫu: chữ trắng tô dần từng từ (karaoke) ở dòng đang hát, các dòng khác mờ nhẹ và nhạt dần theo khoảng cách, cùng cỡ chữ, căn trái, cuộn mượt.
+- Nền chuyển động mềm lấy màu từ bìa khi xem lời.
+- Hỗ trợ lời có thời gian từng từ (YouLy+ và LRC dạng enhanced); lời chỉ có thời gian từng dòng thì tô trắng cả dòng.
