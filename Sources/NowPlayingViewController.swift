@@ -141,6 +141,7 @@ final class NowPlayingViewController: UIViewController {
     private let grabber = UIView()
     private let grabZone = UIView()
     private let artArea = UIView()
+    private var lastArtScale: CGFloat = 0
     private let artView = UIImageView()
     private let titleLabel = UILabel()
     private let artistLabel = UILabel()
@@ -403,10 +404,13 @@ final class NowPlayingViewController: UIViewController {
 
         // Bìa nhỏ lại khi đang phát (0.84) và nhỏ hơn nữa khi tạm dừng (0.72).
         let scale: CGFloat = engine.isPlaying || engine.isLoading ? 0.84 : 0.72
+        if scale != lastArtScale {
+            lastArtScale = scale
         UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.4,
                        options: [.allowUserInteraction, .beginFromCurrentState], animations: {
             self.artView.transform = CGAffineTransform(scaleX: scale, y: scale)
         }, completion: nil)
+        }
 
         shuffleButton.tintColor = engine.shuffleOn ? Theme.accent : Theme.primaryText
         switch engine.repeatMode {
@@ -588,7 +592,7 @@ final class NowPlayingViewController: UIViewController {
     // MARK: - Kéo xuống để đóng
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let translation = max(0, gesture.translation(in: view).y)
+        let translation = max(0, gesture.translation(in: view.superview ?? view.window).y)
         let height = max(1, view.bounds.height)
         let behind = presentingViewController?.view
         switch gesture.state {
@@ -599,7 +603,7 @@ final class NowPlayingViewController: UIViewController {
             behind?.transform = CGAffineTransform(scaleX: scale, y: scale)
             behind?.viewWithTag(NowPlayingAnimator.dimTag)?.alpha = 0.35 * (1 - progress)
         case .ended, .cancelled:
-            let velocity = gesture.velocity(in: view).y
+            let velocity = gesture.velocity(in: view.superview ?? view.window).y
             if translation > height * 0.22 || velocity > 900 {
                 // Bìa sẽ bay từ vị trí hiện tại về thanh phát nhỏ.
                 dismiss(animated: true, completion: nil)

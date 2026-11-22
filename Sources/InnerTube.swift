@@ -427,9 +427,11 @@ final class InnerTube {
         func make(_ f: [String: Any], _ urlString: String, _ defaultMime: String) -> StreamInfo? {
             guard let url = URL(string: urlString) else { return nil }
             let rate = Int((f["audioSampleRate"] as? String) ?? "") ?? 0
-            return StreamInfo(url: url, userAgent: client.userAgent,
-                              mimeType: (f["mimeType"] as? String) ?? defaultMime,
-                              clientName: client.name, bitrate: bitrate(f), sampleRate: rate)
+            var info = StreamInfo(url: url, userAgent: client.userAgent,
+                                  mimeType: (f["mimeType"] as? String) ?? defaultMime,
+                                  clientName: client.name, bitrate: bitrate(f), sampleRate: rate)
+            info.contentLength = Int64((f["contentLength"] as? String) ?? "") ?? 0
+            return info
         }
 
         // 1) Âm thanh AAC (audio/mp4) có link trực tiếp: AVPlayer trên iOS 12 phát được.

@@ -282,20 +282,30 @@ final class PlayerEngine: NSObject {
             switch result {
             case .success(let info):
                 self.streamInfo = info
-                self.begin(url: info.url, headers: ["User-Agent": info.userAgent])
+                self.begin(url: info.url, headers: ["User-Agent": info.userAgent], stream: info)
             case .failure(let error):
                 self.fail(error)
             }
         }
     }
 
-    private func begin(url: URL, headers: [String: String]?) {
+    private var chunkLoader: ChunkedLoader?
+
+    private func begin(url: URL, headers: [String: String]?, stream: StreamInfo? = nil) {
         try? AVAudioSession.sharedInstance().setActive(true)
         var options: [String: Any]? = nil
         if let headers = headers {
             options = ["AVURLAssetHTTPHeaderFieldsKey": headers]
         }
-        let asset = AVURLAsset(url: url, options: options)
+        let asset: AVURLAsset
+        if let stream = stream, let loader = ChunkedLoader(stream: stream) {
+            chunkLoader = loader
+            asset = AVURLAsset(url: loader.assetURL, options: nil)
+            asset.resourceLoader.setDelegate(loader, queue: loader.delegateQueue)
+        } else {
+            chunkLoader = nil
+            asset = AVURLAsset(url: url, options: options)
+        }
         let item = AVPlayerItem(asset: asset)
         if #available(iOS 10.0, *) {
             item.preferredForwardBufferDuration = 30
@@ -360,7 +370,7 @@ final class PlayerEngine: NSObject {
             case .success(let info):
                 self.streamInfo = info
                 self.pendingSeek = resumeAt
-                self.begin(url: info.url, headers: ["User-Agent": info.userAgent])
+                self.begin(url: info.url, headers: ["User-Agent": info.userAgent], stream: info)
             case .failure(let error):
                 self.fail(error)
             }
@@ -463,6 +473,7 @@ final class PlayerEngine: NSObject {
     }
 
     private func teardownPlayer() {
+        chunkLoader = nil
         if let observer = timeObserver {
             player?.removeTimeObserver(observer)
             timeObserver = nil

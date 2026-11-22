@@ -72,6 +72,7 @@ struct StreamInfo {
     let clientName: String
     let bitrate: Int       // bit/giây, 0 nếu không rõ
     let sampleRate: Int    // Hz, 0 nếu không rõ
+    var contentLength: Int64 = 0  // byte, 0 nếu không rõ
 
     var codecLabel: String {
         return mimeType.hasPrefix("audio/mp4") ? "AAC" : "MP4"
