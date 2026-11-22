@@ -1,3 +1,9 @@
+Mochy iOS 0.5.4 — lời trôi kiểu sóng
+
+- Đổi dòng: các dòng trượt về chỗ mới theo hiệu ứng sóng (dòng càng xa phía dưới càng trễ), chuyển bằng lò xo nên mượt, không còn cứng.
+- Dòng chưa/đã hát to hơn ~25% (0,62 → 0,78 lần dòng đang hát).
+- Từ đang hát nổi lên nhanh rồi hạ xuống từ từ, phóng nhẹ và phát sáng, theo đúng thời gian từng từ.
+
 Mochy iOS 0.5.3 — thanh thời lượng theo màu bài hát
 
 - Thanh tiến trình ở thanh phát nhỏ (trước đây màu đỏ cố định) giờ lấy màu nhấn của bài hát.

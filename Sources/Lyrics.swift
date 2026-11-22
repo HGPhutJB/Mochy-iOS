@@ -352,30 +352,45 @@ final class WordView: UIView {
         maskLayer.startPoint = CGPoint(x: 0, y: 0.5)
         maskLayer.endPoint = CGPoint(x: 1, y: 0.5)
         bright.layer.mask = maskLayer
-        setProgress(0, force: true)
+        apply(p: 0, lift: 0, force: true)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
-    func setProgress(_ p: CGFloat, force: Bool = false) {
-        let value = min(1, max(0, p))
-        if !force && abs(value - lastP) < 0.003 { return }
-        lastP = value
-        let lift = value > 0 && value < 1 ? CGFloat(sin(Double(value) * Double.pi)) : 0
+    private var lastLift: CGFloat = -1
+
+    /// Cập nhật theo thời gian bài hát: tô dần từ trái sang phải; từ nổi lên nhanh khi tới lượt (ease-out)
+    /// rồi hạ xuống chậm, mượt sau khi hát xong — giống Apple Music.
+    func update(time: Double, start: Double, end: Double) {
+        let dur = max(0.08, end - start)
+        let p = CGFloat(min(1, max(0, (time - start) / dur)))
+        let rise = CGFloat(min(1, max(0, (time - (start - 0.05)) / 0.32)))
+        var lift = 1 - pow(1 - rise, 3)
+        if time > end {
+            let f = CGFloat(min(1, (time - end) / 0.7))
+            lift *= 1 - f * f * (3 - 2 * f)
+        }
+        apply(p: p, lift: lift, force: false)
+    }
+
+    private func apply(p: CGFloat, lift: CGFloat, force: Bool) {
+        if !force && abs(p - lastP) < 0.002 && abs(lift - lastLift) < 0.004 { return }
+        lastP = p
+        lastLift = lift
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        maskLayer.frame = CGRect(x: (value - 1) * total, y: -16, width: total, height: bounds.height + 32)
-        bright.layer.shadowOpacity = Float(0.6 * lift)
+        maskLayer.frame = CGRect(x: (p - 1) * total, y: -16, width: total, height: bounds.height + 32)
+        bright.layer.shadowOpacity = Float(0.7 * lift)
         CATransaction.commit()
-        let scale = 1 + 0.06 * lift
-        transform = CGAffineTransform(translationX: 0, y: -4 * lift).scaledBy(x: scale, y: scale)
+        let scale = 1 + 0.075 * lift
+        transform = CGAffineTransform(translationX: 0, y: -4.5 * lift).scaledBy(x: scale, y: scale)
     }
 }
 
 /// Một dòng lời: dòng đang hát to, rõ, tô dần từng từ (từ đang hát nổi lên); dòng khác thu nhỏ và làm mờ như Apple Music.
 final class LyricCell: UITableViewCell {
     static let font = UIFont.systemFont(ofSize: 30, weight: .heavy)
-    static let inactiveScale: CGFloat = 0.62
+    static let inactiveScale: CGFloat = 0.78
     static let sideInset: CGFloat = 26
     static let vPad: CGFloat = 11
     static let blurPad: CGFloat = 16
@@ -404,6 +419,7 @@ final class LyricCell: UITableViewCell {
     private var wordRanges: [NSRange] = []
     private var wordViews: [WordView] = []
     private var builtKey = ""
+    private var shownActive = false
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -450,7 +466,10 @@ final class LyricCell: UITableViewCell {
                 cursor = r.location + r.length
             }
         }
+        contentView.layer.removeAllAnimations()
+        contentView.transform = .identity
         blurView.image = nil
+        shownActive = false
         builtKey = ""
         wordViews.forEach { $0.removeFromSuperview() }
         wordViews = []
@@ -493,6 +512,7 @@ final class LyricCell: UITableViewCell {
     }
 
     func showDim(image: UIImage?, alpha: CGFloat) {
+        shownActive = false
         label.alpha = 0
         wordsHost.alpha = 0
         blurView.image = image
@@ -501,19 +521,17 @@ final class LyricCell: UITableViewCell {
 
     /// Dòng đang hát: trắng rõ; có thời gian từng từ thì mỗi từ tô dần và nổi lên khi tới lượt.
     func showActive(time: Double) {
-        blurView.alpha = 0
-        guard canKaraoke else {
-            label.alpha = 1
-            wordsHost.alpha = 0
-            return
+        let karaoke = canKaraoke
+        if !shownActive {
+            shownActive = true
+            blurView.alpha = 0
+            label.alpha = karaoke ? 0 : 1
+            wordsHost.alpha = karaoke ? 1 : 0
         }
+        guard karaoke else { return }
         if wordViews.isEmpty, bounds.width > 0 { buildWordsIfNeeded(width: max(10, bounds.width - LyricCell.sideInset * 2)) }
-        label.alpha = 0
-        wordsHost.alpha = 1
         for (i, v) in wordViews.enumerated() where i < words.count {
-            let w = words[i]
-            let p = (time - w.start) / max(0.08, w.end - w.start)
-            v.setProgress(CGFloat(p))
+            v.update(time: time, start: words[i].start, end: words[i].end)
         }
     }
 }
@@ -666,18 +684,42 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             if lines[mid].time <= time + 0.1 { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
         if idx != current {
-            current = idx
-            let follow = idx >= 0 && Date().timeIntervalSince(userScrolledAt) > 3
-            UIView.animate(withDuration: 0.6, delay: 0, options: [.allowUserInteraction, .curveEaseInOut, .beginFromCurrentState], animations: {
-                // đổi chiều cao các dòng (dòng mới to lên, dòng cũ nhỏ lại) rồi cuộn tới dòng mới
-                self.table.beginUpdates()
-                self.table.endUpdates()
-                for case let cell as LyricCell in self.table.visibleCells { self.style(cell, time: time) }
-                if follow { self.table.contentOffset = CGPoint(x: 0, y: self.targetOffset()) }
-            }, completion: nil)
+            changeCurrent(to: idx, time: time)
         }
         if current >= 0, let cell = table.cellForRow(at: IndexPath(row: current, section: 0)) as? LyricCell {
             cell.showActive(time: time)
+        }
+    }
+
+    /// Đổi dòng đang hát: các dòng trượt về chỗ mới theo kiểu "sóng" — dòng càng xa phía dưới càng trễ,
+    /// mỗi dòng chuyển bằng lò xo nên chuyển động mượt, không cứng.
+    private func changeCurrent(to idx: Int, time: Double) {
+        let follow = idx >= 0 && Date().timeIntervalSince(userScrolledAt) > 3
+        var oldY: [Int: CGFloat] = [:]
+        for case let cell as LyricCell in table.visibleCells where cell.row >= 0 {
+            oldY[cell.row] = cell.frame.minY - table.contentOffset.y
+        }
+        current = idx
+        UIView.performWithoutAnimation {
+            self.table.beginUpdates()
+            self.table.endUpdates()
+            if follow { self.table.contentOffset = CGPoint(x: 0, y: self.targetOffset()) }
+            self.table.layoutIfNeeded()
+        }
+        let cells = table.visibleCells.compactMap { $0 as? LyricCell }.filter { $0.row >= 0 }.sorted { $0.row < $1.row }
+        var lastDelta: CGFloat = 0
+        for cell in cells {
+            let newY = cell.frame.minY - table.contentOffset.y
+            let delta = oldY[cell.row].map { $0 - newY } ?? lastDelta
+            lastDelta = delta
+            cell.contentView.layer.removeAllAnimations()
+            cell.contentView.transform = CGAffineTransform(translationX: 0, y: delta)
+            let rank = idx >= 0 && cell.row > idx ? min(cell.row - idx, 7) : 0
+            UIView.animate(withDuration: 0.75, delay: Double(rank) * 0.06, usingSpringWithDamping: 0.86, initialSpringVelocity: 0,
+                           options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+                cell.contentView.transform = .identity
+                self.style(cell, time: time)
+            }, completion: nil)
         }
     }
 
@@ -784,7 +826,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             ns.draw(with: CGRect(x: pad, y: pad, width: width, height: height),
                     options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
         }
-        // Làm mờ nhẹ hơn trước (ảnh còn bị thu nhỏ ~0,62 lần khi hiển thị).
+        // Làm mờ nhẹ hơn trước (ảnh còn bị thu nhỏ ~0,78 lần khi hiển thị).
         let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
         let radius = Double(points[bucket] * (immersive ? 1.5 : 1.0) * flat.scale)
         guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return flat }
