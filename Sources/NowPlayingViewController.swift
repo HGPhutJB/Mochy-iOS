@@ -156,6 +156,11 @@ final class NowPlayingViewController: UIViewController {
     private let sleepButton = PressableButton(type: .custom)
     private let downloadButton = PressableButton(type: .custom)
     private let queueButton = PressableButton(type: .custom)
+    private let lyricsButton = PressableButton(type: .custom)
+    private let lyricsView = LyricsView()
+    private var showLyrics = false
+    private var lyricsVideoId: String?
+    private var artPan: UIPanGestureRecognizer?
 
     /// Ảnh bìa lớn (dùng cho hiệu ứng bay giữa thanh phát nhỏ và màn hình đang phát).
     var artImageView: UIImageView { return artView }
@@ -287,7 +292,8 @@ final class NowPlayingViewController: UIViewController {
         style(sleepButton, Icons.timer(24), action: #selector(sleepTapped))
         style(downloadButton, Icons.download(24), action: #selector(downloadTapped))
         style(queueButton, Icons.queue(24), action: #selector(queueTapped))
-        let bottomRow = UIStackView(arrangedSubviews: [shuffleButton, repeatButton, sleepButton, downloadButton, queueButton])
+        style(lyricsButton, Icons.lyrics(24), action: #selector(lyricsTapped))
+        let bottomRow = UIStackView(arrangedSubviews: [shuffleButton, repeatButton, lyricsButton, sleepButton, downloadButton, queueButton])
         bottomRow.axis = .horizontal
         bottomRow.distribution = .fillEqually
         bottomRow.translatesAutoresizingMaskIntoConstraints = false
@@ -361,6 +367,19 @@ final class NowPlayingViewController: UIViewController {
         let panB = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         grabZone.addGestureRecognizer(panA)
         artArea.addGestureRecognizer(panB)
+        artPan = panB
+
+        lyricsView.translatesAutoresizingMaskIntoConstraints = false
+        lyricsView.alpha = 0
+        lyricsView.isHidden = true
+        lyricsView.onSeek = { time in PlayerEngine.shared.seek(to: time) }
+        artArea.addSubview(lyricsView)
+        NSLayoutConstraint.activate([
+            lyricsView.topAnchor.constraint(equalTo: artArea.topAnchor),
+            lyricsView.bottomAnchor.constraint(equalTo: artArea.bottomAnchor),
+            lyricsView.leadingAnchor.constraint(equalTo: artArea.leadingAnchor, constant: 24),
+            lyricsView.trailingAnchor.constraint(equalTo: artArea.trailingAnchor, constant: -24)
+        ])
     }
 
     private static func thumbImage() -> UIImage {
@@ -389,6 +408,8 @@ final class NowPlayingViewController: UIViewController {
             shownArtwork = nil
             artView.image = nil
             titleLabel.pop()
+            lyricsVideoId = nil
+            if showLyrics { loadLyrics() }
         }
         if let image = engine.artwork, shownArtwork !== image {
             shownArtwork = image
@@ -462,6 +483,40 @@ final class NowPlayingViewController: UIViewController {
         slider.value = total > 0 ? Float(min(engine.currentTime, total)) : 0
         elapsedLabel.text = formatTime(engine.currentTime)
         remainingLabel.text = total > 0 ? "-" + formatTime(max(0, total - engine.currentTime)) : "-:--"
+        if showLyrics { lyricsView.update(time: engine.currentTime) }
+    }
+
+    @objc private func lyricsTapped() {
+        showLyrics = !showLyrics
+        Haptics.tap()
+        lyricsButton.tintColor = showLyrics ? Theme.accent : Theme.primaryText
+        artPan?.isEnabled = !showLyrics
+        if showLyrics {
+            lyricsView.isHidden = false
+            lyricsView.resetFollow()
+            loadLyrics()
+        }
+        UIView.animate(withDuration: 0.3, animations: {
+            self.lyricsView.alpha = self.showLyrics ? 1 : 0
+            self.artView.alpha = self.showLyrics ? 0 : 1
+        }, completion: { _ in
+            if !self.showLyrics { self.lyricsView.isHidden = true }
+        })
+    }
+
+    private func loadLyrics() {
+        let engine = PlayerEngine.shared
+        guard let song = engine.currentSong, lyricsVideoId != song.videoId else {
+            lyricsView.update(time: engine.currentTime)
+            return
+        }
+        lyricsVideoId = song.videoId
+        lyricsView.showLoading()
+        LyricsService.shared.lyrics(for: song, durationHint: engine.duration) { [weak self] result in
+            guard let self = self, self.lyricsVideoId == song.videoId else { return }
+            self.lyricsView.show(result)
+            self.lyricsView.update(time: PlayerEngine.shared.currentTime)
+        }
     }
 
     private func applyBackground(from image: UIImage) {

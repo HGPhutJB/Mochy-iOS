@@ -266,6 +266,18 @@ enum Icons {
         }
     }
 
+    static func lyrics(_ size: CGFloat) -> UIImage {
+        return make(size) { s in
+            let bubble = UIBezierPath(roundedRect: CGRect(x: s * 0.1, y: s * 0.14, width: s * 0.8, height: s * 0.6), cornerRadius: s * 0.16)
+            bubble.move(to: CGPoint(x: s * 0.3, y: s * 0.74))
+            bubble.addLine(to: CGPoint(x: s * 0.24, y: s * 0.92))
+            bubble.addLine(to: CGPoint(x: s * 0.5, y: s * 0.74))
+            line(bubble, s)
+            let l1 = UIBezierPath(); l1.move(to: CGPoint(x: s * 0.28, y: s * 0.34)); l1.addLine(to: CGPoint(x: s * 0.72, y: s * 0.34)); line(l1, s)
+            let l2 = UIBezierPath(); l2.move(to: CGPoint(x: s * 0.28, y: s * 0.52)); l2.addLine(to: CGPoint(x: s * 0.56, y: s * 0.52)); line(l2, s)
+        }
+    }
+
     static func sliders(_ size: CGFloat) -> UIImage {
         return make(size) { s in
             let ys: [CGFloat] = [0.24, 0.5, 0.76]

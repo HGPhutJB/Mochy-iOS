@@ -1,6 +1,5 @@
-Mochy iOS 0.3.6
+Mochy iOS 0.4.0 (mốc 2 - phần 1: lời bài hát)
 
-- Nhạc dừng ở 59 giây: bỏ giới hạn bộ đệm 30 giây (nguyên nhân khiến kết nối bị đóng khi tạm ngưng đọc, bản đầu không có thiết lập này), phát bằng AVPlayer trực tiếp như bản 0.2.0.
-- Mỗi link nhạc được kiểm tra byte cuối tệp như Mochy Music; link bị cắt thì tự chuyển client khác. Huy hiệu ghi "(bị cắt)" nếu không client nào đạt.
-- Mở/đóng màn hình đang phát mượt hơn trên trang chủ: bỏ bo góc động trên cả trang (gây giật).
-- Chỉnh khoảng cách số giây dưới thanh tua.
+- Lời bài hát đồng bộ theo từng dòng trong màn hình đang phát: bấm nút lời (hình khung chat) cạnh nút ngẫu nhiên/lặp để chuyển giữa bìa và lời.
+- Dòng đang hát to và sáng, tự cuộn theo; chạm vào một dòng để tua tới đó; tự cuộn lại sau 3 giây khi bạn vuốt tay.
+- Nguồn lời: SimpMusic (theo video) rồi LRCLIB; không có lời đồng bộ thì hiện lời thường.
