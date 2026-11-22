@@ -71,7 +71,6 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             dim.alpha = 0
             dim.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             fromView?.addSubview(dim)
-            fromView?.clipsToBounds = true
             fromView?.window?.backgroundColor = UIColor.black
 
             toView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
@@ -82,7 +81,6 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
                 flying.layer.cornerRadius = 14
                 dim.alpha = 0.35
                 fromView?.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
-                fromView?.layer.cornerRadius = 14
             }, completion: { _ in
                 realArt.alpha = 1
                 flying.removeFromSuperview()
@@ -118,12 +116,10 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
                 flying.layer.cornerRadius = 10
                 dim?.alpha = 0
                 toView?.transform = CGAffineTransform.identity
-                toView?.layer.cornerRadius = 0
             }, completion: { _ in
                 flying.removeFromSuperview()
                 miniArt?.alpha = 1
                 dim?.removeFromSuperview()
-                toView?.clipsToBounds = false
                 toView?.window?.backgroundColor = Theme.background
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
             })
@@ -341,9 +337,9 @@ final class NowPlayingViewController: UIViewController {
             slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -(side - 2)),
             slider.bottomAnchor.constraint(equalTo: controls.topAnchor, constant: -30),
             elapsedLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: side),
-            elapsedLabel.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 0),
+            elapsedLabel.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 6),
             remainingLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -side),
-            remainingLabel.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 0),
+            remainingLabel.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 6),
 
             controls.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 48),
             controls.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -48),

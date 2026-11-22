@@ -206,19 +206,26 @@ final class InnerTube {
     // MARK: - Lấy link phát
 
     func resolveStream(videoId: String, completion: @escaping (Result<StreamInfo, Error>) -> Void) {
-        // ANDROID_VR để cuối: link của nó bị cắt sau ~1 MB, chỉ dùng khi các client khác đều thất bại.
+        // Mỗi link được kiểm tra bằng cách xin byte cuối tệp (giống Mochy Music): link bị cắt sẽ bị từ chối ở đó,
+        // khi đó chuyển sang client kế tiếp. Nếu không client nào qua kiểm tra, dùng link đầu tiên lấy được.
         let clients: [PlayerClient] = [PlayerClient.visionOS(origin: "https://www.youtube.com"),
-                                       PlayerClient.ios,
-                                       PlayerClient.androidVR161, PlayerClient.androidVR143]
-        attempt(videoId: videoId, clients: clients, index: 0, notes: [], completion: completion)
+                                       PlayerClient.androidVR161, PlayerClient.androidVR143,
+                                       PlayerClient.ios]
+        attempt(videoId: videoId, clients: clients, index: 0, notes: [], fallback: nil, completion: completion)
     }
 
     private func attempt(videoId: String,
                          clients: [PlayerClient],
                          index: Int,
                          notes: [String],
+                         fallback: StreamInfo?,
                          completion: @escaping (Result<StreamInfo, Error>) -> Void) {
         if index >= clients.count {
+            if var fb = fallback {
+                fb.unverified = true
+                DispatchQueue.main.async { completion(.success(fb)) }
+                return
+            }
             let message = "Không lấy được link nhạc:\n" + notes.joined(separator: "\n")
             DispatchQueue.main.async { completion(.failure(MochyError.noStream(message))) }
             return
@@ -226,10 +233,10 @@ final class InnerTube {
         let client = clients[index]
         if client.ownVisitor {
             visitorId(for: client) { [weak self] visitor in
-                self?.send(videoId: videoId, client: client, visitor: visitor, clients: clients, index: index, notes: notes, completion: completion)
+                self?.send(videoId: videoId, client: client, visitor: visitor, clients: clients, index: index, notes: notes, fallback: fallback, completion: completion)
             }
         } else {
-            send(videoId: videoId, client: client, visitor: nil, clients: clients, index: index, notes: notes, completion: completion)
+            send(videoId: videoId, client: client, visitor: nil, clients: clients, index: index, notes: notes, fallback: fallback, completion: completion)
         }
     }
 
@@ -260,7 +267,7 @@ final class InnerTube {
     }
 
     private func send(videoId: String, client: PlayerClient, visitor: String?,
-                      clients: [PlayerClient], index: Int, notes: [String],
+                      clients: [PlayerClient], index: Int, notes: [String], fallback: StreamInfo?,
                       completion: @escaping (Result<StreamInfo, Error>) -> Void) {
         var ctx = client.contextClient
         if let v = visitor { ctx["visitorData"] = v }
@@ -285,13 +292,40 @@ final class InnerTube {
                 next.append("• \(client.name): \(error.localizedDescription)")
             case .success(let json):
                 if let info = InnerTube.pickStream(json, client: client) {
-                    DispatchQueue.main.async { completion(.success(info)) }
+                    if self.verifyFullLength(info) {
+                        DispatchQueue.main.async { completion(.success(info)) }
+                        return
+                    }
+                    next.append("• \(client.name): link bị cắt giữa chừng")
+                    self.attempt(videoId: videoId, clients: clients, index: index + 1, notes: next,
+                                 fallback: fallback ?? info, completion: completion)
                     return
                 }
                 next.append("• \(client.name): \(InnerTube.describePlayability(json))")
             }
-            self.attempt(videoId: videoId, clients: clients, index: index + 1, notes: next, completion: completion)
+            self.attempt(videoId: videoId, clients: clients, index: index + 1, notes: next, fallback: fallback, completion: completion)
         }
+    }
+
+    /// Xin đúng byte cuối của tệp: link đầy đủ trả 206/200, link bị cắt trả 403. Không biết dung lượng thì coi như đạt.
+    private func verifyFullLength(_ info: StreamInfo) -> Bool {
+        guard info.contentLength > 1 else { return true }
+        var req = URLRequest(url: info.url)
+        req.timeoutInterval = 8
+        req.setValue(info.userAgent, forHTTPHeaderField: "User-Agent")
+        req.setValue("bytes=\(info.contentLength - 1)-\(info.contentLength - 1)", forHTTPHeaderField: "Range")
+        let sem = DispatchSemaphore(value: 0)
+        var ok = true
+        URLSession.shared.dataTask(with: req) { _, response, error in
+            if let http = response as? HTTPURLResponse {
+                ok = (200..<300).contains(http.statusCode)
+            } else if error != nil {
+                ok = true  // lỗi mạng tạm thời: không loại client
+            }
+            sem.signal()
+        }.resume()
+        sem.wait()
+        return ok
     }
 
     // MARK: - Phân tích JSON

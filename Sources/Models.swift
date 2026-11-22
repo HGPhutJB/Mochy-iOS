@@ -72,6 +72,7 @@ struct StreamInfo {
     let clientName: String
     let bitrate: Int       // bit/giây, 0 nếu không rõ
     let sampleRate: Int    // Hz, 0 nếu không rõ
+    var unverified = false      // không client nào qua kiểm tra byte cuối
     var contentLength: Int64 = 0  // byte, 0 nếu không rõ
 
     var codecLabel: String {
@@ -85,7 +86,7 @@ struct StreamInfo {
             parts.append(String(format: "%.1f kHz", Double(sampleRate) / 1000.0).replacingOccurrences(of: ".", with: ","))
         }
         if bitrate > 0 { parts.append("\(bitrate / 1000) kbps") }
-        parts.append(clientName)
+        parts.append(unverified ? clientName + " (bị cắt)" : clientName)
         return parts.joined(separator: " · ")
     }
 }

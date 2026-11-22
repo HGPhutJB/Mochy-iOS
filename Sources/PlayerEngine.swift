@@ -282,7 +282,7 @@ final class PlayerEngine: NSObject {
             switch result {
             case .success(let info):
                 self.streamInfo = info
-                self.begin(url: info.url, headers: ["User-Agent": info.userAgent], stream: info)
+                self.begin(url: info.url, headers: ["User-Agent": info.userAgent])
             case .failure(let error):
                 self.fail(error)
             }
@@ -307,9 +307,6 @@ final class PlayerEngine: NSObject {
             asset = AVURLAsset(url: url, options: options)
         }
         let item = AVPlayerItem(asset: asset)
-        if #available(iOS 10.0, *) {
-            item.preferredForwardBufferDuration = 30
-        }
         let newPlayer = AVPlayer(playerItem: item)
         player = newPlayer
 
@@ -370,7 +367,7 @@ final class PlayerEngine: NSObject {
             case .success(let info):
                 self.streamInfo = info
                 self.pendingSeek = resumeAt
-                self.begin(url: info.url, headers: ["User-Agent": info.userAgent], stream: info)
+                self.begin(url: info.url, headers: ["User-Agent": info.userAgent])
             case .failure(let error):
                 self.fail(error)
             }

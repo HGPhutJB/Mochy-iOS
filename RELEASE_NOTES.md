@@ -1,5 +1,6 @@
-Mochy iOS 0.3.5
+Mochy iOS 0.3.6
 
-- Sửa lỗi nhạc dừng ở ~59 giây: client VISIONOS giờ dùng đúng thông số của Mochy Music (phiên bản 1.04, UA native, visitor id riêng, header đúng) nên không còn bị loại và rơi xuống client IOS bị cắt luồng.
-- Header Origin/Referer khi tải nhạc theo đoạn giống Mochy.
-- Làm mượt animation mở/đóng màn hình Đang phát: bìa và màn hình chạy cùng nhịp, không nảy/giật.
+- Nhạc dừng ở 59 giây: bỏ giới hạn bộ đệm 30 giây (nguyên nhân khiến kết nối bị đóng khi tạm ngưng đọc, bản đầu không có thiết lập này), phát bằng AVPlayer trực tiếp như bản 0.2.0.
+- Mỗi link nhạc được kiểm tra byte cuối tệp như Mochy Music; link bị cắt thì tự chuyển client khác. Huy hiệu ghi "(bị cắt)" nếu không client nào đạt.
+- Mở/đóng màn hình đang phát mượt hơn trên trang chủ: bỏ bo góc động trên cả trang (gây giật).
+- Chỉnh khoảng cách số giây dưới thanh tua.
