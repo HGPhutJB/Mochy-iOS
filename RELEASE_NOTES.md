@@ -1,3 +1,9 @@
+Mochy iOS 0.6.2 — dải màu đồng bộ nền lời, thanh tab liquid glass
+
+- Màn hình đang phát: dải mờ phía dưới ảnh bìa/video giờ cùng bảng màu và cùng lớp màu chuyển động với nền khi bật lời, nên bật/tắt lời màu nối liền không bị nhảy. Dải màu trồi lên khi mở màn hình, "thở" nhẹ lên xuống, đổi màu mượt khi sang bài mới và loang ra phủ kín khi bật lời. Chế độ Tự động nay luôn đồng bộ với nền lời; chọn "Sáng" trong menu ba chấm nếu muốn dải mờ sáng.
+- Thanh tab liquid glass: nền kính mờ có viền sáng, icon và nền tự đổi sáng/tối theo nội dung phía sau; tab đang chọn tô màu nhấn Mochy; thấu kính chọn tab trượt bằng lò xo, co giãn như giọt nước, chạm thì phồng và icon nảy; kéo ngón tay để lướt qua các tab.
+- Cuộn xuống thì thanh tab thu gọn thành viên tròn (icon tab đang chọn) và thanh phát nhỏ trượt xuống cạnh nó; cuộn lên hoặc chạm viên tròn để mở lại.
+
 Mochy iOS 0.6.1 — 10 nguồn lời chạy song song, video Canvas Spotify, lời trôi nhanh hơn
 
 - Lời bài hát: hỏi song song Spicy Lyrics, BiniLyrics, Musixmatch, Unison, YouLy+, SimpMusic, NetEase, LRCLIB, QQ Music, KuGou, Genius; tự chọn bản tốt nhất (đồng bộ từng chữ > từng dòng > lời thường), loại bản lệch độ dài so với bài. Có bản từng chữ là dùng ngay.
