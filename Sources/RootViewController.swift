@@ -119,6 +119,15 @@ final class RootViewController: UIViewController {
     // MARK: - Thu gọn thanh tab khi cuộn
 
     private var compact = false
+    private var travel: CGFloat = 0
+    private var lastToggle = Date.distantPast
+
+    /// Đổi trạng thái do cuộn: có thời gian nghỉ để hiệu ứng lò xo chạy xong, tránh nhấp nháy.
+    private func requestCompact(_ value: Bool) {
+        guard value != compact, Date().timeIntervalSince(lastToggle) > 0.7 else { return }
+        lastToggle = Date()
+        setCompact(value)
+    }
 
     private func setCompact(_ value: Bool) {
         guard value != compact else { return }
@@ -154,16 +163,24 @@ final class RootViewController: UIViewController {
         guard let top = controllers[selectedIndex].topViewController, top.isViewLoaded,
               let scroll = primaryScroll(in: top.view) else { return }
         lastOffsetY = scroll.contentOffset.y
+        travel = 0
         scrollObservation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] s, _ in
             guard let self = self, s.isTracking || s.isDecelerating else { return }
             let y = s.contentOffset.y
             let top = -s.adjustedContentInset.top
+            let maxY = max(top, s.contentSize.height - s.bounds.height + s.adjustedContentInset.bottom)
+            // Đàn hồi ở hai đầu danh sách không được tính (làm thanh thụt ra thụt vào).
+            if y < top - 1 || y > maxY + 1 { self.lastOffsetY = y; return }
             let dy = y - self.lastOffsetY
             self.lastOffsetY = y
-            if y <= top + 12 { self.setCompact(false) }
-            else if dy > 6 && y > top + 70 { self.setCompact(true) }
-            else if dy < -6 { self.setCompact(false) }
+            if dy == 0 { return }
+            if (dy > 0) != (self.travel > 0) { self.travel = 0 }
+            self.travel += dy
+            if y <= top + 12 { self.requestCompact(false) }
+            else if self.travel > 56 && y > top + 80 { self.requestCompact(true); self.travel = 0 }
+            else if self.travel < -56 { self.requestCompact(false); self.travel = 0 }
         }
+    }
     }
 
     // MARK: - Chuyển tab

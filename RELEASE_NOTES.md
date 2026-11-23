@@ -1,3 +1,7 @@
+Mochy iOS 0.6.6 — sửa thanh tab thụt ra thụt vào khi cuộn
+
+- Thanh tab và thanh phát nhỏ không còn nhấp nháy giữa hai trạng thái khi vuốt lên xuống: tính theo quãng cuộn liên tục theo một hướng, bỏ qua đàn hồi ở hai đầu danh sách và có thời gian nghỉ để hiệu ứng chạy xong.
+
 Mochy iOS 0.6.5 — tối ưu hiệu năng, bỏ viền và dải sáng của thấu kính
 
 - Giảm giật: làm mờ chữ lời và vầng sáng từng chữ chuyển sang cách vẽ nhẹ (không còn bộ lọc nặng chạy trên luồng chính mỗi lần đổi dòng); đốm màu nền dùng ảnh có sẵn thay cho gradient vẽ lại mỗi khung hình; mặt nạ dải màu chỉ gắn khi cần và ẩn hẳn khi không hiện; ít lớp mờ hơn.
