@@ -1,7 +1,7 @@
 import UIKit
 
 /// Tab "Cài đặt": cập nhật phần mềm (kiểm tra tự động, kênh Ổn định / Nhà phát triển), thông tin bản dựng, giới thiệu.
-final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIDocumentPickerDelegate {
     private enum Row {
         case theme
         case quality
@@ -9,6 +9,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case downloadsInfo
         case clearDownloads
         case clearHistory
+        case backup
+        case restore
+        case lastfm
+        case importList
+        case recap
         case credits
         case version
         case channel
@@ -84,7 +89,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
                     rows: [.quality, .videoBackdrop]),
+            Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .lastfm]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
+            Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
+                    rows: [.backup, .restore]),
             Section(title: "Cập nhật phần mềm", footer: channelFooter, rows: updateRows),
             Section(title: "Thông tin bản dựng", footer: nil, rows: [
                 .info("Kênh của bản dựng", builtChannel),
@@ -160,6 +168,27 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell = UITableViewCell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Xoá lịch sử nghe"
             cell.textLabel?.textColor = Theme.accent
+
+        case .backup:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = "Sao lưu dữ liệu ngay…"
+            cell.textLabel?.textColor = Theme.accent
+
+        case .restore:
+            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = "Khôi phục từ tệp sao lưu…"
+            cell.textLabel?.textColor = Theme.accent
+
+        case .recap, .importList, .lastfm:
+            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            switch row {
+            case .recap: cell.textLabel?.text = "Recap"
+            case .importList: cell.textLabel?.text = "Nhập playlist từ link"
+            default:
+                cell.textLabel?.text = "Last.fm"
+                cell.detailTextLabel?.text = LastFM.shared.isLoggedIn ? LastFM.shared.username : "Chưa đăng nhập"
+            }
+            cell.accessoryType = .disclosureIndicator
 
         case .credits:
             cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
@@ -248,7 +277,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         let keepColor = cell.textLabel?.textColor
         Theme.style(cell: cell, grouped: true)
         switch row {
-        case .checkNow, .updateAvailable, .clearDownloads, .clearHistory:
+        case .checkNow, .updateAvailable, .clearDownloads, .clearHistory, .backup, .restore:
             cell.textLabel?.textColor = keepColor
         default:
             break
@@ -260,12 +289,22 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.deselectRow(at: indexPath, animated: true)
         let row = sections[indexPath.section].rows[indexPath.row]
         switch row {
+        case .recap:
+            navigationController?.pushViewController(RecapViewController(), animated: true)
+        case .importList:
+            navigationController?.pushViewController(ImportViewController(), animated: true)
+        case .lastfm:
+            navigationController?.pushViewController(LastFMViewController(), animated: true)
         case .credits:
             navigationController?.pushViewController(CreditsViewController(), animated: true)
         case .clearDownloads:
             confirm("Xoá tất cả bài đã tải xuống?", button: "Xoá") { Library.shared.removeAllDownloads() }
         case .clearHistory:
             confirm("Xoá toàn bộ lịch sử nghe?", button: "Xoá") { Library.shared.clearHistory() }
+        case .backup:
+            backupNow()
+        case .restore:
+            pickBackup()
         case .checkNow:
             Updater.shared.check(manual: true)
         case .updateAvailable:
@@ -345,11 +384,20 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         if !info.notes.isEmpty {
             message += "\n\n" + String(info.notes.prefix(600))
         }
+        message += "\n\nDữ liệu của bạn được sao lưu tự động trước khi tải. Khi ký .ipa hãy giữ nguyên Bundle ID \(UpdateConfig.appId) và cài đè lên bản cũ để không mất dữ liệu."
         let alert = UIAlertController(title: "Có bản cập nhật", message: message, preferredStyle: .alert)
 
-        if let file = Updater.shared.preferredFile(for: info) {
-            let kind = file.name.lowercased().hasSuffix(".deb") ? ".deb" : ".ipa"
-            alert.addAction(UIAlertAction(title: "Tải bản \(kind) (\(sizeText(file.size)))", style: .default) { [weak self] _ in
+        // Cả hai nguồn (.ipa để ký bằng ESign…, .deb cho Sileo/Filza) đều hiện ra; nguồn hợp với cách cài của bạn ghi "khuyên dùng".
+        let recommended = Updater.shared.preferredFile(for: info)
+        var files: [UpdateFile] = []
+        if let first = recommended { files.append(first) }
+        for other in [info.ipa, info.deb] {
+            if let other = other, !files.contains(where: { $0.name == other.name }) { files.append(other) }
+        }
+        for file in files {
+            let kind = file.name.lowercased().hasSuffix(".deb") ? ".deb (Sileo, Filza)" : ".ipa (ký bằng ESign…)"
+            let star = file.name == recommended?.name ? " — khuyên dùng" : ""
+            alert.addAction(UIAlertAction(title: "Tải \(kind)\(star) · \(sizeText(file.size))", style: .default) { [weak self] _ in
                 self?.startDownload(file)
             })
         }
@@ -366,6 +414,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     private func startDownload(_ file: UpdateFile) {
+        // Sao lưu dữ liệu trước khi cập nhật, phòng khi bản ký lại dùng Bundle ID khác hoặc phải gỡ app.
+        BackupManager.backup(name: "truoc-cap-nhat")
         let alert = UIAlertController(title: "Đang tải", message: "\(file.name)\n0%", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel) { _ in
             Updater.shared.cancelDownload()
@@ -415,6 +465,37 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         if !controller.presentOpenInMenu(from: anchor, in: view, animated: true) {
             showMessage("Không có ứng dụng phù hợp",
                         "Không tìm thấy ứng dụng nào mở được tệp này. Hãy dùng \"Chia sẻ / Lưu vào Tệp…\" rồi mở bằng Sileo, Filza hoặc ESign.")
+        }
+    }
+
+    // MARK: - Sao lưu / khôi phục
+
+    private func backupNow() {
+        guard let url = BackupManager.backup(name: BackupManager.timestampName()) else {
+            showMessage("Không sao lưu được", "Không ghi được tệp sao lưu.")
+            return
+        }
+        let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+        }
+        present(controller, animated: true, completion: nil)
+    }
+
+    private func pickBackup() {
+        let picker = UIDocumentPickerViewController(documentTypes: ["public.json", "public.data", "public.text"], in: .import)
+        picker.delegate = self
+        present(picker, animated: true, completion: nil)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        switch BackupManager.restore(from: url) {
+        case .success(let added):
+            showMessage("Đã khôi phục", added == 0 ? "Không có mục nào mới, dữ liệu hiện tại đã đủ." : "Đã gộp thêm \(added) mục vào thư viện.")
+        case .failure(let error):
+            showMessage("Không khôi phục được", error.message)
         }
     }
 }

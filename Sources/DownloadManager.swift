@@ -80,8 +80,15 @@ final class DownloadManager {
         finish(song, error: error)
     }
 
-    private func complete(_ song: Song, handle: FileHandle, temp: URL) {
+    private func complete(_ song: Song, info: StreamInfo, handle: FileHandle, temp: URL) {
         handle.closeFile()
+        // Tệp thiếu so với dung lượng khai báo = tải bị cắt giữa chừng: báo lỗi thay vì lưu một bài hụt.
+        let written = ((try? FileManager.default.attributesOfItem(atPath: temp.path))?[.size] as? NSNumber)?.int64Value ?? 0
+        if info.contentLength > 0 && written < Int64(Double(info.contentLength) * 0.98) {
+            try? FileManager.default.removeItem(at: temp)
+            finish(song, error: "Tệp tải về bị thiếu (\(written) / \(info.contentLength) byte). Hãy thử tải lại.")
+            return
+        }
         let target = Library.downloadsDirectory.appendingPathComponent(song.videoId + ".m4a")
         try? FileManager.default.removeItem(at: target)
         do {
@@ -90,9 +97,15 @@ final class DownloadManager {
             finish(song, error: "Không lưu được tệp: \(error.localizedDescription)")
             return
         }
-        Library.shared.addDownload(song)
-        progress[song.videoId] = nil
-        post()
+        // Độ dài thật + lời bài hát được lưu cạnh tệp nhạc để nghe offline đúng độ dài, có lời.
+        let real = info.durationSeconds > 0 ? info.durationSeconds : LyricsService.seconds(song.duration)
+        DownloadStore.update(song.videoId) { $0.duration = real > 0 ? real : nil }
+        DownloadStore.normalize(file: target, realDuration: real) { [weak self] in
+            Library.shared.addDownload(song)
+            self?.progress[song.videoId] = nil
+            self?.post()
+            LyricsService.shared.storeForDownload(song, durationHint: real)
+        }
     }
 
     private func fetch(_ song: Song, info: StreamInfo, handle: FileHandle, temp: URL, offset: Int64, total: Int64?) {
@@ -115,13 +128,13 @@ final class DownloadManager {
                     return
                 }
                 if http.statusCode == 416 && offset > 0 {
-                    self.complete(song, handle: handle, temp: temp)
+                    self.complete(song, info: info, handle: handle, temp: temp)
                     return
                 }
                 if http.statusCode == 200 {
                     // Máy chủ bỏ qua Range và trả cả tệp.
                     handle.write(data)
-                    self.complete(song, handle: handle, temp: temp)
+                    self.complete(song, info: info, handle: handle, temp: temp)
                     return
                 }
                 guard http.statusCode == 206 else {
@@ -141,7 +154,7 @@ final class DownloadManager {
                     self.post()
                 }
                 if data.isEmpty || (totalBytes != nil && newOffset >= totalBytes!) {
-                    self.complete(song, handle: handle, temp: temp)
+                    self.complete(song, info: info, handle: handle, temp: temp)
                 } else {
                     self.fetch(song, info: info, handle: handle, temp: temp, offset: newOffset, total: totalBytes)
                 }

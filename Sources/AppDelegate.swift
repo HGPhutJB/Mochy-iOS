@@ -14,6 +14,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         _ = PlayerEngine.shared
+        ScrobbleTracker.shared.start()
         let window = UIWindow(frame: UIScreen.main.bounds)
         Theme.applyWindowStyle(window)
         window.rootViewController = RootViewController()
@@ -34,8 +35,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         }, completion: nil)
     }
 
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        PlayLog.shared.flush()
+    }
+
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Tự kiểm tra cập nhật (tối đa mỗi 6 giờ, và chỉ khi người dùng không tắt trong Cài đặt).
         Updater.shared.autoCheckIfNeeded()
+        BackupManager.autoBackupIfNeeded()
     }
 }

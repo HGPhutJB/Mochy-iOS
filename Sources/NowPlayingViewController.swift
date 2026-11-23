@@ -688,7 +688,8 @@ final class NowPlayingViewController: UIViewController {
     @objc private func likeTapped() {
         guard let song = PlayerEngine.shared.currentSong else { return }
         Haptics.tap()
-        Library.shared.toggleLike(song)
+        let nowLiked = Library.shared.toggleLike(song)
+        LastFM.shared.love(song, loved: nowLiked)
         infoA.checkButton.pop()
         infoB.checkButton.pop()
     }
@@ -715,6 +716,18 @@ final class NowPlayingViewController: UIViewController {
             guard let self = self else { return }
             SongActions.present(for: song, from: self, sourceView: self.moreGlass)
         })
+        sheet.addAction(UIAlertAction(title: "Thông tin bài hát", style: .default) { [weak self] _ in
+            let nav = UINavigationController(rootViewController: SongInfoViewController(song: song))
+            self?.present(nav, animated: true, completion: nil)
+        })
+        if let artistId = song.artistId, !artistId.isEmpty {
+            sheet.addAction(UIAlertAction(title: "Xem nghệ sĩ", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.dismiss(animated: true) {
+                    MusicPageViewController.present(artist: song.artist, id: artistId, from: UIApplication.shared.keyWindow?.rootViewController ?? self)
+                }
+            })
+        }
         sheet.addAction(UIAlertAction(title: "Độ đậm lời: \(RoundedFont.titles[AppSettings.lyricWeight])…", style: .default) { [weak self] _ in
             self?.showWeightPanel()
         })

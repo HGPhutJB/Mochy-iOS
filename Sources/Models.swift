@@ -9,6 +9,7 @@ struct Song: Codable, Hashable {
     let duration: String?     // "3:45" nếu có
     let thumbnailURL: URL?
     var explicit: Bool? = nil
+    var artistId: String? = nil   // browseId của nghệ sĩ trên YouTube Music (nếu biết)
 
     /// Ảnh bìa lớn hơn (dùng cho màn hình đang phát).
     var largeThumbnailURL: URL? {
@@ -31,6 +32,7 @@ struct Playlist: Codable {
     var name: String
     var songs: [Song]
     let created: Date
+    var sourceURL: String? = nil   // link gốc nếu playlist được nhập từ Spotify/Apple Music/…
 }
 
 struct HistoryEntry: Codable {

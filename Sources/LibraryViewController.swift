@@ -89,6 +89,7 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
         title = "Thư viện"
         view.backgroundColor = Theme.background
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Playlist mới", style: .plain, target: self, action: #selector(newPlaylist))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Nhập", style: .plain, target: self, action: #selector(openImport))
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = Theme.background
@@ -116,6 +117,10 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
 
     @objc private func dataChanged() {
         tableView.reloadData()
+    }
+
+    @objc private func openImport() {
+        navigationController?.pushViewController(ImportViewController(), animated: true)
     }
 
     @objc private func newPlaylist() {

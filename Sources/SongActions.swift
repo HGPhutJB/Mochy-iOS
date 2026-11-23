@@ -19,8 +19,14 @@ enum SongActions {
         let liked = library.isLiked(song)
         sheet.addAction(UIAlertAction(title: liked ? "Bỏ yêu thích" : "Thêm vào Yêu thích", style: .default) { _ in
             let nowLiked = library.toggleLike(song)
+            LastFM.shared.love(song, loved: nowLiked)
             Toast.show(nowLiked ? "Đã thêm vào Yêu thích" : "Đã bỏ khỏi Yêu thích")
         })
+        if let artistId = song.artistId, !artistId.isEmpty {
+            sheet.addAction(UIAlertAction(title: "Xem nghệ sĩ", style: .default) { _ in
+                MusicPageViewController.present(artist: song.artist, id: artistId, from: vc)
+            })
+        }
         sheet.addAction(UIAlertAction(title: "Thêm vào playlist…", style: .default) { _ in
             presentPlaylistPicker(for: song, from: vc, sourceView: sourceView)
         })

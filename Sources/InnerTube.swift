@@ -391,7 +391,18 @@ final class InnerTube {
 
     private static let typeWords: Set<String> = ["Song", "Video", "Single", "EP", "Album", "Bài hát", "Đĩa đơn", "Băng đĩa"]
 
-    private static func makeSong(fromListItem item: [String: Any]) -> Song? {
+    /// Tìm browseId của nghệ sĩ trong một dãy "runs" (chữ có kèm liên kết).
+    static func artistId(in runs: [[String: Any]]) -> String? {
+        for run in runs {
+            let endpoint = dig(run, ["navigationEndpoint", "browseEndpoint"]) as? [String: Any]
+            guard let id = endpoint?["browseId"] as? String, id.hasPrefix("UC") else { continue }
+            let page = dig(endpoint, ["browseEndpointContextSupportedConfigs", "browseEndpointContextMusicConfig", "pageType"]) as? String
+            if page == nil || page == "MUSIC_PAGE_TYPE_ARTIST" || page == "MUSIC_PAGE_TYPE_USER_CHANNEL" { return id }
+        }
+        return nil
+    }
+
+    fileprivate static func makeSong(fromListItem item: [String: Any]) -> Song? {
         guard let videoId = findString(item, key: "videoId") else { return nil }
         let title = runs(item, column: 0).joined()
         if title.isEmpty { return nil }
@@ -406,6 +417,8 @@ final class InnerTube {
         let thumb = sizedThumbnail(dig(item, thumbPath) as? [[String: Any]])
         var song = Song(videoId: videoId, title: title, artist: artist, subtitle: subtitle, duration: duration, thumbnailURL: thumb)
         song.explicit = String(describing: item).contains("MUSIC_EXPLICIT_BADGE")
+        let columnRuns = (dig(item, ["flexColumns", 1, "musicResponsiveListItemFlexColumnRenderer", "text", "runs"]) as? [[String: Any]]) ?? []
+        song.artistId = artistId(in: columnRuns)
         return song
     }
 
@@ -422,8 +435,10 @@ final class InnerTube {
         let artist = parts.first ?? ""
         let thumbPath: [Any] = ["thumbnailRenderer", "musicThumbnailRenderer", "thumbnail", "thumbnails"]
         let thumb = sizedThumbnail(dig(item, thumbPath) as? [[String: Any]])
-        return Song(videoId: videoId, title: title, artist: artist, subtitle: parts.joined(separator: " · "),
-                    duration: nil, thumbnailURL: thumb)
+        var song = Song(videoId: videoId, title: title, artist: artist, subtitle: parts.joined(separator: " · "),
+                        duration: nil, thumbnailURL: thumb)
+        song.artistId = artistId(in: subRuns)
+        return song
     }
 
     static func parseSongs(_ json: [String: Any]) -> [Song] {
@@ -441,7 +456,7 @@ final class InnerTube {
 
     // MARK: - Các hàng (shelf) trên trang Khám phá / Bảng xếp hạng
 
-    private static func collectShelves(_ node: Any, into out: inout [[String: Any]]) {
+    fileprivate static func collectShelves(_ node: Any, into out: inout [[String: Any]]) {
         if let dict = node as? [String: Any] {
             for key in ["musicCarouselShelfRenderer", "musicShelfRenderer", "musicPlaylistShelfRenderer", "musicImmersiveCarouselShelfRenderer"] {
                 if let shelf = dict[key] as? [String: Any] {
@@ -459,7 +474,7 @@ final class InnerTube {
         }
     }
 
-    private static func shelfTitle(_ shelf: [String: Any]) -> String {
+    fileprivate static func shelfTitle(_ shelf: [String: Any]) -> String {
         let paths: [[Any]] = [
             ["header", "musicCarouselShelfBasicHeaderRenderer", "title", "runs", 0, "text"],
             ["header", "musicImmersiveCarouselShelfBasicHeaderRenderer", "title", "runs", 0, "text"],
@@ -573,5 +588,213 @@ final class InnerTube {
             return reason.isEmpty ? "trạng thái \(status), không có luồng" : "\(status): \(reason)"
         }
         return "có luồng nhưng không có link trực tiếp (cần giải mã chữ ký)"
+    }
+}
+
+// MARK: - Playlist, nghệ sĩ, album (YouTube Music)
+
+/// Một thẻ (album, đĩa đơn, nghệ sĩ liên quan…) trên trang nghệ sĩ.
+struct BrowseCard {
+    let title: String
+    let subtitle: String
+    let thumbnail: URL?
+    let browseId: String
+}
+
+struct ArtistSection {
+    let title: String
+    let cards: [BrowseCard]
+}
+
+struct ArtistPage {
+    var name: String
+    var thumbnail: URL?
+    var songs: [Song]
+    var sections: [ArtistSection]
+}
+
+struct AlbumPage {
+    var title: String
+    var artist: String
+    var thumbnail: URL?
+    var songs: [Song]
+}
+
+extension InnerTube {
+    /// Gọi một endpoint YouTube Music (browse, search…) bằng client WEB_REMIX; kết quả trả về trên main.
+    func music(_ endpoint: String, extra: [String: Any], completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        let client: [String: Any] = ["clientName": "WEB_REMIX", "clientVersion": webRemixVersion, "hl": "vi", "gl": "VN"]
+        var body: [String: Any] = ["context": ["client": client]]
+        for (key, value) in extra { body[key] = value }
+        let headers: [String: String] = [
+            "X-Goog-Api-Format-Version": "1", "X-YouTube-Client-Name": "67", "X-YouTube-Client-Version": webRemixVersion,
+            "X-Origin": "https://music.youtube.com", "Referer": "https://music.youtube.com/", "User-Agent": webUserAgent
+        ]
+        postJSON(apiBase + endpoint + "?prettyPrint=false", headers: headers, body: body) { result in
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
+    private static func findToken(_ node: Any) -> String? {
+        if let dict = node as? [String: Any] {
+            if let command = dict["continuationCommand"] as? [String: Any], let token = command["token"] as? String { return token }
+            for (_, value) in dict { if let found = findToken(value) { return found } }
+        } else if let array = node as? [Any] {
+            for value in array { if let found = findToken(value) { return found } }
+        }
+        return nil
+    }
+
+    private static func firstThumbnail(_ node: Any) -> URL? {
+        if let dict = node as? [String: Any] {
+            if let thumbs = dict["thumbnails"] as? [[String: Any]], let raw = thumbs.last?["url"] as? String {
+                let sized = raw.replacingOccurrences(of: "=w\\d+-h\\d+[^&]*", with: "=w544-h544", options: .regularExpression)
+                return URL(string: sized)
+            }
+            for (_, value) in dict { if let found = firstThumbnail(value) { return found } }
+        } else if let array = node as? [Any] {
+            for value in array { if let found = firstThumbnail(value) { return found } }
+        }
+        return nil
+    }
+
+    private static func headerDict(_ json: [String: Any]) -> [String: Any]? {
+        guard let header = json["header"] as? [String: Any] else { return nil }
+        for (_, value) in header { if let dict = value as? [String: Any] { return dict } }
+        return nil
+    }
+
+    private static func runsText(_ node: Any?) -> String {
+        let runs = (dig(node, ["runs"]) as? [[String: Any]]) ?? []
+        return runs.compactMap { $0["text"] as? String }.joined()
+    }
+
+    /// Tất cả bài của một playlist YouTube / YouTube Music (đi theo trang tiếp theo, tối đa ~1000 bài).
+    func playlistSongs(listId: String, completion: @escaping (Result<(name: String, songs: [Song]), Error>) -> Void) {
+        let browseId = listId.hasPrefix("VL") ? listId : "VL" + listId
+        music("browse", extra: ["browseId": browseId]) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let json):
+                var name = ""
+                if let header = InnerTube.headerDict(json) { name = InnerTube.runsText(header["title"]) }
+                if name.isEmpty { name = "Playlist YouTube" }
+                var songs = InnerTube.parseSongs(json)
+                if songs.isEmpty { completion(.failure(MochyError.badResponse("Playlist trống hoặc ở chế độ riêng tư"))); return }
+                self.continuePlaylist(token: InnerTube.findToken(json), songs: songs, pages: 0) { all in
+                    songs = all
+                    completion(.success((name, songs)))
+                }
+            }
+        }
+    }
+
+    private func continuePlaylist(token: String?, songs: [Song], pages: Int, done: @escaping ([Song]) -> Void) {
+        guard let token = token, pages < 9 else { done(songs); return }
+        music("browse", extra: ["continuation": token]) { [weak self] result in
+            guard let self = self, case .success(let json) = result else { done(songs); return }
+            var all = songs
+            let known = Set(songs.map { $0.videoId })
+            for song in InnerTube.parseSongs(json) where !known.contains(song.videoId) { all.append(song) }
+            self.continuePlaylist(token: InnerTube.findToken(json), songs: all, pages: pages + 1, done: done)
+        }
+    }
+
+    /// Tìm browseId nghệ sĩ theo tên (lấy liên kết nghệ sĩ có tên trùng nhất trong kết quả tìm kiếm).
+    func findArtistId(name: String, completion: @escaping (String?) -> Void) {
+        music("search", extra: ["query": name]) { result in
+            guard case .success(let json) = result else { completion(nil); return }
+            var pairs: [(String, String)] = []
+            func walk(_ node: Any) {
+                if let dict = node as? [String: Any] {
+                    if let text = dict["text"] as? String, let id = InnerTube.artistId(in: [dict]) { pairs.append((text, id)) }
+                    for (_, value) in dict { walk(value) }
+                } else if let array = node as? [Any] {
+                    array.forEach(walk)
+                }
+            }
+            walk(json)
+            let wanted = SongMatcher.normalize(name)
+            let exact = pairs.first { SongMatcher.normalize($0.0) == wanted }
+            completion((exact ?? pairs.first)?.1)
+        }
+    }
+
+    func artistPage(id: String, completion: @escaping (Result<ArtistPage, Error>) -> Void) {
+        music("browse", extra: ["browseId": id]) { result in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let json):
+                var page = ArtistPage(name: "", thumbnail: nil, songs: [], sections: [])
+                if let header = InnerTube.headerDict(json) {
+                    page.name = InnerTube.runsText(header["title"])
+                    page.thumbnail = InnerTube.firstThumbnail(header)
+                }
+                var shelves: [[String: Any]] = []
+                InnerTube.collectShelves(json, into: &shelves)
+                for shelf in shelves {
+                    guard let contents = shelf["contents"] as? [Any] else { continue }
+                    var songs: [Song] = []
+                    var cards: [BrowseCard] = []
+                    for element in contents {
+                        guard let dict = element as? [String: Any] else { continue }
+                        if let item = dict["musicResponsiveListItemRenderer"] as? [String: Any], let song = InnerTube.makeSong(fromListItem: item) {
+                            songs.append(song)
+                        } else if let item = dict["musicTwoRowItemRenderer"] as? [String: Any],
+                                  let browseId = InnerTube.dig(item, ["navigationEndpoint", "browseEndpoint", "browseId"]) as? String {
+                            let thumbs = InnerTube.dig(item, ["thumbnailRenderer", "musicThumbnailRenderer", "thumbnail"]).flatMap { InnerTube.firstThumbnail($0) }
+                            cards.append(BrowseCard(title: InnerTube.runsText(item["title"]),
+                                                    subtitle: InnerTube.runsText(item["subtitle"]),
+                                                    thumbnail: thumbs, browseId: browseId))
+                        }
+                    }
+                    if page.songs.isEmpty && !songs.isEmpty {
+                        let artistName = page.name
+                        page.songs = songs.map { s in
+                            s.artist.isEmpty
+                                ? Song(videoId: s.videoId, title: s.title, artist: artistName, subtitle: s.subtitle, duration: s.duration, thumbnailURL: s.thumbnailURL)
+                                : s
+                        }
+                    } else if !cards.isEmpty {
+                        page.sections.append(ArtistSection(title: InnerTube.shelfTitle(shelf), cards: cards))
+                    }
+                }
+                if page.name.isEmpty && page.songs.isEmpty && page.sections.isEmpty {
+                    completion(.failure(MochyError.badResponse("Không đọc được trang nghệ sĩ")))
+                } else {
+                    completion(.success(page))
+                }
+            }
+        }
+    }
+
+    func albumPage(id: String, completion: @escaping (Result<AlbumPage, Error>) -> Void) {
+        music("browse", extra: ["browseId": id]) { result in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let json):
+                var title = "", artist = ""
+                var thumb: URL?
+                if let header = InnerTube.headerDict(json) {
+                    title = InnerTube.runsText(header["title"])
+                    let sub = InnerTube.runsText(header["subtitle"]).components(separatedBy: " • ")
+                    artist = sub.count > 1 ? sub[1] : (sub.first ?? "")
+                    thumb = InnerTube.firstThumbnail(header)
+                }
+                let songs = InnerTube.parseSongs(json).map { s in
+                    Song(videoId: s.videoId, title: s.title, artist: artist.isEmpty ? s.artist : artist, subtitle: title,
+                         duration: s.duration, thumbnailURL: thumb ?? s.thumbnailURL)
+                }
+                if songs.isEmpty {
+                    completion(.failure(MochyError.badResponse("Không đọc được album")))
+                } else {
+                    completion(.success(AlbumPage(title: title, artist: artist, thumbnail: thumb, songs: songs)))
+                }
+            }
+        }
     }
 }

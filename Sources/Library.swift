@@ -13,7 +13,7 @@ final class Library {
     private(set) var history: [HistoryEntry] = []
     private(set) var downloads: [Song] = []
 
-    private struct Store: Codable {
+    struct Store: Codable {
         var liked: [Song]
         var playlists: [Playlist]
         var history: [HistoryEntry]
@@ -64,6 +64,43 @@ final class Library {
         NotificationCenter.default.post(name: .libraryChanged, object: nil)
     }
 
+    // MARK: - Sao lưu / khôi phục
+
+    /// Bản chụp dữ liệu để sao lưu (không gồm tệp nhạc đã tải, chỉ gồm danh sách).
+    func snapshot() -> Store {
+        return Store(liked: liked, playlists: playlists, history: history, downloads: [])
+    }
+
+    /// Gộp dữ liệu từ bản sao lưu vào thư viện hiện tại, không xoá hay ghi đè gì đang có. Trả về số mục thêm mới.
+    @discardableResult
+    func merge(_ other: Store) -> Int {
+        var added = 0
+        for song in other.liked where !liked.contains(song) {
+            liked.append(song)
+            added += 1
+        }
+        for playlist in other.playlists {
+            if let index = playlists.firstIndex(where: { $0.id == playlist.id }) {
+                for song in playlist.songs where !playlists[index].songs.contains(song) {
+                    playlists[index].songs.append(song)
+                    added += 1
+                }
+            } else {
+                playlists.append(playlist)
+                added += 1 + playlist.songs.count
+            }
+        }
+        let known = Set(history.map { "\($0.song.videoId)|\(Int($0.date.timeIntervalSince1970))" })
+        for entry in other.history where !known.contains("\(entry.song.videoId)|\(Int(entry.date.timeIntervalSince1970))") {
+            history.append(entry)
+            added += 1
+        }
+        history.sort { $0.date > $1.date }
+        if history.count > historyLimit { history = Array(history.prefix(historyLimit)) }
+        save()
+        return added
+    }
+
     // MARK: - Yêu thích
 
     func isLiked(_ song: Song) -> Bool {
@@ -102,6 +139,28 @@ final class Library {
         playlists.insert(list, at: 0)
         save()
         return list
+    }
+
+    /// Nhập một danh sách bài vào playlist: cùng link gốc thì cập nhật (chỉ thêm bài mới), không thì tạo playlist mới.
+    @discardableResult
+    func importPlaylist(name: String, songs: [Song], sourceURL: String) -> (playlist: Playlist, added: Int) {
+        if let i = playlists.firstIndex(where: { $0.sourceURL == sourceURL }) {
+            var added = 0
+            for song in songs where !playlists[i].songs.contains(song) {
+                playlists[i].songs.append(song)
+                added += 1
+            }
+            save()
+            return (playlists[i], added)
+        }
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var unique: [Song] = []
+        for song in songs where !unique.contains(song) { unique.append(song) }
+        var list = Playlist(id: UUID().uuidString, name: clean.isEmpty ? "Playlist nhập" : clean, songs: unique, created: Date())
+        list.sourceURL = sourceURL
+        playlists.insert(list, at: 0)
+        save()
+        return (list, unique.count)
     }
 
     func renamePlaylist(id: String, name: String) {
@@ -207,6 +266,7 @@ final class Library {
     func removeDownload(_ song: Song) {
         let url = Library.downloadsDirectory.appendingPathComponent(song.videoId + ".m4a")
         try? FileManager.default.removeItem(at: url)
+        DownloadStore.remove(song.videoId)
         downloads.removeAll { $0 == song }
         save()
     }
@@ -215,6 +275,7 @@ final class Library {
         for song in downloads {
             let url = Library.downloadsDirectory.appendingPathComponent(song.videoId + ".m4a")
             try? FileManager.default.removeItem(at: url)
+            DownloadStore.remove(song.videoId)
         }
         downloads.removeAll()
         save()

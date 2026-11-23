@@ -55,6 +55,10 @@
 	</array>
 	<key>MinimumOSVersion</key>
 	<string>12.2</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

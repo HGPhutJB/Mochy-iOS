@@ -276,6 +276,7 @@ final class PlayerEngine: NSObject {
 
         if let local = Library.shared.localURL(for: song.videoId) {
             isLocal = true
+            localRealDuration = DownloadStore.realDuration(for: song)
             begin(url: local, headers: nil)
             return
         }
@@ -301,6 +302,7 @@ final class PlayerEngine: NSObject {
         return t.isFinite ? t : currentTime
     }
     private var durationCapped = false
+    private var localRealDuration: Double = 0   // độ dài thật của bài đã tải
 
     private func begin(url: URL, headers: [String: String]?, stream: StreamInfo? = nil) {
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -433,7 +435,7 @@ final class PlayerEngine: NSObject {
             let seconds = item.duration.seconds
             duration = seconds.isFinite ? seconds : 0
             // Tệp DASH của YouTube đôi khi khai độ dài sai (bài 3:54 hiện 6:50): tin độ dài YouTube trả về.
-            let real = streamInfo?.durationSeconds ?? 0
+            let real = isLocal ? localRealDuration : (streamInfo?.durationSeconds ?? 0)
             if real > 0 && (duration <= 0 || abs(duration - real) > 2) {
                 duration = real
                 durationCapped = true
@@ -448,7 +450,7 @@ final class PlayerEngine: NSObject {
                 player?.seek(to: CMTime(seconds: target, preferredTimescale: 600))
                 currentTime = target
             }
-            if recoveries == 0, let song = currentSong { Library.shared.addHistory(song) }
+            if recoveries == 0, let song = currentSong { Library.shared.addHistory(song); PlayLog.shared.record(song) }
             postState()
             updateNowPlayingInfo()
         case .failed:

@@ -31,12 +31,24 @@ final class LyricsService {
         return URLSession(configuration: c)
     }()
 
+    /// Lời đang có trong bộ nhớ (không gọi mạng), dùng cho màn hình thông tin bài.
+    func cached(_ videoId: String) -> LyricsResult? {
+        lock.lock(); defer { lock.unlock() }
+        return cache[videoId]
+    }
+
     func lyrics(for song: Song, durationHint: Double, completion: @escaping (LyricsResult?) -> Void) {
         lock.lock()
         let hit = cache[song.videoId]
         let known = missed.contains(song.videoId)
         lock.unlock()
         if let hit = hit { completion(hit); return }
+        // Bài đã tải kèm lời thì dùng lời đã lưu (nghe offline vẫn có lời).
+        if let stored = DownloadStore.lyrics(song.videoId) {
+            lock.lock(); cache[song.videoId] = stored; lock.unlock()
+            completion(stored)
+            return
+        }
         if known { completion(nil); return }
         DispatchQueue.global(qos: .userInitiated).async {
             let duration = durationHint > 0 ? durationHint : LyricsService.seconds(song.duration)
@@ -57,7 +69,19 @@ final class LyricsService {
             self.lock.lock()
             if let best = best { self.cache[song.videoId] = best } else { self.missed.insert(song.videoId) }
             self.lock.unlock()
+            // Bài đã tải mà chưa có lời lưu sẵn (tải từ bản cũ) thì lưu luôn lần đầu lấy được.
+            if let best = best, Library.shared.localURL(for: song.videoId) != nil {
+                DownloadStore.update(song.videoId) { if $0.lyrics == nil { $0.lyrics = best.stored } }
+            }
             DispatchQueue.main.async { completion(best) }
+        }
+    }
+
+    /// Lấy lời ngay khi tải xong bài và lưu cạnh tệp nhạc.
+    func storeForDownload(_ song: Song, durationHint: Double) {
+        lyrics(for: song, durationHint: durationHint) { result in
+            guard let result = result else { return }
+            DownloadStore.update(song.videoId) { $0.lyrics = result.stored }
         }
     }
 
@@ -301,7 +325,7 @@ final class LyricsService {
         return words
     }
 
-    private static func cleanTitle(_ title: String) -> String {
+    static func cleanTitle(_ title: String) -> String {
         var t = title
         let patterns = ["\\s*[\\(\\[][^\\)\\]]*(official|video|audio|lyric|visualizer|hd|hq|4k|remaster|live|mv)[^\\)\\]]*[\\)\\]]",
                         "\\s*【.*?】", "\\s*\\|.*$", "\\s*[\\(\\[]?(feat|ft)\\.?[^\\)\\]]*[\\)\\]]?$"]
@@ -309,7 +333,7 @@ final class LyricsService {
         return t.trimmingCharacters(in: .whitespaces)
     }
 
-    private static func cleanArtist(_ artist: String) -> String {
+    static func cleanArtist(_ artist: String) -> String {
         var a = artist
         for sep in [" & ", " and ", ", ", " x ", " feat. ", " ft. ", " with "] {
             if let r = a.range(of: sep, options: .caseInsensitive) { a = String(a[..<r.lowerBound]); break }
