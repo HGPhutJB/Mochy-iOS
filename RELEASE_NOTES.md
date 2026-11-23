@@ -1,3 +1,9 @@
+Mochy iOS 0.6.5 — tối ưu hiệu năng, bỏ viền và dải sáng của thấu kính
+
+- Giảm giật: làm mờ chữ lời và vầng sáng từng chữ chuyển sang cách vẽ nhẹ (không còn bộ lọc nặng chạy trên luồng chính mỗi lần đổi dòng); đốm màu nền dùng ảnh có sẵn thay cho gradient vẽ lại mỗi khung hình; mặt nạ dải màu chỉ gắn khi cần và ẩn hẳn khi không hiện; ít lớp mờ hơn.
+- Mở màn hình đang phát: video chờ màn hình hiện xong mới tải; khi lời phủ kín thì video tạm dừng; ảnh bìa được giải mã sẵn ở luồng nền.
+- Thanh tab: đo độ sáng nền chỉ chụp đúng dải phía sau thanh và thưa hơn; bỏ viền kính và dải trắng của thấu kính chọn tab.
+
 Mochy iOS 0.6.4 — sửa vệt xám ở thanh home
 
 - Màn hình đang phát: sửa vệt xám hiện ở chỗ thanh home khi mở/tắt lời và khi mở bài từ thanh phát nhỏ (dải màu "thở" làm hở mép dưới).

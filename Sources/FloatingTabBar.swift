@@ -52,7 +52,6 @@ final class FloatingTabBar: UIView {
         lensSheen.locations = [0, 0.55, 1]
         lensSheen.startPoint = CGPoint(x: 0.5, y: 0)
         lensSheen.endPoint = CGPoint(x: 0.5, y: 1)
-        lens.layer.addSublayer(lensSheen)
         lensRim.colors = [UIColor(white: 1, alpha: 0.85).cgColor, UIColor(white: 1, alpha: 0.12).cgColor, UIColor(white: 1, alpha: 0.5).cgColor]
         lensRim.startPoint = CGPoint(x: 0.2, y: 0)
         lensRim.endPoint = CGPoint(x: 0.8, y: 1)
@@ -60,7 +59,6 @@ final class FloatingTabBar: UIView {
         lensRimMask.strokeColor = UIColor.black.cgColor
         lensRimMask.lineWidth = 1.4
         lensRim.mask = lensRimMask
-        lens.layer.addSublayer(lensRim)
         glass.contentView.addSubview(lens)
 
         rim.colors = [UIColor(white: 1, alpha: 0.5).cgColor, UIColor(white: 1, alpha: 0.06).cgColor, UIColor(white: 1, alpha: 0.28).cgColor]
@@ -146,10 +144,6 @@ final class FloatingTabBar: UIView {
         let b = lens.bounds
         lens.layer.cornerRadius = b.height / 2
         lens.layer.shadowPath = UIBezierPath(roundedRect: b, cornerRadius: b.height / 2).cgPath
-        lensSheen.frame = b
-        lensSheen.cornerRadius = b.height / 2
-        lensRim.frame = b
-        lensRimMask.path = UIBezierPath(roundedRect: b.insetBy(dx: 0.7, dy: 0.7), cornerRadius: b.height / 2).cgPath
     }
 
     // MARK: - Giao diện sáng/tối theo nền
