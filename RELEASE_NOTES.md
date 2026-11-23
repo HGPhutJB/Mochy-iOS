@@ -1,3 +1,7 @@
+Mochy iOS 0.6.4 — sửa vệt xám ở thanh home
+
+- Màn hình đang phát: sửa vệt xám hiện ở chỗ thanh home khi mở/tắt lời và khi mở bài từ thanh phát nhỏ (dải màu "thở" làm hở mép dưới).
+
 Mochy iOS 0.6.3 — bỏ viền kính và dải sáng của thanh tab
 
 - Thanh tab: bỏ viền kính và dải trắng nhẹ từ trên xuống; giữ nguyên mọi hiệu ứng khác (thấu kính trượt, nảy, tự đổi sáng/tối, thu gọn khi cuộn).

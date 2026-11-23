@@ -972,12 +972,20 @@ final class FluidBackgroundView: UIView {
         layer.mask = reveal
     }
 
+    /// Mặt nạ cao hơn khung 48pt mỗi đầu để khi "thở" (dịch lên xuống) không để hở mép trên/dưới (vệt xám chỗ thanh home).
+    private static let maskExtra: CGFloat = 48
+
+    private func mapped(_ fraction: CGFloat) -> NSNumber {
+        let h = max(bounds.height, 1)
+        return NSNumber(value: Double((fraction * h + FluidBackgroundView.maskExtra) / (h + 2 * FluidBackgroundView.maskExtra)))
+    }
+
     private func revealValues(_ state: Reveal) -> (colors: [CGColor], locations: [NSNumber]) {
         switch state {
         case .hidden:
-            return ([UIColor(white: 0, alpha: 0).cgColor, UIColor(white: 0, alpha: 0).cgColor], [0.98, 1])
+            return ([UIColor(white: 0, alpha: 0).cgColor, UIColor(white: 0, alpha: 0).cgColor], [mapped(0.98), mapped(1)])
         case .band:
-            return ([UIColor(white: 0, alpha: 0).cgColor, UIColor(white: 0, alpha: 0.95).cgColor], [0.36, 0.68])
+            return ([UIColor(white: 0, alpha: 0).cgColor, UIColor(white: 0, alpha: 0.95).cgColor], [mapped(0.36), mapped(0.68)])
         case .full:
             return ([UIColor(white: 0, alpha: 1).cgColor, UIColor(white: 0, alpha: 1).cgColor], [0, 0.001])
         }
@@ -1037,8 +1045,9 @@ final class FluidBackgroundView: UIView {
             g.position = CGPoint(x: bounds.width * spots[i].x, y: bounds.height * spots[i].y)
         }
         shade.frame = bounds
-        reveal.bounds = CGRect(origin: .zero, size: bounds.size)
+        reveal.bounds = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height + 2 * FluidBackgroundView.maskExtra)
         reveal.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        if reveal.animation(forKey: "reveal") == nil { applyRevealModel(revealState) }
         CATransaction.commit()
         startDrifting()
     }
