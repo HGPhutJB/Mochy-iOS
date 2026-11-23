@@ -177,15 +177,19 @@ final class FloatingTabBar: UIView {
     /// Đo độ sáng phần nền ngay phía sau thanh; gọi định kỳ khi nội dung cuộn hoặc đổi tab.
     func adaptToBackdrop() {
         guard let host = backdrop, host.bounds.width > 0, bounds.width > 0, window != nil else { return }
-        let rect = host.convert(bounds, from: self)
+        let rect = host.convert(bounds, from: self).intersection(host.bounds)
+        guard rect.width > 1, rect.height > 1,
+              let snap = host.resizableSnapshotView(from: rect, afterScreenUpdates: false, withCapInsets: .zero) else { return }
         let w = 24, h = 6
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
         guard let ctx = CGContext(data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
                                   space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        // Chỉ chụp đúng dải nằm sau thanh (bằng GPU) rồi thu nhỏ, thay vì vẽ lại cả màn hình.
+        snap.frame = CGRect(origin: .zero, size: rect.size)
         ctx.translateBy(x: 0, y: CGFloat(h))
         ctx.scaleBy(x: CGFloat(w) / rect.width, y: -CGFloat(h) / rect.height)
         UIGraphicsPushContext(ctx)
-        host.drawHierarchy(in: CGRect(x: -rect.minX, y: -rect.minY, width: host.bounds.width, height: host.bounds.height), afterScreenUpdates: false)
+        snap.drawHierarchy(in: snap.bounds, afterScreenUpdates: false)
         UIGraphicsPopContext()
         var total: CGFloat = 0
         for i in 0..<(w * h) {

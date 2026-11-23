@@ -377,7 +377,6 @@ final class WordView: UIView {
     private let dim = UILabel()
     private let bright = UILabel()
     private let glow = UIImageView()
-    private static let ciContext = CIContext(options: nil)
     private static let glowCache = NSCache<NSString, UIImage>()
     private static let glowPad: CGFloat = 32
     private let maskLayer = CAGradientLayer()
@@ -423,16 +422,13 @@ final class WordView: UIView {
         if let hit = glowCache.object(forKey: key) { return hit }
         let pad = glowPad
         let size = CGSize(width: width + pad * 2, height: height + pad * 2)
-        let flat = UIGraphicsImageRenderer(size: size).image { _ in
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = UIScreen.main.scale / 4   // ảnh nhỏ, GPU phóng to = vầng sáng mềm, tạo gần như tức thì
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
             (text as NSString).draw(in: CGRect(x: pad, y: pad, width: width, height: height),
                                     withAttributes: [.font: font, .foregroundColor: UIColor.white])
         }
-        guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return nil }
-        filter.setValue(input, forKey: kCIInputImageKey)
-        filter.setValue(Double(9 * flat.scale), forKey: kCIInputRadiusKey)
-        guard let output = filter.outputImage,
-              let cg = ciContext.createCGImage(output, from: input.extent) else { return nil }
-        let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
         glowCache.setObject(image, forKey: key)
         return image
     }
@@ -635,7 +631,6 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private var current = -1
     private var userScrolledAt = Date.distantPast
     private var blurCache: [String: UIImage] = [:]
-    private let ciContext = CIContext(options: nil)
     private var heightCache: [String: CGFloat] = [:]
     private var lastWidth: CGFloat = 0
     private static var plainFont: UIFont { return RoundedFont.font(22, index: AppSettings.lyricWeight - 1) }
@@ -910,20 +905,18 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         let height = LyricCell.measure(text, width: width, font: LyricCell.font)
         let pad = LyricCell.blurPad
         let size = CGSize(width: width + pad * 2, height: height + pad * 2)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let flat = renderer.image { _ in
+        // Vẽ chữ vào ảnh rất nhỏ rồi để GPU phóng to (lọc tuyến tính) = làm mờ gần như miễn phí,
+        // thay cho CIGaussianBlur chạy trên luồng chính mỗi lần đổi dòng (nguyên nhân giật khi lời chạy).
+        let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
+        let radius = points[bucket] * (immersive ? 1.5 : 1.0)
+        let down = max(1.5, radius * 0.85)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = UIScreen.main.scale / down
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
             ns.draw(with: CGRect(x: pad, y: pad, width: width, height: height),
                     options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
         }
-        // Làm mờ nhẹ hơn trước (ảnh còn bị thu nhỏ ~0,78 lần khi hiển thị).
-        let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
-        let radius = Double(points[bucket] * (immersive ? 1.5 : 1.0) * flat.scale)
-        guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return flat }
-        filter.setValue(input, forKey: kCIInputImageKey)
-        filter.setValue(radius, forKey: kCIInputRadiusKey)
-        guard let output = filter.outputImage,
-              let cg = ciContext.createCGImage(output, from: input.extent) else { return flat }
-        let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
         blurCache[key] = image
         return image
     }
@@ -937,13 +930,14 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 
 /// Nền gradient từ màu của bìa: vài đốm màu mềm (gradient tròn) trôi chậm trên nền tối, không còn các lớp ảnh mờ xoay.
 final class FluidBackgroundView: UIView {
-    private var blobs: [CAGradientLayer] = []
+    private var blobs: [CALayer] = []
     private let shade = CAGradientLayer()
     private var palette: [UIColor] = []
     private var token = 0
     private let reveal = CAGradientLayer()
     enum Reveal { case hidden, band, full }
     private(set) var revealState: Reveal = .full
+    private var revealToken = 0
     // vị trí tương đối và biên độ trôi của từng đốm màu
     private let spots: [(x: CGFloat, y: CGFloat, dx: CGFloat, dy: CGFloat, seconds: Double)] = [
         (0.18, 0.16, 0.10, 0.07, 17), (0.86, 0.30, -0.09, 0.09, 21), (0.22, 0.80, 0.11, -0.08, 19), (0.82, 0.86, -0.10, -0.07, 23)
@@ -955,11 +949,10 @@ final class FluidBackgroundView: UIView {
         clipsToBounds = true
         backgroundColor = UIColor(white: 0.07, alpha: 1)
         for _ in spots {
-            let g = CAGradientLayer()
-            g.type = .radial
-            g.startPoint = CGPoint(x: 0.5, y: 0.5)
-            g.endPoint = CGPoint(x: 1, y: 1)
-            g.locations = [0, 0.5, 1]
+            // Đốm màu là ảnh có sẵn (nhẹ hơn nhiều so với gradient tròn vẽ lại mỗi khung hình).
+            let g = CALayer()
+            g.contentsGravity = .resize
+            g.magnificationFilter = .linear
             layer.addSublayer(g)
             blobs.append(g)
         }
@@ -969,7 +962,6 @@ final class FluidBackgroundView: UIView {
         reveal.startPoint = CGPoint(x: 0.5, y: 0)
         reveal.endPoint = CGPoint(x: 0.5, y: 1)
         applyRevealModel(.full)
-        layer.mask = reveal
     }
 
     /// Mặt nạ cao hơn khung 48pt mỗi đầu để khi "thở" (dịch lên xuống) không để hở mép trên/dưới (vệt xám chỗ thanh home).
@@ -1000,6 +992,18 @@ final class FluidBackgroundView: UIView {
     /// Phần màu phía dưới ảnh bìa/MV: cùng bảng màu với nền lời nên khi bật lời, màu nối liền, không nhảy.
     /// .band = chỉ dải dưới (khi xem bìa), .full = phủ cả màn hình (khi bật lời).
     func setReveal(_ state: Reveal, animated: Bool) {
+        // Mặt nạ chỉ gắn khi cần (vẽ qua mặt nạ tốn thêm một lượt dựng hình): bỏ khi phủ kín, ẩn hẳn khi không hiện.
+        revealToken += 1
+        let mine = revealToken
+        isHidden = false
+        if state != .full { layer.mask = reveal }
+        let settle = animated ? (state == .hidden ? 0.5 : 1.0) : 0
+        let finish = {
+            guard mine == self.revealToken else { return }
+            if state == .full { self.layer.mask = nil }
+            if state == .hidden { self.isHidden = true }
+        }
+        if settle == 0 { finish() } else { DispatchQueue.main.asyncAfter(deadline: .now() + settle, execute: finish) }
         let from = reveal.presentation() ?? reveal
         let fromColors = from.colors, fromLocations = from.locations
         reveal.removeAllAnimations()
@@ -1131,6 +1135,27 @@ final class FluidBackgroundView: UIView {
         }
     }
 
+    private static let blobCache = NSCache<NSString, UIImage>()
+
+    private static func blobImage(_ color: UIColor) -> CGImage? {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let key = String(format: "%.2f-%.2f-%.2f", r, g, b) as NSString
+        if let hit = blobCache.object(forKey: key) { return hit.cgImage }
+        let side: CGFloat = 128
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { ctx in
+            let colors = [color.withAlphaComponent(0.95).cgColor, color.withAlphaComponent(0.5).cgColor, color.withAlphaComponent(0).cgColor] as CFArray
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.5, 1]) else { return }
+            let c = CGPoint(x: side / 2, y: side / 2)
+            ctx.cgContext.drawRadialGradient(gradient, startCenter: c, startRadius: 0, endCenter: c, endRadius: side / 2, options: [])
+        }
+        blobCache.setObject(image, forKey: key)
+        return image.cgImage
+    }
+
     private func apply(_ colors: [UIColor]) {
         guard !colors.isEmpty else { return }
         palette = colors
@@ -1142,8 +1167,7 @@ final class FluidBackgroundView: UIView {
             self.backgroundColor = UIColor(hue: h, saturation: min(1, s * 0.9), brightness: 0.2, alpha: 1)
         }
         for (i, g) in blobs.enumerated() {
-            let c = colors[i % colors.count]
-            g.colors = [c.withAlphaComponent(0.95).cgColor, c.withAlphaComponent(0.5).cgColor, c.withAlphaComponent(0).cgColor]
+            g.contents = FluidBackgroundView.blobImage(colors[i % colors.count])
         }
         CATransaction.commit()
     }

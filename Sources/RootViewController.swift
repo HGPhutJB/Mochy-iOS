@@ -104,7 +104,7 @@ final class RootViewController: UIViewController {
         super.viewDidAppear(animated)
         tabBar.adaptToBackdrop()
         adaptTimer?.invalidate()
-        adaptTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+        adaptTimer = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { [weak self] _ in
             guard let self = self, self.presentedViewController == nil else { return }
             self.tabBar.adaptToBackdrop()
         }

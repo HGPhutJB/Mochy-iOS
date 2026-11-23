@@ -145,7 +145,7 @@ final class NowPlayingViewController: UIViewController {
     private let artView = UIImageView()
     private let video = VideoBackdrop()
     private let fluidView = FluidBackgroundView()
-    private let bandBlur = ProgressiveBlurView(layers: 4)
+    private let bandBlur = ProgressiveBlurView(layers: 2)
     private let bandShade = GradientView()
     private let topShade = GradientView()
     private let dragZone = UIView()
@@ -218,6 +218,7 @@ final class NowPlayingViewController: UIViewController {
         if !didAppearOnce {
             didAppearOnce = true
             if mode == .cover { fluidView.setReveal(.band, animated: true) }
+            refreshVideo()
         }
     }
 
@@ -239,9 +240,10 @@ final class NowPlayingViewController: UIViewController {
         mediaView.frame = view.bounds
         artView.frame = mediaView.bounds
         video.layer.frame = mediaView.bounds
-        let bandTop = h * 0.42
-        bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
-        bandShade.frame = bandBlur.frame
+        // Lớp mờ chỉ cần phủ vùng chuyển tiếp (dải màu đã che phần dưới), ít lớp hơn nên nhẹ hơn.
+        let bandTop = h * 0.36
+        bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h * 0.4)
+        bandShade.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
         topShade.frame = CGRect(x: 0, y: 0, width: w, height: 170)
         updateLyricsFrame()
     }
@@ -478,6 +480,7 @@ final class NowPlayingViewController: UIViewController {
         let chromeViews = chromeTop + chromeBottom
         if new != .immersive { chromeViews.forEach { $0.isUserInteractionEnabled = true } }
         fluidView.setReveal(lyr ? .full : .band, animated: animated)
+        if lyr { video.pause() }   // lời phủ kín thì không cần giải mã video phía sau
         let changes = {
             self.mediaView.alpha = lyr ? 0 : 1
             self.fluidView.alpha = lyr ? 1 : (self.backdropLight ? 0 : 1)
@@ -660,6 +663,8 @@ final class NowPlayingViewController: UIViewController {
 
     /// Có MV thì bắt buộc dùng video làm nền (nếu bật trong Cài đặt); không có thì giữ ảnh bìa.
     private func refreshVideo() {
+        // Chờ màn hình hiện xong mới tải/giải mã video để hiệu ứng mở không bị giật.
+        guard didAppearOnce else { return }
         let engine = PlayerEngine.shared
         guard AppSettings.videoBackdrop, let song = engine.currentSong else {
             if video.key != nil { video.stop() }
