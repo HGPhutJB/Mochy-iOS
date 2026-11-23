@@ -37,7 +37,7 @@ final class ImportViewController: UIViewController {
         button.setTitle("Dán từ clipboard", for: .normal)
         button.titleLabel?.font = Theme.bold(15)
         button.tintColor = Theme.accent
-        button.addTarget(self, action: #selector(paste), for: .touchUpInside)
+        button.addTarget(self, action: #selector(pasteLink), for: .touchUpInside)
 
         let go = UIButton(type: .system)
         go.setTitle("Nhập", for: .normal)
@@ -77,7 +77,7 @@ final class ImportViewController: UIViewController {
         view.addGestureRecognizer(UITapGestureRecognizer(target: view, action: #selector(UIView.endEditing(_:))))
     }
 
-    @objc private func paste() {
+    @objc private func pasteLink() {
         if let text = UIPasteboard.general.string { field.text = text }
     }
 
