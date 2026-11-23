@@ -645,8 +645,28 @@ final class NowPlayingViewController: UIViewController {
     /// Có MV thì bắt buộc dùng video làm nền (nếu bật trong Cài đặt); không có thì giữ ảnh bìa.
     private func refreshVideo() {
         let engine = PlayerEngine.shared
-        guard AppSettings.videoBackdrop, let song = engine.currentSong, let info = engine.streamInfo,
-              let url = info.videoURL, !engine.isLocal else {
+        guard AppSettings.videoBackdrop, let song = engine.currentSong else {
+            if video.key != nil { video.stop() }
+            return
+        }
+        // 1) Canvas của Spotify (nếu đã nhập sp_dc và bài có Canvas).
+        if SpotifyCanvas.isConfigured {
+            let state = SpotifyCanvas.shared.cached(song.videoId)
+            if let known = state {
+                if let url = known {
+                    let key = song.videoId + "|canvas|" + url.absoluteString
+                    if video.key != key { video.load(url: url, userAgent: LyricsHTTP.browserUA, key: key, position: 0, loop: true) }
+                    return
+                }
+            } else {
+                SpotifyCanvas.shared.request(song, duration: engine.duration) { [weak self] _ in
+                    guard PlayerEngine.shared.currentSong == song else { return }
+                    self?.refreshVideo()
+                }
+            }
+        }
+        // 2) MV YouTube; 3) không có thì giữ ảnh bìa.
+        guard let info = engine.streamInfo, let url = info.videoURL, !engine.isLocal else {
             if video.key != nil { video.stop() }
             return
         }

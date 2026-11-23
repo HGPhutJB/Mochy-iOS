@@ -12,6 +12,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case backup
         case restore
         case lastfm
+        case advanced
         case importList
         case recap
         case credits
@@ -89,7 +90,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
                     rows: [.quality, .videoBackdrop]),
-            Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .lastfm]),
+            Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .lastfm, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
                     rows: [.backup, .restore]),
@@ -179,9 +180,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.textLabel?.text = "Khôi phục từ tệp sao lưu…"
             cell.textLabel?.textColor = Theme.accent
 
-        case .recap, .importList, .lastfm:
+        case .recap, .importList, .lastfm, .advanced:
             cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
             switch row {
+            case .advanced: cell.textLabel?.text = "Nguồn nâng cao (Canvas, Spicy Lyrics)"
             case .recap: cell.textLabel?.text = "Recap"
             case .importList: cell.textLabel?.text = "Nhập playlist từ link"
             default:
@@ -293,6 +295,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:
             navigationController?.pushViewController(ImportViewController(), animated: true)
+        case .advanced:
+            navigationController?.pushViewController(SourcesViewController(), animated: true)
         case .lastfm:
             navigationController?.pushViewController(LastFMViewController(), animated: true)
         case .credits:

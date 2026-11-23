@@ -452,14 +452,18 @@ final class VideoBackdrop {
     private var statusObservation: NSKeyValueObservation?
     private(set) var key: String?
     var onReadyChanged: ((Bool) -> Void)?
+    private(set) var looping = false
+    private var endObserver: NSObjectProtocol?
 
     init() {
         layer.videoGravity = .resizeAspectFill
     }
 
-    func load(url: URL, userAgent: String, key: String, position: Double) {
+    /// loop = true: clip ngắn lặp mãi (Canvas), không bám theo vị trí nhạc.
+    func load(url: URL, userAgent: String, key: String, position: Double, loop: Bool = false) {
         stop()
         self.key = key
+        looping = loop
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": ["User-Agent": userAgent]])
         let item = AVPlayerItem(asset: asset)
         let p = AVPlayer(playerItem: item)
@@ -474,10 +478,21 @@ final class VideoBackdrop {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] it, _ in
             if it.status == .failed { DispatchQueue.main.async { self?.onReadyChanged?(false) } }
         }
-        p.seek(to: CMTime(seconds: max(0, position), preferredTimescale: 600))
+        if loop {
+            p.actionAtItemEnd = .none
+            endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak p] _ in
+                p?.seek(to: .zero)
+                p?.play()
+            }
+            p.play()
+        } else {
+            p.seek(to: CMTime(seconds: max(0, position), preferredTimescale: 600))
+        }
     }
 
     func stop() {
+        if let o = endObserver { NotificationCenter.default.removeObserver(o); endObserver = nil }
+        looping = false
         readyObservation = nil
         statusObservation = nil
         player?.pause()
@@ -493,6 +508,7 @@ final class VideoBackdrop {
     func sync(position: Double, playing: Bool) {
         guard let p = player else { return }
         guard playing else { p.pause(); return }
+        if looping { if p.rate == 0 { p.play() }; return }
         let drift = p.currentTime().seconds - position
         if !drift.isFinite || abs(drift) > 0.8 {
             p.seek(to: CMTime(seconds: max(0, position), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)

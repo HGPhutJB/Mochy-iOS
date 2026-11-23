@@ -52,20 +52,49 @@ final class LyricsService {
         if known { completion(nil); return }
         DispatchQueue.global(qos: .userInitiated).async {
             let duration = durationHint > 0 ? durationHint : LyricsService.seconds(song.duration)
-            // Thử lần lượt; nguồn nào có lời đồng bộ trước thì dùng, không có thì giữ lời thường đầu tiên.
-            let sources: [() -> LyricsResult?] = [
-                { self.fromYouLyPlus(song, duration: duration) },
-                { self.fromSimpMusic(song) },
-                { self.fromLRCLIB(song, duration: duration) },
-                { self.fromKuGou(song, duration: duration) }
+            // Hỏi song song cả 10 nguồn, chọn bản tốt nhất: đồng bộ từng chữ > từng dòng > lời thường.
+            let sources: [(String, Int, () -> LyricsResult?)] = [
+                ("Spicy Lyrics", 0, { self.fromSpicyLyrics(song, duration: duration) }),
+                ("BiniLyrics", 1, { self.fromBiniLyrics(song, duration: duration) }),
+                ("Musixmatch", 2, { self.fromMusixmatch(song, duration: duration) }),
+                ("Unison", 3, { self.fromUnison(song, duration: duration) }),
+                ("YouLy+", 4, { self.fromYouLyPlus(song, duration: duration) }),
+                ("SimpMusic", 5, { self.fromSimpMusic(song) }),
+                ("NetEase", 6, { self.fromNetEase(song, duration: duration) }),
+                ("LRCLIB", 7, { self.fromLRCLIB(song, duration: duration) }),
+                ("QQ Music", 8, { self.fromQQMusic(song, duration: duration) }),
+                ("KuGou", 9, { self.fromKuGou(song, duration: duration) }),
+                ("Genius", 10, { self.fromGenius(song, duration: duration) })
             ]
-            var best: LyricsResult?
-            for source in sources {
-                if let r = source() {
-                    if !r.synced.isEmpty { best = r; break }
-                    if best == nil { best = r }
+            let resultLock = NSLock()
+            var found: [(Int, LyricsResult)] = []
+            let group = DispatchGroup()
+            let early = DispatchSemaphore(value: 0)
+            let queue = DispatchQueue(label: "mochyios.lyrics.fetch", attributes: .concurrent)
+            for (_, order, run) in sources {
+                group.enter()
+                queue.async {
+                    if let r = run() {
+                        resultLock.lock(); found.append((order, r)); resultLock.unlock()
+                        if r.synced.contains(where: { !$0.words.isEmpty }) { early.signal() }
+                    }
+                    group.leave()
                 }
             }
+            group.notify(queue: queue) { early.signal() }
+            // Có bản đồng bộ từng chữ thì dừng đợi ngay; không thì đợi đủ các nguồn (tối đa 16 giây).
+            _ = early.wait(timeout: .now() + 16)
+            resultLock.lock()
+            let snapshot = found
+            resultLock.unlock()
+            func rank(_ r: LyricsResult) -> Int {
+                if r.synced.contains(where: { !$0.words.isEmpty }) { return 3 }
+                return r.synced.isEmpty ? 1 : 2
+            }
+            let best = snapshot.sorted { a, b in
+                let ra = rank(a.1), rb = rank(b.1)
+                return ra != rb ? ra > rb : a.0 < b.0
+            }.first?.1
             self.lock.lock()
             if let best = best { self.cache[song.videoId] = best } else { self.missed.insert(song.videoId) }
             self.lock.unlock()
@@ -732,7 +761,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         var lo = 0, hi = lines.count - 1, idx = -1
         while lo <= hi {
             let mid = (lo + hi) / 2
-            if lines[mid].time <= time + 0.1 { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
+            if lines[mid].time <= time + 0.35 { idx = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
         if idx != current {
             changeCurrent(to: idx, time: time)
@@ -766,7 +795,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             cell.contentView.layer.removeAllAnimations()
             cell.contentView.transform = CGAffineTransform(translationX: 0, y: delta)
             let rank = idx >= 0 && cell.row > idx ? min(cell.row - idx, 7) : 0
-            UIView.animate(withDuration: 0.75, delay: Double(rank) * 0.06, usingSpringWithDamping: 0.86, initialSpringVelocity: 0,
+            UIView.animate(withDuration: 0.55, delay: Double(rank) * 0.028, usingSpringWithDamping: 0.88, initialSpringVelocity: 0,
                            options: [.allowUserInteraction, .beginFromCurrentState], animations: {
                 cell.contentView.transform = .identity
                 self.style(cell, time: time)
