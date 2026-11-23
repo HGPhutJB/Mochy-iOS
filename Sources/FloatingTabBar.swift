@@ -42,7 +42,6 @@ final class FloatingTabBar: UIView {
         sheen.colors = [UIColor(white: 1, alpha: 0.16).cgColor, UIColor(white: 1, alpha: 0).cgColor]
         sheen.startPoint = CGPoint(x: 0.5, y: 0)
         sheen.endPoint = CGPoint(x: 0.5, y: 0.7)
-        glass.contentView.layer.addSublayer(sheen)
 
         lens.isUserInteractionEnabled = false
         lens.layer.shadowColor = UIColor.black.cgColor
@@ -71,7 +70,6 @@ final class FloatingTabBar: UIView {
         rimMask.strokeColor = UIColor.black.cgColor
         rimMask.lineWidth = 1.2
         rim.mask = rimMask
-        layer.addSublayer(rim)
 
         for (i, icon) in icons.enumerated() {
             let button = PressableButton(type: .custom)
@@ -104,11 +102,8 @@ final class FloatingTabBar: UIView {
         glass.frame = bounds
         glass.layer.cornerRadius = bounds.height / 2
         tint.frame = glass.bounds
-        sheen.frame = glass.bounds
         let path = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height / 2)
         layer.shadowPath = path.cgPath
-        rim.frame = bounds
-        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.6, dy: 0.6), cornerRadius: bounds.height / 2).cgPath
         layoutItems()
     }
 
@@ -171,8 +166,6 @@ final class FloatingTabBar: UIView {
         }
         if animated { UIView.animate(withDuration: 0.35, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: changes, completion: nil) } else { changes() }
         layer.shadowOpacity = light ? 0.16 : 0.38
-        let rimAlpha: CGFloat = light ? 0.9 : 0.5
-        rim.colors = [UIColor(white: 1, alpha: rimAlpha).cgColor, UIColor(white: light ? 0.6 : 1, alpha: 0.1).cgColor, UIColor(white: 1, alpha: rimAlpha * 0.55).cgColor]
     }
 
     private func updateTints() {

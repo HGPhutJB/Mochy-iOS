@@ -1,3 +1,7 @@
+Mochy iOS 0.6.3 — bỏ viền kính và dải sáng của thanh tab
+
+- Thanh tab: bỏ viền kính và dải trắng nhẹ từ trên xuống; giữ nguyên mọi hiệu ứng khác (thấu kính trượt, nảy, tự đổi sáng/tối, thu gọn khi cuộn).
+
 Mochy iOS 0.6.2 — dải màu đồng bộ nền lời, thanh tab liquid glass
 
 - Màn hình đang phát: dải mờ phía dưới ảnh bìa/video giờ cùng bảng màu và cùng lớp màu chuyển động với nền khi bật lời, nên bật/tắt lời màu nối liền không bị nhảy. Dải màu trồi lên khi mở màn hình, "thở" nhẹ lên xuống, đổi màu mượt khi sang bài mới và loang ra phủ kín khi bật lời. Chế độ Tự động nay luôn đồng bộ với nền lời; chọn "Sáng" trong menu ba chấm nếu muốn dải mờ sáng.
