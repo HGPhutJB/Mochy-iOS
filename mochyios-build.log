@@ -1,78 +1,505 @@
-Version 0.6.5, package version 0.6.5, build 56, channel stable, commit 5337a43
+Version 0.6.6, package version 0.6.6.57, build 57, channel dev, commit 1c6732c
 SDK: /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk
 swift-driver version: 1.148.6 <unknown>:0: warning: using sysroot for 'iPhoneOS' but targeting 'MacOSX'
 Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
 Target: arm64-apple-macosx26.0
 ==> Compiling Swift (arm64, iOS 12.2+)
-==> Binary info
-build/pkg/Applications/MochyiOS.app/MochyiOS: Mach-O 64-bit executable arm64
-build/pkg/Applications/MochyiOS.app/MochyiOS:
-Load command 9
-      cmd LC_BUILD_VERSION
-  cmdsize 32
- platform IOS
-    minos 12.2
-      sdk 26.5
-   ntools 1
-     tool LD
-  version 1267.0
-build/pkg/Applications/MochyiOS.app/MochyiOS:
-	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
-	/System/Library/Frameworks/AVFoundation.framework/AVFoundation (compatibility version 1.0.0, current version 2.0.0)
-	/System/Library/Frameworks/AVKit.framework/AVKit (compatibility version 1.0.0, current version 1.0.0)
-	/System/Library/Frameworks/CFNetwork.framework/CFNetwork (compatibility version 1.0.0, current version 3860.255.12)
-	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 5026.5.4)
-	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1965.5.1)
-	/System/Library/Frameworks/CoreMedia.framework/CoreMedia (compatibility version 1.0.0, current version 3320.8.1)
-	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 5026.5.4)
-	/System/Library/Frameworks/MediaPlayer.framework/MediaPlayer (compatibility version 1.0.0, current version 1.0.0)
-	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1195.14.4)
-	/System/Library/Frameworks/Security.framework/Security (compatibility version 1.0.0, current version 61901.120.67)
-	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 9126.5.5)
-	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)
-	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
-	/usr/lib/swift/libswiftAVFoundation.dylib (compatibility version 1.0.0, current version 2420.7.1, weak)
-	/usr/lib/swift/libswiftCore.dylib (compatibility version 0.0.0, current version 0.0.0)
-	/usr/lib/swift/libswiftCoreAudio.dylib (compatibility version 1.0.0, current version 411.255.0, weak)
-	/usr/lib/swift/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0, weak)
-	/usr/lib/swift/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 2.2.0, weak)
-	/usr/lib/swift/libswiftCoreMIDI.dylib (compatibility version 1.0.0, current version 6.0.0, weak)
-	/usr/lib/swift/libswiftCoreMedia.dylib (compatibility version 1.0.0, current version 3320.8.1)
-	/usr/lib/swift/libswiftDarwin.dylib (compatibility version 1.0.0, current version 377.120.8, weak)
-	/usr/lib/swift/libswiftDispatch.dylib (compatibility version 1.0.0, current version 1542.100.32)
-	/usr/lib/swift/libswiftMetal.dylib (compatibility version 1.0.0, current version 373.2.0, weak)
-	/usr/lib/swift/libswiftOSLog.dylib (compatibility version 1.0.0, current version 10.0.0, weak)
-	/usr/lib/swift/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 951.7.0)
-	/usr/lib/swift/libswiftQuartzCore.dylib (compatibility version 1.0.0, current version 5.0.0, weak)
-	/usr/lib/swift/libswiftSpatial.dylib (compatibility version 1.0.0, current version 1.0.0, weak)
-	/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib (compatibility version 1.0.0, current version 879.5.1, weak)
-          cmd LC_RPATH
-      cmdsize 32
-         path /usr/lib/swift (offset 12)
-==> Assembling bundle
-==> Compiling launch screen
-LaunchScreen.storyboardc OK
-==> Preparing the .ipa payload (before the jailbreak entitlements are applied)
-==> Pseudo-signing the .deb binary with ldid (jailbreak entitlements)
-==> Packaging .deb
-dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.6.5_iphoneos-arm.deb'.
-==> Packaging .ipa
-==> Done
-total 5000
--rw-r--r--  1 runner  staff  1270326 Nov 23 22:44 com.puc.mochyios_0.6.5_iphoneos-arm.deb
--rw-r--r--  1 runner  staff  1285731 Nov 23 22:44 MochyiOS_0.6.5.ipa
- new Debian package, version 2.0.
- size 1270326 bytes: control archive=607 bytes.
-     443 bytes,    10 lines      control
-     183 bytes,     5 lines   *  postinst             #!/bin/sh
-      86 bytes,     5 lines   *  postrm               #!/bin/sh
- Package: com.puc.mochyios
- Name: Mochy iOS
- Version: 0.6.5
- Architecture: iphoneos-arm
- Description: Music player for iOS 12+ (rootful), a Swift port of Mochy Music. Search and stream from YouTube Music, background playback and lock screen controls.
- Depends: firmware (>= 12.2)
- Section: Utilities
- Maintainer: puc <puc@users.noreply.github.com>
- Author: puc <puc@users.noreply.github.com>
- Icon: file:///Applications/MochyiOS.app/AppIcon60x60@2x.png
+Sources/RootViewController.swift:340:1: error: extraneous '}' at top level
+338 |         top.present(alert, animated: true, completion: nil)
+339 |     }
+340 | }
+    | `- error: extraneous '}' at top level
+341 | 
+342 | extension RootViewController: UINavigationControllerDelegate {
+
+Sources/RootViewController.swift:264:6: error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+262 |     }
+263 | 
+264 |     @objc private func playerChanged() {
+    |      `- error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+265 |         let hasSong = PlayerEngine.shared.currentSong != nil
+266 |         if hasSong { mini.update() }
+
+Sources/RootViewController.swift:295:5: error: 'override' can only be specified on class members
+293 |     // MARK: - Theo dõi giao diện hệ thống
+294 | 
+295 |     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    |     `- error: 'override' can only be specified on class members
+296 |         super.traitCollectionDidChange(previousTraitCollection)
+297 |         if Theme.mode == .system && Theme.isDark != lastIsDark {
+
+Sources/RootViewController.swift:305:6: error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+303 |     // MARK: - Hộp thoại
+304 | 
+305 |     @objc private func playbackFailed(_ notification: Notification) {
+    |      `- error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+306 |         let message = (notification.userInfo?["message"] as? String) ?? "Lỗi không rõ"
+307 |         showAlert(title: "Không phát được", message: message)
+
+Sources/RootViewController.swift:310:6: error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+308 |     }
+309 | 
+310 |     @objc private func downloadFailed(_ notification: Notification) {
+    |      `- error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+311 |         let message = (notification.userInfo?["message"] as? String) ?? "Lỗi không rõ"
+312 |         showAlert(title: "Tải xuống thất bại", message: message)
+
+Sources/RootViewController.swift:315:6: error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+313 |     }
+314 | 
+315 |     @objc private func handleUpdateState() {
+    |      `- error: '@objc' can only be used with members of classes, '@objc' protocols, and concrete extensions of classes
+316 |         let updater = Updater.shared
+317 |         tabBar.setBadge(visible: updater.available != nil)
+
+Sources/RootViewController.swift:58:56: error: value of type 'NSObject' has no member 'select'
+ 56 | 
+ 57 |         tabBar.translatesAutoresizingMaskIntoConstraints = false
+ 58 |         tabBar.onSelect = { [weak self] index in self?.select(index, animated: true) }
+    |                                                        `- error: value of type 'NSObject' has no member 'select'
+ 59 |         view.addSubview(tabBar)
+ 60 | 
+
+Sources/RootViewController.swift:64:45: error: reference to member 'presentNowPlaying' cannot be resolved without a contextual type
+ 62 |         mini.alpha = 0
+ 63 |         mini.isHidden = true
+ 64 |         mini.onTap = { [weak self] in self?.presentNowPlaying() }
+    |                                             `- error: reference to member 'presentNowPlaying' cannot be resolved without a contextual type
+ 65 |         view.addSubview(mini)
+ 66 | 
+
+Sources/RootViewController.swift:93:44: error: argument of '#selector' cannot refer to global function 'playerChanged()'
+ 91 | 
+ 92 |         let center = NotificationCenter.default
+ 93 |         center.addObserver(self, selector: #selector(playerChanged), name: .playerStateChanged, object: nil)
+    |                                            `- error: argument of '#selector' cannot refer to global function 'playerChanged()'
+ 94 |         center.addObserver(self, selector: #selector(playbackFailed(_:)), name: .playerFailed, object: nil)
+ 95 |         center.addObserver(self, selector: #selector(downloadFailed(_:)), name: .downloadFailed, object: nil)
+    :
+262 |     }
+263 | 
+264 |     @objc private func playerChanged() {
+    |                        `- note: 'playerChanged()' declared here
+265 |         let hasSong = PlayerEngine.shared.currentSong != nil
+266 |         if hasSong { mini.update() }
+
+Sources/RootViewController.swift:94:44: error: argument of '#selector' cannot refer to global function 'playbackFailed'
+ 92 |         let center = NotificationCenter.default
+ 93 |         center.addObserver(self, selector: #selector(playerChanged), name: .playerStateChanged, object: nil)
+ 94 |         center.addObserver(self, selector: #selector(playbackFailed(_:)), name: .playerFailed, object: nil)
+    |                                            `- error: argument of '#selector' cannot refer to global function 'playbackFailed'
+ 95 |         center.addObserver(self, selector: #selector(downloadFailed(_:)), name: .downloadFailed, object: nil)
+ 96 |         center.addObserver(self, selector: #selector(handleUpdateState), name: .updateStateChanged, object: nil)
+    :
+303 |     // MARK: - Hộp thoại
+304 | 
+305 |     @objc private func playbackFailed(_ notification: Notification) {
+    |                        `- note: 'playbackFailed' declared here
+306 |         let message = (notification.userInfo?["message"] as? String) ?? "Lỗi không rõ"
+307 |         showAlert(title: "Không phát được", message: message)
+
+Sources/RootViewController.swift:95:44: error: argument of '#selector' cannot refer to global function 'downloadFailed'
+ 93 |         center.addObserver(self, selector: #selector(playerChanged), name: .playerStateChanged, object: nil)
+ 94 |         center.addObserver(self, selector: #selector(playbackFailed(_:)), name: .playerFailed, object: nil)
+ 95 |         center.addObserver(self, selector: #selector(downloadFailed(_:)), name: .downloadFailed, object: nil)
+    |                                            `- error: argument of '#selector' cannot refer to global function 'downloadFailed'
+ 96 |         center.addObserver(self, selector: #selector(handleUpdateState), name: .updateStateChanged, object: nil)
+ 97 |         playerChanged()
+    :
+308 |     }
+309 | 
+310 |     @objc private func downloadFailed(_ notification: Notification) {
+    |                        `- note: 'downloadFailed' declared here
+311 |         let message = (notification.userInfo?["message"] as? String) ?? "Lỗi không rõ"
+312 |         showAlert(title: "Tải xuống thất bại", message: message)
+
+Sources/RootViewController.swift:96:44: error: argument of '#selector' cannot refer to global function 'handleUpdateState()'
+ 94 |         center.addObserver(self, selector: #selector(playbackFailed(_:)), name: .playerFailed, object: nil)
+ 95 |         center.addObserver(self, selector: #selector(downloadFailed(_:)), name: .downloadFailed, object: nil)
+ 96 |         center.addObserver(self, selector: #selector(handleUpdateState), name: .updateStateChanged, object: nil)
+    |                                            `- error: argument of '#selector' cannot refer to global function 'handleUpdateState()'
+ 97 |         playerChanged()
+ 98 |         handleUpdateState()
+    :
+313 |     }
+314 | 
+315 |     @objc private func handleUpdateState() {
+    |                        `- note: 'handleUpdateState()' declared here
+316 |         let updater = Updater.shared
+317 |         tabBar.setBadge(visible: updater.available != nil)
+
+Sources/RootViewController.swift:189:9: error: cannot find 'addChild' in scope
+187 | 
+188 |     private func embed(_ controller: UIViewController) {
+189 |         addChild(controller)
+    |         `- error: cannot find 'addChild' in scope
+190 |         controller.view.frame = contentView.bounds
+191 |         controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+Sources/RootViewController.swift:190:33: error: cannot find 'contentView' in scope
+188 |     private func embed(_ controller: UIViewController) {
+189 |         addChild(controller)
+190 |         controller.view.frame = contentView.bounds
+    |                                 `- error: cannot find 'contentView' in scope
+191 |         controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+192 |         contentView.addSubview(controller.view)
+
+Sources/RootViewController.swift:192:9: error: cannot find 'contentView' in scope
+190 |         controller.view.frame = contentView.bounds
+191 |         controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+192 |         contentView.addSubview(controller.view)
+    |         `- error: cannot find 'contentView' in scope
+193 |         controller.didMove(toParent: self)
+194 |     }
+
+Sources/RootViewController.swift:193:38: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+191 |         controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+192 |         contentView.addSubview(controller.view)
+193 |         controller.didMove(toParent: self)
+    |                                      `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+194 |     }
+195 | 
+
+Sources/RootViewController.swift:197:37: error: cannot find 'controllers' in scope
+195 | 
+196 |     func select(_ index: Int, animated: Bool) {
+197 |         guard index >= 0 && index < controllers.count else { return }
+    |                                     `- error: cannot find 'controllers' in scope
+198 |         if index == selectedIndex {
+199 |             // Chạm lại tab hiện tại: quay về màn hình đầu của tab.
+
+Sources/RootViewController.swift:198:21: error: cannot find 'selectedIndex' in scope
+196 |     func select(_ index: Int, animated: Bool) {
+197 |         guard index >= 0 && index < controllers.count else { return }
+198 |         if index == selectedIndex {
+    |                     `- error: cannot find 'selectedIndex' in scope
+199 |             // Chạm lại tab hiện tại: quay về màn hình đầu của tab.
+200 |             controllers[index].popToRootViewController(animated: true)
+
+Sources/RootViewController.swift:200:13: error: cannot find 'controllers' in scope
+198 |         if index == selectedIndex {
+199 |             // Chạm lại tab hiện tại: quay về màn hình đầu của tab.
+200 |             controllers[index].popToRootViewController(animated: true)
+    |             `- error: cannot find 'controllers' in scope
+201 |             return
+202 |         }
+
+Sources/RootViewController.swift:203:19: error: cannot find 'controllers' in scope
+201 |             return
+202 |         }
+203 |         let old = controllers[selectedIndex]
+    |                   `- error: cannot find 'controllers' in scope
+204 |         let new = controllers[index]
+205 |         selectedIndex = index
+
+Sources/RootViewController.swift:203:31: error: cannot find 'selectedIndex' in scope
+201 |             return
+202 |         }
+203 |         let old = controllers[selectedIndex]
+    |                               `- error: cannot find 'selectedIndex' in scope
+204 |         let new = controllers[index]
+205 |         selectedIndex = index
+
+Sources/RootViewController.swift:204:19: error: cannot find 'controllers' in scope
+202 |         }
+203 |         let old = controllers[selectedIndex]
+204 |         let new = controllers[index]
+    |                   `- error: cannot find 'controllers' in scope
+205 |         selectedIndex = index
+206 |         tabBar.select(index, animated: animated)
+
+Sources/RootViewController.swift:205:9: error: cannot find 'selectedIndex' in scope
+203 |         let old = controllers[selectedIndex]
+204 |         let new = controllers[index]
+205 |         selectedIndex = index
+    |         `- error: cannot find 'selectedIndex' in scope
+206 |         tabBar.select(index, animated: animated)
+207 |         applyInsets(animated: false)
+
+Sources/RootViewController.swift:206:9: error: cannot find 'tabBar' in scope
+204 |         let new = controllers[index]
+205 |         selectedIndex = index
+206 |         tabBar.select(index, animated: animated)
+    |         `- error: cannot find 'tabBar' in scope
+207 |         applyInsets(animated: false)
+208 |         setCompact(false)
+
+Sources/RootViewController.swift:208:9: error: cannot find 'setCompact' in scope
+206 |         tabBar.select(index, animated: animated)
+207 |         applyInsets(animated: false)
+208 |         setCompact(false)
+    |         `- error: cannot find 'setCompact' in scope
+209 |         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+210 |             self?.attachScrollObserver()
+
+Sources/RootViewController.swift:209:71: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+207 |         applyInsets(animated: false)
+208 |         setCompact(false)
+209 |         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+    |                                                                       `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+210 |             self?.attachScrollObserver()
+211 |             self?.tabBar.adaptToBackdrop()
+
+Sources/RootViewController.swift:214:9: error: cannot find 'addChild' in scope
+212 |         }
+213 | 
+214 |         addChild(new)
+    |         `- error: cannot find 'addChild' in scope
+215 |         new.view.frame = contentView.bounds
+216 |         new.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+Sources/RootViewController.swift:215:26: error: cannot find 'contentView' in scope
+213 | 
+214 |         addChild(new)
+215 |         new.view.frame = contentView.bounds
+    |                          `- error: cannot find 'contentView' in scope
+216 |         new.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+217 |         if animated {
+
+Sources/RootViewController.swift:216:39: error: reference to member 'flexibleWidth' cannot be resolved without a contextual type
+214 |         addChild(new)
+215 |         new.view.frame = contentView.bounds
+216 |         new.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    |                                       `- error: reference to member 'flexibleWidth' cannot be resolved without a contextual type
+217 |         if animated {
+218 |             new.view.alpha = 0
+
+Sources/RootViewController.swift:216:55: error: reference to member 'flexibleHeight' cannot be resolved without a contextual type
+214 |         addChild(new)
+215 |         new.view.frame = contentView.bounds
+216 |         new.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    |                                                       `- error: reference to member 'flexibleHeight' cannot be resolved without a contextual type
+217 |         if animated {
+218 |             new.view.alpha = 0
+
+Sources/RootViewController.swift:220:13: error: cannot find 'contentView' in scope
+218 |             new.view.alpha = 0
+219 |             new.view.transform = CGAffineTransform(translationX: 0, y: 18).scaledBy(x: 0.985, y: 0.985)
+220 |             contentView.insertSubview(new.view, belowSubview: old.view)
+    |             `- error: cannot find 'contentView' in scope
+221 |             UIView.animate(withDuration: 0.38, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0.2,
+222 |                            options: [.allowUserInteraction], animations: {
+
+Sources/RootViewController.swift:233:39: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+231 |                 old.view.removeFromSuperview()
+232 |                 old.removeFromParent()
+233 |                 new.didMove(toParent: self)
+    |                                       `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+234 |             })
+235 |         } else {
+
+Sources/RootViewController.swift:236:13: error: cannot find 'contentView' in scope
+234 |             })
+235 |         } else {
+236 |             contentView.addSubview(new.view)
+    |             `- error: cannot find 'contentView' in scope
+237 |             old.willMove(toParent: nil)
+238 |             old.view.removeFromSuperview()
+
+Sources/RootViewController.swift:237:36: error: 'nil' requires a contextual type
+235 |         } else {
+236 |             contentView.addSubview(new.view)
+237 |             old.willMove(toParent: nil)
+    |                                    `- error: 'nil' requires a contextual type
+238 |             old.view.removeFromSuperview()
+239 |             old.removeFromParent()
+
+Sources/RootViewController.swift:240:35: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+238 |             old.view.removeFromSuperview()
+239 |             old.removeFromParent()
+240 |             new.didMove(toParent: self)
+    |                                   `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+241 |         }
+242 |     }
+
+Sources/RootViewController.swift:249:12: error: cannot find 'miniVisible' in scope
+247 |     private func applyInsets(animated: Bool) {
+248 |         var bottom = FloatingTabBar.height + 16
+249 |         if miniVisible { bottom += MiniPlayerView.height + 8 }
+    |            `- error: cannot find 'miniVisible' in scope
+250 |         let apply = {
+251 |             for nav in self.controllers {
+
+Sources/RootViewController.swift:251:24: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+249 |         if miniVisible { bottom += MiniPlayerView.height + 8 }
+250 |         let apply = {
+251 |             for nav in self.controllers {
+    |                        `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+252 |                 nav.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 0, bottom: bottom, right: 0)
+253 |             }
+
+Sources/RootViewController.swift:254:13: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+252 |                 nav.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 0, bottom: bottom, right: 0)
+253 |             }
+254 |             self.view.layoutIfNeeded()
+    |             `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+255 |         }
+256 |         if animated {
+
+Sources/RootViewController.swift:266:22: error: cannot find 'mini' in scope
+264 |     @objc private func playerChanged() {
+265 |         let hasSong = PlayerEngine.shared.currentSong != nil
+266 |         if hasSong { mini.update() }
+    |                      `- error: cannot find 'mini' in scope
+267 |         if hasSong == miniVisible { return }
+268 |         miniVisible = hasSong
+
+Sources/RootViewController.swift:267:23: error: cannot find 'miniVisible' in scope
+265 |         let hasSong = PlayerEngine.shared.currentSong != nil
+266 |         if hasSong { mini.update() }
+267 |         if hasSong == miniVisible { return }
+    |                       `- error: cannot find 'miniVisible' in scope
+268 |         miniVisible = hasSong
+269 |         if hasSong {
+
+Sources/RootViewController.swift:268:9: error: cannot find 'miniVisible' in scope
+266 |         if hasSong { mini.update() }
+267 |         if hasSong == miniVisible { return }
+268 |         miniVisible = hasSong
+    |         `- error: cannot find 'miniVisible' in scope
+269 |         if hasSong {
+270 |             mini.isHidden = false
+
+Sources/RootViewController.swift:270:13: error: cannot find 'mini' in scope
+268 |         miniVisible = hasSong
+269 |         if hasSong {
+270 |             mini.isHidden = false
+    |             `- error: cannot find 'mini' in scope
+271 |             mini.transform = CGAffineTransform(translationX: 0, y: 30).scaledBy(x: 0.96, y: 0.96)
+272 |             UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.78, initialSpringVelocity: 0.5,
+
+Sources/RootViewController.swift:271:13: error: cannot find 'mini' in scope
+269 |         if hasSong {
+270 |             mini.isHidden = false
+271 |             mini.transform = CGAffineTransform(translationX: 0, y: 30).scaledBy(x: 0.96, y: 0.96)
+    |             `- error: cannot find 'mini' in scope
+272 |             UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.78, initialSpringVelocity: 0.5,
+273 |                            options: [], animations: {
+
+Sources/RootViewController.swift:274:17: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+272 |             UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.78, initialSpringVelocity: 0.5,
+273 |                            options: [], animations: {
+274 |                 self.mini.alpha = 1
+    |                 `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+275 |                 self.mini.transform = CGAffineTransform.identity
+276 |             }, completion: nil)
+
+Sources/RootViewController.swift:275:17: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+273 |                            options: [], animations: {
+274 |                 self.mini.alpha = 1
+275 |                 self.mini.transform = CGAffineTransform.identity
+    |                 `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+276 |             }, completion: nil)
+277 |         } else {
+
+Sources/RootViewController.swift:279:17: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+277 |         } else {
+278 |             UIView.animate(withDuration: 0.25, animations: {
+279 |                 self.mini.alpha = 0
+    |                 `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+280 |             }, completion: { _ in self.mini.isHidden = true })
+281 |         }
+
+Sources/RootViewController.swift:280:35: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+278 |             UIView.animate(withDuration: 0.25, animations: {
+279 |                 self.mini.alpha = 0
+280 |             }, completion: { _ in self.mini.isHidden = true })
+    |                                   `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+281 |         }
+282 |         applyInsets(animated: true)
+
+Sources/RootViewController.swift:286:55: error: cannot find 'presentedViewController' in scope
+284 | 
+285 |     func presentNowPlaying() {
+286 |         guard PlayerEngine.shared.currentSong != nil, presentedViewController == nil else { return }
+    |                                                       `- error: cannot find 'presentedViewController' in scope
+287 |         let vc = NowPlayingViewController()
+288 |         vc.modalPresentationStyle = .overFullScreen
+
+Sources/RootViewController.swift:290:9: error: cannot find 'present' in scope
+288 |         vc.modalPresentationStyle = .overFullScreen
+289 |         vc.transitioningDelegate = vc.transition
+290 |         present(vc, animated: true, completion: nil)
+    |         `- error: cannot find 'present' in scope
+291 |     }
+292 | 
+
+Sources/RootViewController.swift:290:49: error: 'nil' requires a contextual type
+288 |         vc.modalPresentationStyle = .overFullScreen
+289 |         vc.transitioningDelegate = vc.transition
+290 |         present(vc, animated: true, completion: nil)
+    |                                                 `- error: 'nil' requires a contextual type
+291 |     }
+292 | 
+
+Sources/RootViewController.swift:296:9: error: 'super' cannot be used outside of a class computed property, method, initializer, deinitializer, or subscript
+294 | 
+295 |     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+296 |         super.traitCollectionDidChange(previousTraitCollection)
+    |         `- error: 'super' cannot be used outside of a class computed property, method, initializer, deinitializer, or subscript
+297 |         if Theme.mode == .system && Theme.isDark != lastIsDark {
+298 |             lastIsDark = Theme.isDark
+
+Sources/RootViewController.swift:297:53: error: cannot find 'lastIsDark' in scope
+295 |     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+296 |         super.traitCollectionDidChange(previousTraitCollection)
+297 |         if Theme.mode == .system && Theme.isDark != lastIsDark {
+    |                                                     `- error: cannot find 'lastIsDark' in scope
+298 |             lastIsDark = Theme.isDark
+299 |             NotificationCenter.default.post(name: .themeChanged, object: nil)
+
+Sources/RootViewController.swift:298:13: error: cannot find 'lastIsDark' in scope
+296 |         super.traitCollectionDidChange(previousTraitCollection)
+297 |         if Theme.mode == .system && Theme.isDark != lastIsDark {
+298 |             lastIsDark = Theme.isDark
+    |             `- error: cannot find 'lastIsDark' in scope
+299 |             NotificationCenter.default.post(name: .themeChanged, object: nil)
+300 |         }
+
+Sources/RootViewController.swift:317:9: error: cannot find 'tabBar' in scope
+315 |     @objc private func handleUpdateState() {
+316 |         let updater = Updater.shared
+317 |         tabBar.setBadge(visible: updater.available != nil)
+    |         `- error: cannot find 'tabBar' in scope
+318 |         guard let info = updater.available, !updater.isChecking, !updater.lastCheckWasManual,
+319 |               AppSettings.lastNotifiedBuild != info.build, presentedViewController == nil else { return }
+
+Sources/RootViewController.swift:319:60: error: cannot find 'presentedViewController' in scope
+317 |         tabBar.setBadge(visible: updater.available != nil)
+318 |         guard let info = updater.available, !updater.isChecking, !updater.lastCheckWasManual,
+319 |               AppSettings.lastNotifiedBuild != info.build, presentedViewController == nil else { return }
+    |                                                            `- error: cannot find 'presentedViewController' in scope
+320 |         AppSettings.lastNotifiedBuild = info.build
+321 |         let alert = UIAlertController(title: "Có bản cập nhật mới",
+
+Sources/RootViewController.swift:324:78: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+322 |                                       message: "Mochy iOS \(info.version) (build \(info.build)) đã sẵn sàng.",
+323 |                                       preferredStyle: .alert)
+324 |         alert.addAction(UIAlertAction(title: "Xem", style: .default) { [weak self] _ in
+    |                                                                              `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+325 |             self?.select(3, animated: true)
+326 |         })
+
+Sources/RootViewController.swift:328:9: error: cannot find 'present' in scope
+326 |         })
+327 |         alert.addAction(UIAlertAction(title: "Để sau", style: .cancel, handler: nil))
+328 |         present(alert, animated: true, completion: nil)
+    |         `- error: cannot find 'present' in scope
+329 |     }
+330 | 
+
+Sources/RootViewController.swift:328:52: error: 'nil' requires a contextual type
+326 |         })
+327 |         alert.addAction(UIAlertAction(title: "Để sau", style: .cancel, handler: nil))
+328 |         present(alert, animated: true, completion: nil)
+    |                                                    `- error: 'nil' requires a contextual type
+329 |     }
+330 | 
+
+Sources/RootViewController.swift:334:37: error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+332 |         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+333 |         alert.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+334 |         var top: UIViewController = self
+    |                                     `- error: cannot find 'self' in scope; did you mean to use it in a type or extension context?
+335 |         while let presented = top.presentedViewController {
+336 |             top = presented
