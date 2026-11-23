@@ -1,3 +1,10 @@
+Mochy iOS 0.6.1 — 10 nguồn lời chạy song song, video Canvas Spotify, lời trôi nhanh hơn
+
+- Lời bài hát: hỏi song song Spicy Lyrics, BiniLyrics, Musixmatch, Unison, YouLy+, SimpMusic, NetEase, LRCLIB, QQ Music, KuGou, Genius; tự chọn bản tốt nhất (đồng bộ từng chữ > từng dòng > lời thường), loại bản lệch độ dài so với bài. Có bản từng chữ là dùng ngay.
+- Spicy Lyrics cần API key (Cài đặt ▸ Nguồn nâng cao). Genius chỉ có lời thường.
+- Video Canvas của Spotify làm nền màn hình đang phát (nhập cookie sp_dc trong Nguồn nâng cao); không có Canvas thì dùng MV YouTube, không có nữa thì hiện ảnh bìa.
+- Lời trôi giảm độ trễ: dòng mới sáng sớm hơn khoảng 0,25 giây, sóng chuyển dòng nhanh hơn nhưng không đổi tốc độ chạy chữ.
+
 Mochy iOS 0.6.0 — tải kèm lời, sửa lỗi độ dài, nhập playlist, Last.fm, Recap
 
 - Tải xuống: tự tải kèm lời bài hát (nghe offline vẫn có lời, đồng bộ từng chữ nếu có). Lưu độ dài thật, kiểm tra tải đủ dung lượng và cắt tệp về đúng độ dài, nên bài 3 phút không còn bị hiện 6 phút.
