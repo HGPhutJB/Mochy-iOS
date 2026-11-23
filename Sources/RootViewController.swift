@@ -13,6 +13,14 @@ final class RootViewController: UIViewController {
     var miniArtView: UIImageView { return mini.artImageView }
     private var miniVisible = false
     private var lastIsDark = Theme.isDark
+    private var tabTrailing: NSLayoutConstraint!
+    private var tabWidth: NSLayoutConstraint!
+    private var tabLeading: NSLayoutConstraint!
+    private var miniExpanded: [NSLayoutConstraint] = []
+    private var miniCompact: [NSLayoutConstraint] = []
+    private var scrollObservation: NSKeyValueObservation?
+    private var lastOffsetY: CGFloat = 0
+    private var adaptTimer: Timer?
 
     init(selectedIndex: Int = 0) {
         super.init(nibName: nil, bundle: nil)
@@ -56,16 +64,28 @@ final class RootViewController: UIViewController {
         mini.onTap = { [weak self] in self?.presentNowPlaying() }
         view.addSubview(mini)
 
-        NSLayoutConstraint.activate([
-            tabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
-            tabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
-            tabBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
-            tabBar.heightAnchor.constraint(equalToConstant: FloatingTabBar.height),
+        tabLeading = tabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28)
+        tabTrailing = tabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28)
+        tabWidth = tabBar.widthAnchor.constraint(equalToConstant: FloatingTabBar.height)
+        let miniHeight = mini.heightAnchor.constraint(equalToConstant: MiniPlayerView.height)
+        miniExpanded = [
             mini.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
             mini.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
-            mini.bottomAnchor.constraint(equalTo: tabBar.topAnchor, constant: -8),
-            mini.heightAnchor.constraint(equalToConstant: MiniPlayerView.height)
-        ])
+            mini.bottomAnchor.constraint(equalTo: tabBar.topAnchor, constant: -8)
+        ]
+        miniCompact = [
+            mini.leadingAnchor.constraint(equalTo: tabBar.trailingAnchor, constant: 8),
+            mini.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+            mini.centerYAnchor.constraint(equalTo: tabBar.centerYAnchor)
+        ]
+        NSLayoutConstraint.activate([
+            tabLeading, tabTrailing,
+            tabBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+            tabBar.heightAnchor.constraint(equalToConstant: FloatingTabBar.height),
+            miniHeight
+        ] + miniExpanded)
+        tabBar.backdrop = contentView
+        tabBar.onTapWhileCollapsed = { [weak self] in self?.setCompact(false) }
         tabBar.select(selectedIndex, animated: false)
         applyInsets(animated: false)
 
@@ -76,6 +96,74 @@ final class RootViewController: UIViewController {
         center.addObserver(self, selector: #selector(handleUpdateState), name: .updateStateChanged, object: nil)
         playerChanged()
         handleUpdateState()
+        controllers.forEach { $0.delegate = self }
+        attachScrollObserver()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        tabBar.adaptToBackdrop()
+        adaptTimer?.invalidate()
+        adaptTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+            guard let self = self, self.presentedViewController == nil else { return }
+            self.tabBar.adaptToBackdrop()
+        }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        adaptTimer?.invalidate()
+        adaptTimer = nil
+    }
+
+    // MARK: - Thu gọn thanh tab khi cuộn
+
+    private var compact = false
+
+    private func setCompact(_ value: Bool) {
+        guard value != compact else { return }
+        compact = value
+        tabBar.setCollapsed(value, animated: true)
+        if value {
+            NSLayoutConstraint.deactivate(miniExpanded)
+            tabTrailing.isActive = false
+            tabWidth.isActive = true
+            tabLeading.constant = 16
+            NSLayoutConstraint.activate(miniCompact)
+        } else {
+            NSLayoutConstraint.deactivate(miniCompact)
+            tabWidth.isActive = false
+            tabTrailing.isActive = true
+            tabLeading.constant = 28
+            NSLayoutConstraint.activate(miniExpanded)
+        }
+        UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.4,
+                       options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+            self.view.layoutIfNeeded()
+        }, completion: nil)
+    }
+
+    private func primaryScroll(in v: UIView) -> UIScrollView? {
+        if let s = v as? UIScrollView { return s }
+        for sub in v.subviews { if let s = primaryScroll(in: sub) { return s } }
+        return nil
+    }
+
+    fileprivate func attachScrollObserver() {
+        scrollObservation = nil
+        guard let top = controllers[selectedIndex].topViewController, top.isViewLoaded,
+              let scroll = primaryScroll(in: top.view) else { return }
+        lastOffsetY = scroll.contentOffset.y
+        scrollObservation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] s, _ in
+            guard let self = self, s.isTracking || s.isDecelerating else { return }
+            let y = s.contentOffset.y
+            let top = -s.adjustedContentInset.top
+            let dy = y - self.lastOffsetY
+            self.lastOffsetY = y
+            if y <= top + 12 { self.setCompact(false) }
+            else if dy > 6 && y > top + 70 { self.setCompact(true) }
+            else if dy < -6 { self.setCompact(false) }
+        }
     }
 
     // MARK: - Chuyển tab
@@ -100,6 +188,11 @@ final class RootViewController: UIViewController {
         selectedIndex = index
         tabBar.select(index, animated: animated)
         applyInsets(animated: false)
+        setCompact(false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.attachScrollObserver()
+            self?.tabBar.adaptToBackdrop()
+        }
 
         addChild(new)
         new.view.frame = contentView.bounds
@@ -226,5 +319,13 @@ final class RootViewController: UIViewController {
             top = presented
         }
         top.present(alert, animated: true, completion: nil)
+    }
+}
+
+extension RootViewController: UINavigationControllerDelegate {
+    func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {
+        setCompact(false)
+        attachScrollObserver()
+        tabBar.adaptToBackdrop()
     }
 }

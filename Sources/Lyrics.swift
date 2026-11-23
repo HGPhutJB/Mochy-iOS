@@ -941,6 +941,9 @@ final class FluidBackgroundView: UIView {
     private let shade = CAGradientLayer()
     private var palette: [UIColor] = []
     private var token = 0
+    private let reveal = CAGradientLayer()
+    enum Reveal { case hidden, band, full }
+    private(set) var revealState: Reveal = .full
     // vị trí tương đối và biên độ trôi của từng đốm màu
     private let spots: [(x: CGFloat, y: CGFloat, dx: CGFloat, dy: CGFloat, seconds: Double)] = [
         (0.18, 0.16, 0.10, 0.07, 17), (0.86, 0.30, -0.09, 0.09, 21), (0.22, 0.80, 0.11, -0.08, 19), (0.82, 0.86, -0.10, -0.07, 23)
@@ -963,6 +966,63 @@ final class FluidBackgroundView: UIView {
         shade.colors = [UIColor(white: 0, alpha: 0.18).cgColor, UIColor(white: 0, alpha: 0.05).cgColor, UIColor(white: 0, alpha: 0.5).cgColor]
         shade.locations = [0, 0.4, 1]
         layer.addSublayer(shade)
+        reveal.startPoint = CGPoint(x: 0.5, y: 0)
+        reveal.endPoint = CGPoint(x: 0.5, y: 1)
+        applyRevealModel(.full)
+        layer.mask = reveal
+    }
+
+    private func revealValues(_ state: Reveal) -> (colors: [CGColor], locations: [NSNumber]) {
+        switch state {
+        case .hidden:
+            return ([UIColor(white: 0, alpha: 0).cgColor, UIColor(white: 0, alpha: 0).cgColor], [0.98, 1])
+        case .band:
+            return ([UIColor(white: 0, alpha: 0).cgColor, UIColor(white: 0, alpha: 0.95).cgColor], [0.36, 0.68])
+        case .full:
+            return ([UIColor(white: 0, alpha: 1).cgColor, UIColor(white: 0, alpha: 1).cgColor], [0, 0.001])
+        }
+    }
+
+    private func applyRevealModel(_ state: Reveal) {
+        let v = revealValues(state)
+        reveal.colors = v.colors
+        reveal.locations = v.locations
+    }
+
+    /// Phần màu phía dưới ảnh bìa/MV: cùng bảng màu với nền lời nên khi bật lời, màu nối liền, không nhảy.
+    /// .band = chỉ dải dưới (khi xem bìa), .full = phủ cả màn hình (khi bật lời).
+    func setReveal(_ state: Reveal, animated: Bool) {
+        let from = reveal.presentation() ?? reveal
+        let fromColors = from.colors, fromLocations = from.locations
+        reveal.removeAllAnimations()
+        applyRevealModel(state)
+        revealState = state
+        if animated {
+            let v = revealValues(state)
+            let place = CABasicAnimation(keyPath: "locations")
+            place.fromValue = fromLocations
+            place.toValue = v.locations
+            let tint = CABasicAnimation(keyPath: "colors")
+            tint.fromValue = fromColors
+            tint.toValue = v.colors
+            let group = CAAnimationGroup()
+            group.animations = [place, tint]
+            group.duration = state == .hidden ? 0.45 : 0.9
+            group.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+            reveal.add(group, forKey: "reveal")
+        }
+        // Dải màu "thở" nhẹ lên xuống khi đang ở chế độ bìa.
+        reveal.removeAnimation(forKey: "breath")
+        if state == .band {
+            let breath = CABasicAnimation(keyPath: "transform.translation.y")
+            breath.fromValue = -16
+            breath.toValue = 16
+            breath.duration = 6.5
+            breath.autoreverses = true
+            breath.repeatCount = .infinity
+            breath.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            reveal.add(breath, forKey: "breath")
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
@@ -977,6 +1037,8 @@ final class FluidBackgroundView: UIView {
             g.position = CGPoint(x: bounds.width * spots[i].x, y: bounds.height * spots[i].y)
         }
         shade.frame = bounds
+        reveal.bounds = CGRect(origin: .zero, size: bounds.size)
+        reveal.position = CGPoint(x: bounds.midX, y: bounds.midY)
         CATransaction.commit()
         startDrifting()
     }

@@ -133,7 +133,7 @@ final class NowPlayingViewController: UIViewController {
         switch AppSettings.playerBlur {
         case .light: return true
         case .dark: return false
-        case .auto: return coverLuminance > 0.58
+        case .auto: return false   // tự động: màu dải dưới đồng bộ với nền lời (tối, theo bảng màu bìa)
         }
     }
     /// Nền sáng thì nút/chữ dùng màu tối (lấy tông của bìa), nền tối thì dùng bản sáng.
@@ -208,6 +208,17 @@ final class NowPlayingViewController: UIViewController {
         center.addObserver(self, selector: #selector(libraryChanged), name: .downloadChanged, object: nil)
         stateChanged()
         apply(mode: .cover, animated: false)
+        fluidView.setReveal(.hidden, animated: false)   // dải màu sẽ trồi lên khi màn hình hiện xong
+    }
+
+    private var didAppearOnce = false
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if !didAppearOnce {
+            didAppearOnce = true
+            if mode == .cover { fluidView.setReveal(.band, animated: true) }
+        }
     }
 
     deinit {
@@ -265,11 +276,11 @@ final class NowPlayingViewController: UIViewController {
 
         fluidView.frame = view.bounds
         fluidView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        fluidView.alpha = 0
-        view.addSubview(fluidView)
+        fluidView.setReveal(.hidden, animated: false)
 
         bandBlur.isUserInteractionEnabled = false
         view.addSubview(bandBlur)
+        view.addSubview(fluidView)   // nằm trên lớp mờ: dải màu phủ lên phần ảnh đã mờ
         bandShade.isUserInteractionEnabled = false
         bandShade.gradientLayer.colors = [UIColor.clear.cgColor, UIColor(white: 0, alpha: 0.32).cgColor]
         bandShade.gradientLayer.locations = [0.3, 1]
@@ -466,9 +477,10 @@ final class NowPlayingViewController: UIViewController {
         let chromeAlpha: CGFloat = new == .immersive ? 0 : 1
         let chromeViews = chromeTop + chromeBottom
         if new != .immersive { chromeViews.forEach { $0.isUserInteractionEnabled = true } }
+        fluidView.setReveal(lyr ? .full : .band, animated: animated)
         let changes = {
             self.mediaView.alpha = lyr ? 0 : 1
-            self.fluidView.alpha = lyr ? 1 : 0
+            self.fluidView.alpha = lyr ? 1 : (self.backdropLight ? 0 : 1)
             self.bandBlur.alpha = lyr ? 0 : 1
             self.bandShade.alpha = lyr ? 0 : 1
             self.topShade.alpha = lyr ? 0 : 1
@@ -590,6 +602,10 @@ final class NowPlayingViewController: UIViewController {
     private func refreshBackdrop(animated: Bool) {
         let light = backdropLight
         bandBlur.setLight(light, animated: animated)
+        if mode == .cover {
+            let target: CGFloat = light ? 0 : 1
+            if animated { UIView.animate(withDuration: 0.5) { self.fluidView.alpha = target } } else { fluidView.alpha = target }
+        }
         bandShade.gradientLayer.colors = [UIColor.clear.cgColor,
                                           (light ? UIColor(white: 1, alpha: 0.28) : UIColor(white: 0, alpha: 0.32)).cgColor]
         infoA.setInk(dark: light)
