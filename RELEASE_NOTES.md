@@ -1,3 +1,14 @@
+Mochy iOS 0.6.0 — tải kèm lời, sửa lỗi độ dài, nhập playlist, Last.fm, Recap
+
+- Tải xuống: tự tải kèm lời bài hát (nghe offline vẫn có lời, đồng bộ từng chữ nếu có). Lưu độ dài thật, kiểm tra tải đủ dung lượng và cắt tệp về đúng độ dài, nên bài 3 phút không còn bị hiện 6 phút.
+- Cập nhật: hiện cả hai bản .ipa và .deb (bản phù hợp với cách cài của bạn được chọn sẵn); tải xong chọn ứng dụng để ký/cài. Tự sao lưu dữ liệu trước khi cập nhật.
+- Sao lưu / khôi phục (Cài đặt ▸ Dữ liệu): yêu thích, playlist, lịch sử, cài đặt; khôi phục chỉ gộp, không xoá dữ liệu đang có. Tự sao lưu mỗi khi mở app, tệp nằm trong Tệp ▸ Mochy.
+- Nhập playlist từ link Spotify, Apple Music, Deezer, SoundCloud, YouTube Music (playlist công khai), ghép từng bài sang YouTube Music; nhập lại cùng link sẽ chỉ thêm bài mới. Spotify chỉ lấy được khoảng 100 bài đầu.
+- Last.fm: đăng nhập bằng API key riêng, báo đang nghe, scrobble, thích/bỏ thích.
+- Trang nghệ sĩ và album (Xem nghệ sĩ trong menu bài hát, phát/xáo trộn).
+- Thông tin bài hát (codec, bitrate, độ dài thật, nguồn lời…) trong menu ba chấm.
+- Recap: tổng kết thời gian nghe, bài và nghệ sĩ nghe nhiều nhất, thói quen, chia sẻ ảnh.
+
 Mochy iOS 0.5.7 — font SF Pro Rounded, chỉnh độ đậm lời
 
 - Đóng kèm font SF Pro Rounded (7 mức đậm, đã cắt còn chữ Latin và tiếng Việt), dùng cho lời và chữ ở màn hình đang phát.
