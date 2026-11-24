@@ -1,5 +1,4 @@
 import UIKit
-import AuthenticationServices
 import CommonCrypto
 
 /// Các dịch vụ nhạc có thể liên kết để tự đồng bộ playlist.
@@ -108,13 +107,6 @@ enum Keychain {
     }
 }
 
-@available(iOS 13.0, *)
-private final class AuthAnchor: NSObject, ASWebAuthenticationPresentationContextProviding {
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        return (UIApplication.shared.delegate as? AppDelegate)?.window ?? ASPresentationAnchor()
-    }
-}
-
 struct SyncTrack {
     let key: String
     let track: ImportedTrack
@@ -136,14 +128,11 @@ private struct MatchCacheFile: Codable {
 /// ghép từng bài sang YouTube Music (có nhớ kết quả để lần sau chỉ ghép bài mới).
 final class AccountSync {
     static let shared = AccountSync()
-    static let spotifyRedirect = "mochyios://spotify-callback"
 
     private let defaults = UserDefaults.standard
     private let lock = NSLock()
     private var cacheFile = MatchCacheFile()
     private var cacheLoaded = false
-    private var authSession: AnyObject?
-    private var anchor: AnyObject?
     private(set) var syncing = false
     private let maxMatchesPerRun = 250
 
@@ -179,10 +168,12 @@ final class AccountSync {
 
     func disconnect(_ s: MusicService) {
         for k in ["name", "id", "links", "client.cid"] { defaults.removeObject(forKey: "acct.\(s.rawValue).\(k)") }
-        Keychain.set(nil, for: "spotify.access")
-        if s == .spotify {
-            Keychain.set(nil, for: "spotify.refresh")
-            defaults.removeObject(forKey: "acct.spotify.expiry")
+        switch s {
+        case .spotify: break   // giữ cookie sp_dc cho video Canvas
+        case .deezer: Keychain.set(nil, for: "deezer.arl")
+        case .soundCloud: Keychain.set(nil, for: "soundcloud.token")
+        case .appleMusic: Keychain.set(nil, for: "apple.mut")
+        case .youtubeMusic: Keychain.set(nil, for: "youtube.cookie")
         }
     }
 
@@ -210,7 +201,9 @@ final class AccountSync {
 
     private static func cancelled() -> UpdateError { return UpdateError("Đã huỷ", cancelled: true) }
 
-    // MARK: Liên kết
+    // MARK: Liên kết (đăng nhập thật bằng trang web của dịch vụ)
+
+    private static let safariUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
 
     func connect(_ s: MusicService, from presenter: UIViewController,
                  completion: @escaping (Result<String, UpdateError>) -> Void) {
@@ -223,230 +216,102 @@ final class AccountSync {
                 completion(result)
             }
         }
+        let spec: (url: String, required: [String], domains: [String])
         switch s {
-        case .spotify: connectSpotify(from: presenter, finish)
-        case .deezer: connectDeezer(from: presenter, finish)
-        case .soundCloud: connectSoundCloud(from: presenter, finish)
-        case .appleMusic, .youtubeMusic: connectLink(s, from: presenter, finish)
+        case .spotify: spec = ("https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F", ["sp_dc"], ["spotify.com"])
+        case .appleMusic: spec = ("https://music.apple.com/vn/browse", ["media-user-token"], ["apple.com"])
+        case .deezer: spec = ("https://www.deezer.com/login", ["arl"], ["deezer.com"])
+        case .soundCloud: spec = ("https://soundcloud.com/signin", ["oauth_token"], ["soundcloud.com"])
+        case .youtubeMusic: spec = ("https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fmusic.youtube.com%2F", ["SAPISID"], ["youtube.com", "google.com"])
         }
-    }
-
-    private func connectLink(_ s: MusicService, from presenter: UIViewController,
-                             _ finish: @escaping (Result<String, UpdateError>) -> Void) {
-        AccountSync.prompt(from: presenter, title: "Liên kết \(s.title)",
-                           message: "\(s.title) không cho ứng dụng ngoài đăng nhập tài khoản. Hãy dán link một playlist (hoặc album) công khai; Mochy sẽ tạo playlist và tự cập nhật khi có bài mới. Có thể thêm nhiều link.",
-                           placeholder: "https://…", action: "Liên kết") { text in
-            guard let text = text else { finish(.failure(AccountSync.cancelled())); return }
-            guard let url = PlaylistImporter.extractURL(text), PlaylistImporter.source(of: text) == s.importSource else {
-                finish(.failure(UpdateError("Link không phải của \(s.title).")))
-                return
-            }
+        WebLoginViewController.present(from: presenter, service: s, startURL: URL(string: spec.url)!, required: spec.required,
+                                       domains: spec.domains) { header, jar in
+            guard let header = header else { finish(.failure(AccountSync.cancelled())); return }
             DispatchQueue.global(qos: .userInitiated).async {
-                switch self.fetchBlocking(url) {
-                case .failure(let e):
-                    finish(.failure(e))
-                case .success:
-                    var l = self.links(s)
-                    if !l.contains(url.absoluteString) { l.append(url.absoluteString) }
-                    self.setLinks(s, l)
-                    self.setAccount(s, name: "\(l.count) playlist")
-                    finish(.success("\(l.count) playlist"))
+                switch s {
+                case .spotify: self.finishSpotify(jar, finish)
+                case .deezer: self.finishDeezer(jar, finish)
+                case .soundCloud: self.finishSoundCloud(jar, finish)
+                case .appleMusic: self.finishApple(jar, header, finish)
+                case .youtubeMusic: self.finishYouTube(header, finish)
                 }
             }
         }
     }
 
-    private func connectDeezer(from presenter: UIViewController, _ finish: @escaping (Result<String, UpdateError>) -> Void) {
-        AccountSync.prompt(from: presenter, title: "Liên kết Deezer",
-                           message: "Dán link hồ sơ Deezer của bạn (deezer.com/…/profile/số) hoặc chỉ ID. Playlist và bài yêu thích cần để chế độ công khai.",
-                           placeholder: "deezer.com/vi/profile/123456", text: accountId(.deezer), action: "Liên kết") { text in
-            guard let text = text else { finish(.failure(AccountSync.cancelled())); return }
-            var digits = ""
-            if let r = text.range(of: "profile/") {
-                digits = String(text[r.upperBound...]).prefix(while: { $0.isNumber }).description
-            } else {
-                digits = text.filter { $0.isNumber }
-            }
-            guard !digits.isEmpty else { finish(.failure(UpdateError("Không nhận ra ID Deezer."))); return }
-            DispatchQueue.global(qos: .userInitiated).async {
-                guard let url = URL(string: "https://api.deezer.com/user/\(digits)"),
-                      let info = Web.json(url) as? [String: Any], info["error"] == nil else {
-                    finish(.failure(UpdateError("Không tìm thấy hồ sơ Deezer này.")))
-                    return
-                }
-                let name = (info["name"] as? String) ?? "Deezer \(digits)"
-                self.setAccount(.deezer, name: name, id: digits)
-                finish(.success(name))
-            }
+    private func finishSpotify(_ jar: [String: String], _ finish: (Result<String, UpdateError>) -> Void) {
+        guard let dc = jar["sp_dc"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập Spotify."))); return }
+        SpotifyCanvas.cookie = dc
+        guard let me = spotifyGET("/me") else {
+            finish(.failure(UpdateError("Đăng nhập được nhưng không lấy được token Spotify (Spotify có thể đã đổi cách bảo vệ).")))
+            return
         }
+        let name = (me["display_name"] as? String) ?? (me["id"] as? String) ?? "Spotify"
+        setAccount(.spotify, name: name, id: me["id"] as? String)
+        finish(.success(name))
     }
 
-    private func connectSoundCloud(from presenter: UIViewController, _ finish: @escaping (Result<String, UpdateError>) -> Void) {
-        AccountSync.prompt(from: presenter, title: "Liên kết SoundCloud",
-                           message: "Dán link hồ sơ SoundCloud của bạn (soundcloud.com/tên-của-bạn). Bài đã thích và playlist cần để chế độ công khai.",
-                           placeholder: "soundcloud.com/ten-cua-ban", action: "Liên kết") { text in
-            guard let text = text else { finish(.failure(AccountSync.cancelled())); return }
-            var raw = text
-            if !raw.lowercased().hasPrefix("http") { raw = "https://" + raw }
-            guard let url = URL(string: raw), (url.host ?? "").contains("soundcloud.com") else {
-                finish(.failure(UpdateError("Link SoundCloud không hợp lệ.")))
-                return
-            }
-            DispatchQueue.global(qos: .userInitiated).async {
-                guard let page = Web.string(url), let cid = PlaylistImporter.shared.soundCloudClientId(html: page.text),
-                      let user = self.scResolve(url.absoluteString, clientId: cid),
-                      let id = user["id"] as? Int else {
-                    finish(.failure(UpdateError("Không đọc được hồ sơ SoundCloud. Kiểm tra link và mạng.")))
-                    return
-                }
-                let name = (user["username"] as? String) ?? "SoundCloud"
-                self.defaults.set(cid, forKey: "acct.soundCloud.client.cid")
-                self.setAccount(.soundCloud, name: name, id: String(id))
-                finish(.success(name))
-            }
+    private func finishDeezer(_ jar: [String: String], _ finish: (Result<String, UpdateError>) -> Void) {
+        guard let arl = jar["arl"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập Deezer."))); return }
+        Keychain.set(arl, for: "deezer.arl")
+        guard let data = dzGW("deezer.getUserData", token: "", body: [:]), let user = data["USER"] as? [String: Any],
+              let uid = user["USER_ID"] else {
+            finish(.failure(UpdateError("Không đọc được tài khoản Deezer.")))
+            return
         }
+        let name = (user["BLOG_NAME"] as? String) ?? "Deezer"
+        setAccount(.deezer, name: name, id: "\(uid)")
+        finish(.success(name))
     }
 
-    // MARK: Spotify (OAuth PKCE)
-
-    private func connectSpotify(from presenter: UIViewController, _ finish: @escaping (Result<String, UpdateError>) -> Void) {
-        let saved = defaults.string(forKey: "acct.spotify.client") ?? ""
-        let go: (String) -> Void = { clientId in
-            self.defaults.set(clientId, forKey: "acct.spotify.client")
-            self.authorizeSpotify(clientId: clientId, finish)
+    private func finishSoundCloud(_ jar: [String: String], _ finish: (Result<String, UpdateError>) -> Void) {
+        guard let token = jar["oauth_token"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập SoundCloud."))); return }
+        Keychain.set(token, for: "soundcloud.token")
+        guard let page = Web.string(URL(string: "https://soundcloud.com")!),
+              let cid = PlaylistImporter.shared.soundCloudClientId(html: page.text),
+              let url = URL(string: "https://api-v2.soundcloud.com/me?client_id=\(cid)"),
+              let me = Web.json(url, headers: ["Authorization": "OAuth \(token)"]) as? [String: Any],
+              let id = me["id"] as? Int else {
+            finish(.failure(UpdateError("Không đọc được tài khoản SoundCloud.")))
+            return
         }
-        if !saved.isEmpty { go(saved); return }
-        AccountSync.prompt(from: presenter, title: "Spotify Client ID",
-                           message: "Spotify chỉ cho đăng nhập qua ứng dụng do bạn đăng ký. Vào developer.spotify.com/dashboard ▸ Create app, thêm Redirect URI: \(AccountSync.spotifyRedirect) (chọn Web API), nếu app ở chế độ Development thì thêm email của bạn trong User Management. Rồi dán Client ID vào đây.",
-                           placeholder: "Client ID (32 ký tự)", action: "Đăng nhập") { text in
-            guard let text = text else { finish(.failure(AccountSync.cancelled())); return }
-            go(text)
+        defaults.set(cid, forKey: "acct.soundCloud.client.cid")
+        let name = (me["username"] as? String) ?? "SoundCloud"
+        setAccount(.soundCloud, name: name, id: String(id))
+        finish(.success(name))
+    }
+
+    private func finishApple(_ jar: [String: String], _ header: String, _ finish: (Result<String, UpdateError>) -> Void) {
+        guard let mut = jar["media-user-token"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập Apple Music."))); return }
+        Keychain.set(mut, for: "apple.mut")
+        guard appleGET("/me/library/songs?limit=1") != nil else {
+            finish(.failure(UpdateError("Không đọc được thư viện Apple Music (cần gói đăng ký còn hiệu lực).")))
+            return
         }
+        setAccount(.appleMusic, name: "Đã đăng nhập")
+        finish(.success("Apple Music"))
     }
 
-    private func randomString(_ length: Int) -> String {
-        let chars = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-        var out = ""
-        for _ in 0..<length { out.append(chars[Int(arc4random_uniform(UInt32(chars.count)))]) }
-        return out
-    }
-
-    private func challenge(_ verifier: String) -> String {
-        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        let data = Data(verifier.utf8)
-        data.withUnsafeBytes { (p: UnsafeRawBufferPointer) in
-            _ = CC_SHA256(p.baseAddress, CC_LONG(data.count), &hash)
+    private func finishYouTube(_ header: String, _ finish: (Result<String, UpdateError>) -> Void) {
+        Keychain.set(header, for: "youtube.cookie")
+        guard ytBrowse("FEmusic_liked_playlists") != nil else {
+            finish(.failure(UpdateError("Không đọc được thư viện YouTube Music.")))
+            return
         }
-        return Data(hash).base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
+        setAccount(.youtubeMusic, name: "Đã đăng nhập")
+        finish(.success("YouTube Music"))
     }
 
-    private func authorizeSpotify(clientId: String, _ finish: @escaping (Result<String, UpdateError>) -> Void) {
-        let verifier = randomString(64)
-        let state = randomString(16)
-        var comps = URLComponents(string: "https://accounts.spotify.com/authorize")!
-        comps.queryItems = [
-            URLQueryItem(name: "client_id", value: clientId),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "redirect_uri", value: AccountSync.spotifyRedirect),
-            URLQueryItem(name: "code_challenge_method", value: "S256"),
-            URLQueryItem(name: "code_challenge", value: challenge(verifier)),
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "scope", value: "user-library-read playlist-read-private playlist-read-collaborative")
-        ]
-        guard let url = comps.url else { finish(.failure(UpdateError("Không tạo được địa chỉ đăng nhập."))); return }
-        let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "mochyios") { callback, error in
-            self.authSession = nil
-            if let error = error {
-                let ns = error as NSError
-                if ns.domain == ASWebAuthenticationSessionErrorDomain && ns.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
-                    finish(.failure(AccountSync.cancelled()))
-                } else {
-                    finish(.failure(UpdateError("Đăng nhập Spotify lỗi: \(error.localizedDescription)")))
-                }
-                return
-            }
-            guard let callback = callback, let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems else {
-                finish(.failure(UpdateError("Spotify không trả kết quả.")))
-                return
-            }
-            if let err = items.first(where: { $0.name == "error" })?.value {
-                finish(.failure(UpdateError("Spotify từ chối: \(err)")))
-                return
-            }
-            guard let code = items.first(where: { $0.name == "code" })?.value,
-                  items.first(where: { $0.name == "state" })?.value == state else {
-                finish(.failure(UpdateError("Phản hồi đăng nhập Spotify không hợp lệ.")))
-                return
-            }
-            DispatchQueue.global(qos: .userInitiated).async {
-                let body = ["grant_type": "authorization_code", "code": code, "redirect_uri": AccountSync.spotifyRedirect,
-                            "client_id": clientId, "code_verifier": verifier]
-                guard let token = self.postForm("https://accounts.spotify.com/api/token", body) else {
-                    finish(.failure(UpdateError("Không đổi được mã đăng nhập Spotify (kiểm tra Client ID và Redirect URI).")))
-                    return
-                }
-                guard self.storeSpotify(token) else {
-                    finish(.failure(UpdateError("Spotify không cấp token.")))
-                    return
-                }
-                guard let me = self.spotifyGET("/me") else {
-                    finish(.failure(UpdateError("Không đọc được hồ sơ Spotify. Nếu app ở chế độ Development, hãy thêm email của bạn vào User Management.")))
-                    return
-                }
-                let name = (me["display_name"] as? String) ?? (me["id"] as? String) ?? "Spotify"
-                self.setAccount(.spotify, name: name, id: me["id"] as? String)
-                finish(.success(name))
-            }
-        }
-        if #available(iOS 13.0, *) {
-            let a = AuthAnchor()
-            anchor = a
-            session.presentationContextProvider = a
-        }
-        authSession = session
-        if !session.start() {
-            authSession = nil
-            finish(.failure(UpdateError("Không mở được trang đăng nhập Spotify.")))
-        }
-    }
+    // MARK: Gọi API có đăng nhập
 
-    private func storeSpotify(_ token: [String: Any]) -> Bool {
-        guard let access = token["access_token"] as? String else { return false }
-        Keychain.set(access, for: "spotify.access")
-        if let refresh = token["refresh_token"] as? String { Keychain.set(refresh, for: "spotify.refresh") }
-        let life = (token["expires_in"] as? NSNumber)?.doubleValue ?? 3600
-        defaults.set(Date().timeIntervalSince1970 + life, forKey: "acct.spotify.expiry")
-        return true
-    }
-
-    private func spotifyToken() -> String? {
-        let expiry = defaults.double(forKey: "acct.spotify.expiry")
-        if let access = Keychain.get("spotify.access"), Date().timeIntervalSince1970 < expiry - 60 { return access }
-        guard let refresh = Keychain.get("spotify.refresh"), let client = defaults.string(forKey: "acct.spotify.client") else { return nil }
-        guard let token = postForm("https://accounts.spotify.com/api/token",
-                                   ["grant_type": "refresh_token", "refresh_token": refresh, "client_id": client]),
-              storeSpotify(token) else { return nil }
-        return Keychain.get("spotify.access")
-    }
-
-    private func spotifyGET(_ path: String) -> [String: Any]? {
-        guard let token = spotifyToken(), let url = URL(string: "https://api.spotify.com/v1" + path) else { return nil }
-        return Web.json(url, headers: ["Authorization": "Bearer \(token)"]) as? [String: Any]
-    }
-
-    private func postForm(_ urlString: String, _ params: [String: String]) -> [String: Any]? {
+    private func postSync(_ urlString: String, headers: [String: String], body: Data?) -> [String: Any]? {
         guard let url = URL(string: urlString) else { return nil }
-        var allowed = CharacterSet.alphanumerics
-        allowed.insert(charactersIn: "-._~")
-        let body = params.map { k, v in "\(k)=\(v.addingPercentEncoding(withAllowedCharacters: allowed) ?? v)" }.joined(separator: "&")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.httpBody = Data(body.utf8)
-        request.timeoutInterval = 20
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        request.timeoutInterval = 25
+        request.setValue(AccountSync.safariUA, forHTTPHeaderField: "User-Agent")
+        for (k, v) in headers { request.setValue(v, forHTTPHeaderField: k) }
         let sem = DispatchSemaphore(value: 0)
         var out: [String: Any]?
         URLSession.shared.dataTask(with: request) { data, _, _ in
@@ -454,8 +319,81 @@ final class AccountSync {
             sem.signal()
         }.resume()
         sem.wait()
-        if out?["error"] != nil { return nil }
         return out
+    }
+
+    // Spotify: token web lấy từ cookie sp_dc (cùng cách lấy video Canvas).
+    private func spotifyToken() -> String? { return SpotifyCanvas.shared.webToken() }
+
+    private func spotifyGET(_ path: String) -> [String: Any]? {
+        guard let token = spotifyToken(), let url = URL(string: "https://api.spotify.com/v1" + path) else { return nil }
+        return Web.json(url, headers: ["Authorization": "Bearer \(token)"]) as? [String: Any]
+    }
+
+    // Deezer: API nội bộ của trang web (cookie arl).
+    private func dzGW(_ method: String, token: String, body: [String: Any]) -> [String: Any]? {
+        guard let arl = Keychain.get("deezer.arl"),
+              let data = try? JSONSerialization.data(withJSONObject: body, options: []) else { return nil }
+        let urlString = "https://www.deezer.com/ajax/gw-light.php?method=\(method)&input=3&api_version=1.0&api_token=\(token)"
+        let json = postSync(urlString, headers: ["Cookie": "arl=\(arl)", "Content-Type": "text/plain;charset=UTF-8"], body: data)
+        return json?["results"] as? [String: Any]
+    }
+
+    private func dzToken() -> String? {
+        guard let r = dzGW("deezer.getUserData", token: "", body: [:]) else { return nil }
+        return r["checkForm"] as? String
+    }
+
+    // Apple Music: token nhà phát triển lấy từ trang web + cookie media-user-token.
+    private func appleDevToken() -> String? {
+        if let cached = defaults.string(forKey: "acct.apple.dev"), !cached.isEmpty { return cached }
+        guard let home = Web.string(URL(string: "https://music.apple.com/vn/browse")!) else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: "(/assets/[A-Za-z0-9_\\-\\.]+\\.js)", options: []) else { return nil }
+        let ns = home.text as NSString
+        let paths = regex.matches(in: home.text, options: [], range: NSRange(location: 0, length: ns.length)).map { ns.substring(with: $0.range(at: 1)) }
+        for path in paths {
+            guard let url = URL(string: "https://music.apple.com" + path), let js = Web.string(url) else { continue }
+            if let token = Web.firstMatch("(eyJh[A-Za-z0-9_\\-]+\\.[A-Za-z0-9_\\-]+\\.[A-Za-z0-9_\\-]+)", in: js.text) {
+                defaults.set(token, forKey: "acct.apple.dev")
+                return token
+            }
+        }
+        return nil
+    }
+
+    private func appleGET(_ path: String) -> [String: Any]? {
+        guard let dev = appleDevToken(), let mut = Keychain.get("apple.mut"),
+              let url = URL(string: "https://amp-api.music.apple.com/v1" + path) else { return nil }
+        let json = Web.json(url, headers: ["Authorization": "Bearer \(dev)", "media-user-token": mut,
+                                            "Origin": "https://music.apple.com", "Referer": "https://music.apple.com/"]) as? [String: Any]
+        if json == nil { defaults.removeObject(forKey: "acct.apple.dev") }
+        return json
+    }
+
+    // YouTube Music: InnerTube có đăng nhập (cookie + SAPISIDHASH).
+    private func ytBrowse(_ browseId: String) -> [String: Any]? {
+        guard let cookie = Keychain.get("youtube.cookie"), let sapisid = cookie.components(separatedBy: "; ")
+            .first(where: { $0.hasPrefix("SAPISID=") })?.dropFirst(8) else { return nil }
+        let now = Int(Date().timeIntervalSince1970)
+        let origin = "https://music.youtube.com"
+        let hash = AccountSync.sha1Hex("\(now) \(sapisid) \(origin)")
+        let version = "1.20240501.01.00"
+        let body: [String: Any] = ["context": ["client": ["clientName": "WEB_REMIX", "clientVersion": version, "hl": "vi", "gl": "VN"]],
+                                   "browseId": browseId]
+        guard let data = try? JSONSerialization.data(withJSONObject: body, options: []) else { return nil }
+        let headers = ["Cookie": cookie, "Authorization": "SAPISIDHASH \(now)_\(hash)", "X-Goog-AuthUser": "0",
+                       "X-Origin": origin, "Origin": origin, "Referer": origin + "/", "Content-Type": "application/json",
+                       "X-YouTube-Client-Name": "67", "X-YouTube-Client-Version": version]
+        return postSync("https://music.youtube.com/youtubei/v1/browse?prettyPrint=false", headers: headers, body: data)
+    }
+
+    private static func sha1Hex(_ text: String) -> String {
+        var digest = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
+        let data = Data(text.utf8)
+        data.withUnsafeBytes { (p: UnsafeRawBufferPointer) in
+            _ = CC_SHA1(p.baseAddress, CC_LONG(data.count), &digest)
+        }
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: Đọc danh sách từ từng dịch vụ (chạy ở luồng nền)
@@ -539,8 +477,38 @@ final class AccountSync {
         return out
     }
 
+    private func dzSong(_ t: [String: Any]) -> SyncTrack? {
+        guard let id = t["SNG_ID"], let title = t["SNG_TITLE"] as? String else { return nil }
+        let artist = (t["ART_NAME"] as? String) ?? ""
+        let sec = Double("\(t["DURATION"] ?? "")") ?? 0
+        return SyncTrack(key: "dz:\(id)", track: ImportedTrack(title: title, artist: artist, duration: sec > 0 ? sec : nil))
+    }
+
+    private func deezerPrivateLists(uid: String) -> [SyncList] {
+        guard let token = dzToken() else { return [] }
+        var lists: [SyncList] = []
+        if let r = dzGW("deezer.pageProfile", token: token, body: ["user_id": uid, "tab": "loved", "nb": 300]),
+           let tab = r["TAB"] as? [String: Any], let loved = tab["loved"] as? [String: Any], let data = loved["data"] as? [[String: Any]] {
+            lists.append(SyncList(key: "acct:deezer:liked", name: "Bài hát đã thích (Deezer)", tracks: data.compactMap { dzSong($0) }))
+        }
+        if let r = dzGW("deezer.pageProfile", token: token, body: ["user_id": uid, "tab": "playlists", "nb": 100]),
+           let tab = r["TAB"] as? [String: Any], let pl = tab["playlists"] as? [String: Any], let data = pl["data"] as? [[String: Any]] {
+            for p in data.prefix(40) {
+                guard let pid = p["PLAYLIST_ID"], let title = p["TITLE"] as? String else { continue }
+                if let r2 = dzGW("deezer.pagePlaylist", token: token, body: ["playlist_id": "\(pid)", "lang": "en", "nb": 200, "start": 0, "tags": true]),
+                   let songs = r2["SONGS"] as? [String: Any], let sd = songs["data"] as? [[String: Any]] {
+                    let tracks = sd.compactMap { dzSong($0) }
+                    if !tracks.isEmpty { lists.append(SyncList(key: "acct:deezer:playlist:\(pid)", name: "\(title) (Deezer)", tracks: tracks)) }
+                }
+            }
+        }
+        return lists
+    }
+
     private func deezerLists() -> [SyncList] {
         guard let uid = accountId(.deezer) else { return [] }
+        let priv = deezerPrivateLists(uid: uid)
+        if !priv.isEmpty { return priv }
         var lists: [SyncList] = []
         lists.append(SyncList(key: "acct:deezer:liked", name: "Bài hát đã thích (Deezer)", tracks: deezerTracks("/user/\(uid)/tracks", cap: 300)))
         if let url = URL(string: "https://api.deezer.com/user/\(uid)/playlists?limit=100"),
@@ -571,10 +539,11 @@ final class AccountSync {
 
     private func soundCloudLists() -> [SyncList] {
         guard let uid = accountId(.soundCloud) else { return [] }
+        let auth: [String: String] = Keychain.get("soundcloud.token").map { ["Authorization": "OAuth \($0)"] } ?? [:]
         var cid = defaults.string(forKey: "acct.soundCloud.client.cid") ?? ""
         func probe() -> Bool {
             guard !cid.isEmpty, let url = URL(string: "https://api-v2.soundcloud.com/users/\(uid)?client_id=\(cid)") else { return false }
-            return Web.json(url) != nil
+            return Web.json(url, headers: auth) != nil
         }
         if !probe() {
             guard let page = Web.string(URL(string: "https://soundcloud.com")!),
@@ -586,7 +555,7 @@ final class AccountSync {
         var liked: [SyncTrack] = []
         var next: String? = "https://api-v2.soundcloud.com/users/\(uid)/likes?limit=50&client_id=\(cid)"
         var pages = 0
-        while let link = next, pages < 6, let url = URL(string: link), let j = Web.json(url) as? [String: Any] {
+        while let link = next, pages < 6, let url = URL(string: link), let j = Web.json(url, headers: auth) as? [String: Any] {
             for item in (j["collection"] as? [[String: Any]]) ?? [] {
                 if let t = item["track"] as? [String: Any], let st = scTrack(t) { liked.append(st) }
             }
@@ -595,7 +564,7 @@ final class AccountSync {
         }
         lists.append(SyncList(key: "acct:soundCloud:liked", name: "Bài hát đã thích (SoundCloud)", tracks: liked))
         if let url = URL(string: "https://api-v2.soundcloud.com/users/\(uid)/playlists_without_albums?limit=50&client_id=\(cid)"),
-           let j = Web.json(url) as? [String: Any], let cols = j["collection"] as? [[String: Any]] {
+           let j = Web.json(url, headers: auth) as? [String: Any], let cols = j["collection"] as? [[String: Any]] {
             for p in cols.prefix(40) {
                 guard let pid = p["id"] as? Int, let title = p["title"] as? String else { continue }
                 var tracks: [SyncTrack] = []
@@ -607,12 +576,75 @@ final class AccountSync {
                 while index < missing.count {
                     let chunk = missing[index..<min(index + 30, missing.count)].map(String.init).joined(separator: ",")
                     if let u = URL(string: "https://api-v2.soundcloud.com/tracks?ids=\(chunk)&client_id=\(cid)"),
-                       let arr = Web.json(u) as? [[String: Any]] {
+                       let arr = Web.json(u, headers: auth) as? [[String: Any]] {
                         for t in arr { if let st = scTrack(t) { tracks.append(st) } }
                     }
                     index += 30
                 }
                 if !tracks.isEmpty { lists.append(SyncList(key: "acct:soundCloud:playlist:\(pid)", name: "\(title) (SoundCloud)", tracks: tracks)) }
+            }
+        }
+        return lists
+    }
+
+    private func appleTrack(_ d: [String: Any]) -> SyncTrack? {
+        guard let id = d["id"] as? String, let a = d["attributes"] as? [String: Any], let name = a["name"] as? String else { return nil }
+        let ms = (a["durationInMillis"] as? NSNumber)?.doubleValue ?? 0
+        return SyncTrack(key: "ap:" + id, track: ImportedTrack(title: name, artist: (a["artistName"] as? String) ?? "", duration: ms > 0 ? ms / 1000 : nil))
+    }
+
+    private func appleLists() -> [SyncList] {
+        var lists: [SyncList] = []
+        var songs: [SyncTrack] = []
+        var offset = 0
+        while offset < 300 {
+            guard let j = appleGET("/me/library/songs?limit=100&offset=\(offset)"), let data = j["data"] as? [[String: Any]], !data.isEmpty else { break }
+            songs.append(contentsOf: data.compactMap { appleTrack($0) })
+            if data.count < 100 { break }
+            offset += 100
+        }
+        lists.append(SyncList(key: "acct:appleMusic:library", name: "Thư viện (Apple Music)", tracks: songs))
+        if let j = appleGET("/me/library/playlists?limit=100"), let data = j["data"] as? [[String: Any]] {
+            for p in data.prefix(40) {
+                guard let id = p["id"] as? String, let a = p["attributes"] as? [String: Any], let name = a["name"] as? String else { continue }
+                var tracks: [SyncTrack] = []
+                var o = 0
+                while o < 200 {
+                    guard let t = appleGET("/me/library/playlists/\(id)/tracks?limit=100&offset=\(o)"), let td = t["data"] as? [[String: Any]], !td.isEmpty else { break }
+                    tracks.append(contentsOf: td.compactMap { appleTrack($0) })
+                    if td.count < 100 { break }
+                    o += 100
+                }
+                if !tracks.isEmpty { lists.append(SyncList(key: "acct:appleMusic:playlist:\(id)", name: "\(name) (Apple Music)", tracks: tracks)) }
+            }
+        }
+        return lists
+    }
+
+    private func ytLists() -> [SyncList] {
+        var lists: [SyncList] = []
+        if let j = ytBrowse("VLLM") {
+            let songs = InnerTube.parseSongs(j)
+            if !songs.isEmpty { lists.append(SyncList(key: "acct:youtubeMusic:liked", name: "Bài hát đã thích (YouTube Music)", tracks: [], directSongs: songs)) }
+        }
+        var found: [(String, String)] = []
+        func walk(_ node: Any) {
+            if let d = node as? [String: Any] {
+                if let r = d["musicTwoRowItemRenderer"] as? [String: Any],
+                   let id = InnerTube.dig(r, ["navigationEndpoint", "browseEndpoint", "browseId"]) as? String, id.hasPrefix("VL"),
+                   let title = InnerTube.dig(r, ["title", "runs", 0, "text"]) as? String {
+                    found.append((id, title))
+                }
+                for v in d.values { walk(v) }
+            } else if let a = node as? [Any] {
+                for v in a { walk(v) }
+            }
+        }
+        if let j = ytBrowse("FEmusic_liked_playlists") { walk(j) }
+        for (id, title) in found.prefix(30) where id != "VLLM" {
+            if let j = ytBrowse(id) {
+                let songs = InnerTube.parseSongs(j)
+                if !songs.isEmpty { lists.append(SyncList(key: "acct:youtubeMusic:playlist:\(id)", name: "\(title) (YouTube Music)", tracks: [], directSongs: songs)) }
             }
         }
         return lists
@@ -711,7 +743,8 @@ final class AccountSync {
         case .spotify: all = spotifyLists()
         case .deezer: all = deezerLists()
         case .soundCloud: all = soundCloudLists()
-        case .appleMusic, .youtubeMusic: all = linkLists(s)
+        case .appleMusic: all = appleLists()
+        case .youtubeMusic: all = ytLists()
         }
         let skip = dismissed
         let lists = all.filter { !skip.contains($0.key) }

@@ -59,6 +59,10 @@ final class DownloadManager {
 
     var queuedCount: Int { return waiting.count }
 
+    func isQueued(_ videoId: String) -> Bool {
+        return waiting.contains { $0.videoId == videoId }
+    }
+
     func cancelQueue() {
         waiting.removeAll()
     }

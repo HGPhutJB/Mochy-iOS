@@ -216,104 +216,170 @@ final class M3Switch: UIControl {
     }
 }
 
-/// Thanh trên kính mờ: nền mờ nhạt dần xuống dưới, nút quay lại tròn bằng kính, tiêu đề ở giữa.
-final class GlassTopBar: UIView {
-    let titleLabel = UILabel()
-    let backButton = UIControl()
-    var onBack: (() -> Void)?
-    private let blur = UIVisualEffectView(effect: UIBlurEffect(style: Theme.blurStyle))
-    private let blurMask = CAGradientLayer()
-    private let tint = CAGradientLayer()
-    private let backBlur = UIVisualEffectView(effect: UIBlurEffect(style: Theme.blurStyle))
-    private let chevron = UIImageView(image: M3.chevronImage(22))
-    private let contentHeight: CGFloat = 56
+/// Làm mờ trong suốt: chỉ làm mờ nền phía sau, không phủ màu sáng/tối (dùng lớp backdrop của hệ thống;
+/// nếu máy không có thì quay về hiệu ứng mờ thường đã bỏ lớp phủ màu).
+final class ClearBlurView: UIView {
+    private var fallback: UIVisualEffectView?
 
-    init(title: String) {
+    override class var layerClass: AnyClass {
+        return (NSClassFromString("CABackdropLayer") as? CALayer.Type) ?? CALayer.self
+    }
+
+    init(radius: CGFloat) {
         super.init(frame: .zero)
-        isUserInteractionEnabled = true
-        addSubview(blur)
-        blurMask.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
-        blurMask.locations = [0, 0.62, 1]
-        blur.layer.mask = blurMask
-        layer.addSublayer(tint)
-        refreshColors()
-
-        titleLabel.text = title
-        titleLabel.font = Theme.heavy(18)
-        titleLabel.textColor = Theme.primaryText
-        titleLabel.textAlignment = .center
-        addSubview(titleLabel)
-
-        backBlur.clipsToBounds = true
-        backBlur.layer.cornerRadius = 22
-        backBlur.layer.borderWidth = 0.5
-        backBlur.layer.borderColor = UIColor(white: 1, alpha: 0.22).cgColor
-        backBlur.isUserInteractionEnabled = false
-        backButton.addSubview(backBlur)
-        chevron.tintColor = Theme.primaryText
-        chevron.contentMode = .center
-        chevron.isUserInteractionEnabled = false
-        backButton.addSubview(chevron)
-        backButton.addTarget(self, action: #selector(down), for: [.touchDown, .touchDragEnter])
-        backButton.addTarget(self, action: #selector(up), for: [.touchUpOutside, .touchCancel, .touchDragExit])
-        backButton.addTarget(self, action: #selector(tapped), for: .touchUpInside)
-        addSubview(backButton)
+        isUserInteractionEnabled = false
+        var ok = false
+        if NSClassFromString("CABackdropLayer") != nil,
+           let filterClass = NSClassFromString("CAFilter") as? NSObject.Type,
+           let made = filterClass.perform(NSSelectorFromString("filterWithType:"), with: "gaussianBlur")?.takeUnretainedValue() as? NSObject {
+            made.setValue(radius, forKey: "inputRadius")
+            made.setValue(true, forKey: "inputNormalizeEdges")
+            layer.setValue([made], forKey: "filters")
+            layer.setValue(1.0, forKey: "scale")
+            layer.setValue(true, forKey: "allowsInPlaceFiltering")
+            ok = true
+        }
+        if !ok {
+            let v = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
+            addSubview(v)
+            fallback = v
+        }
     }
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    var totalHeight: CGFloat { return safeAreaInsets.top + contentHeight + 18 }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if let v = fallback {
+            v.frame = bounds
+            for sub in v.subviews where String(describing: type(of: sub)).contains("VisualEffectSubview") { sub.alpha = 0 }
+        }
+    }
+}
 
-    private func refreshColors() {
-        let base = Theme.groupedBackground
-        tint.colors = [base.withAlphaComponent(0.78).cgColor, base.withAlphaComponent(0.46).cgColor, base.withAlphaComponent(0).cgColor]
-        tint.locations = [0, 0.6, 1]
+/// Dải mờ trong suốt nhạt dần xuống dưới, đặt sau thanh điều hướng (nhiều lớp với độ mờ tăng dần ở trên).
+final class GlassBackdropView: UIView {
+    private var layers: [ClearBlurView] = []
+    private var masks: [CAGradientLayer] = []
+
+    init() {
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        let radii: [CGFloat] = [3, 7, 13]
+        for (i, r) in radii.enumerated() {
+            let v = ClearBlurView(radius: r)
+            let m = CAGradientLayer()
+            m.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+            let start = Double(i) * 0.12
+            m.locations = [0, NSNumber(value: 0.55 + start * 0.4), NSNumber(value: 1.0 - 0.12 * Double(2 - i))]
+            v.layer.mask = m
+            addSubview(v)
+            layers.append(v)
+            masks.append(m)
+        }
     }
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        refreshColors()
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        blur.frame = bounds
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        blurMask.frame = bounds
-        tint.frame = bounds
+        for (i, v) in layers.enumerated() {
+            v.frame = bounds
+            masks[i].frame = v.bounds
+        }
         CATransaction.commit()
-        let top = safeAreaInsets.top
-        backButton.frame = CGRect(x: 16, y: top + 6, width: 44, height: 44)
-        backBlur.frame = backButton.bounds
-        chevron.frame = backButton.bounds
-        titleLabel.frame = CGRect(x: 72, y: top + 6, width: bounds.width - 144, height: 44)
+    }
+}
+
+/// Thanh điều hướng trong suốt + dải mờ kính; dùng cho mọi màn hình trong app.
+final class GlassNavigationController: UINavigationController {
+    private let backdrop = GlassBackdropView()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Theme.style(navigationBar: navigationBar)
+        view.insertSubview(backdrop, belowSubview: navigationBar)
     }
 
-    @objc private func down() {
-        UIView.animate(withDuration: 0.15, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: {
-            self.backButton.transform = CGAffineTransform(scaleX: 0.88, y: 0.88)
-        }, completion: nil)
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        backdrop.isHidden = navigationBar.isHidden
+        backdrop.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: view.safeAreaInsets.top + 44 + 26)
+    }
+}
+
+/// Nút chọn một trong vài mục kiểu Material 3: viên thuốc có viền, mục đang chọn tô màu nhấn nhạt kèm dấu ✓.
+final class M3Segmented: UIControl {
+    private var buttons: [UILabel] = []
+    private let fill = UIView()
+    private(set) var selectedSegmentIndex: Int
+    private let titles: [String]
+    private let font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+
+    init(items: [String], selected: Int) {
+        titles = items
+        selectedSegmentIndex = selected
+        super.init(frame: .zero)
+        layer.cornerRadius = 16
+        layer.borderWidth = 1
+        layer.borderColor = M3.outline.cgColor
+        clipsToBounds = true
+        fill.backgroundColor = M3.primaryContainer
+        fill.layer.cornerRadius = 16
+        fill.isUserInteractionEnabled = false
+        addSubview(fill)
+        for t in items {
+            let l = UILabel()
+            l.text = t
+            l.font = font
+            l.textAlignment = .center
+            l.isUserInteractionEnabled = false
+            addSubview(l)
+            buttons.append(l)
+        }
+        let w = items.reduce(CGFloat(0)) { $0 + ceil(($1 as NSString).size(withAttributes: [.font: font]).width) + 28 }
+        frame = CGRect(x: 0, y: 0, width: w, height: 32)
+        refreshColors()
     }
 
-    @objc private func up() {
-        UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 0.8,
-                       options: [.allowUserInteraction, .beginFromCurrentState], animations: {
-            self.backButton.transform = CGAffineTransform.identity
-        }, completion: nil)
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
-    @objc private func tapped() {
-        up()
-        onBack?()
+    private func refreshColors() {
+        for (i, l) in buttons.enumerated() {
+            l.textColor = i == selectedSegmentIndex ? M3.primary : Theme.secondaryText
+        }
     }
 
-    /// Chỉ nhận chạm ở nút quay lại; phần còn lại của thanh để cuộn xuyên qua.
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let hit = super.hitTest(point, with: event)
-        if hit === backButton || hit?.isDescendant(of: backButton) == true { return backButton }
-        return nil
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let widths = titles.map { ceil(($0 as NSString).size(withAttributes: [.font: font]).width) + 28 }
+        var x: CGFloat = 0
+        for (i, l) in buttons.enumerated() {
+            l.frame = CGRect(x: x, y: 0, width: widths[i], height: bounds.height)
+            if i == selectedSegmentIndex { fill.frame = CGRect(x: x, y: 0, width: widths[i], height: bounds.height) }
+            x += widths[i]
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let t = touches.first else { return }
+        let p = t.location(in: self)
+        for (i, l) in buttons.enumerated() where l.frame.contains(p) && i != selectedSegmentIndex {
+            selectedSegmentIndex = i
+            UIView.animate(withDuration: 0.4, delay: 0, usingSpringWithDamping: 0.72, initialSpringVelocity: 0.5, options: [], animations: {
+                self.layoutSubviews()
+                self.refreshColors()
+            }, completion: nil)
+            sendActions(for: .valueChanged)
+            break
+        }
     }
 }

@@ -757,7 +757,7 @@ final class NowPlayingViewController: UIViewController {
             SongActions.present(for: song, from: self, sourceView: self.moreGlass)
         })
         sheet.addAction(UIAlertAction(title: "Thông tin bài hát", style: .default) { [weak self] _ in
-            let nav = UINavigationController(rootViewController: SongInfoViewController(song: song))
+            let nav = GlassNavigationController(rootViewController: SongInfoViewController(song: song))
             self?.present(nav, animated: true, completion: nil)
         })
         if let artistId = song.artistId, !artistId.isEmpty {
@@ -903,7 +903,7 @@ final class NowPlayingViewController: UIViewController {
     }
 
     @objc private func queueTapped() {
-        let nav = UINavigationController(rootViewController: QueueViewController())
+        let nav = GlassNavigationController(rootViewController: QueueViewController())
         Theme.style(navigationBar: nav.navigationBar)
         present(nav, animated: true, completion: nil)
     }

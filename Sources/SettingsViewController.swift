@@ -35,20 +35,16 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     private let tableView = UITableView(frame: .zero, style: .grouped)
     private var sections: [Section] = []
     private var documentController: UIDocumentInteractionController?
-    private let topBar = GlassTopBar(title: "Cài đặt")
-    private var barHeight: NSLayoutConstraint!
-    private var placedOffset = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Cài đặt"
+        navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = Theme.groupedBackground
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = Theme.groupedBackground
         tableView.separatorStyle = .none
-        tableView.contentInset.top = 62
-        tableView.scrollIndicatorInsets.top = 62
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
@@ -59,17 +55,6 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
 
-        topBar.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(topBar)
-        barHeight = topBar.heightAnchor.constraint(equalToConstant: 100)
-        NSLayoutConstraint.activate([
-            topBar.topAnchor.constraint(equalTo: view.topAnchor),
-            topBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            topBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            barHeight
-        ])
-        topBar.onBack = { [weak self] in self?.goBack() }
-
         NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
                                                name: .updateStateChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
@@ -77,35 +62,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         rebuild()
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        barHeight.constant = view.safeAreaInsets.top + 56 + 18
-        if !placedOffset && view.safeAreaInsets.top > 0 {
-            placedOffset = true
-            tableView.contentOffset = CGPoint(x: 0, y: -tableView.adjustedContentInset.top)
-        }
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        navigationController?.setNavigationBarHidden(false, animated: animated)
-    }
-
-    private func goBack() {
-        if let nav = navigationController, nav.viewControllers.count > 1 {
-            nav.popViewController(animated: true)
-            return
-        }
-        var p: UIViewController? = parent
-        while let c = p {
-            if let root = c as? RootViewController { root.select(0, animated: true); return }
-            p = c.parent
-        }
-    }
-
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: animated)
         rebuild()
         tableView.reloadData()
     }
@@ -196,10 +154,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         switch row {
         case .theme:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            let control = UISegmentedControl(items: [ThemeMode.system.title, ThemeMode.light.title, ThemeMode.dark.title])
-            control.selectedSegmentIndex = Theme.mode.rawValue
-            control.tintColor = Theme.accent
-            control.frame = CGRect(x: 0, y: 0, width: 260, height: 30)
+            let control = M3Segmented(items: [ThemeMode.system.title, ThemeMode.light.title, ThemeMode.dark.title], selected: Theme.mode.rawValue)
             control.addTarget(self, action: #selector(themeChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
             cell.textLabel?.text = "Chế độ"
@@ -207,10 +162,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         case .quality:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            let control = UISegmentedControl(items: ["Cao nhất", "Tiết kiệm"])
-            control.selectedSegmentIndex = AppSettings.audioQuality == .best ? 0 : 1
-            control.tintColor = Theme.accent
-            control.frame = CGRect(x: 0, y: 0, width: 190, height: 30)
+            let control = M3Segmented(items: ["Cao nhất", "Tiết kiệm"], selected: AppSettings.audioQuality == .best ? 0 : 1)
             control.addTarget(self, action: #selector(qualityChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
             cell.textLabel?.text = "Chất lượng"
@@ -274,10 +226,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case .channel:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Kênh cập nhật"
-            let control = UISegmentedControl(items: [UpdateChannel.stable.title, UpdateChannel.dev.title])
-            control.selectedSegmentIndex = AppSettings.channel == .stable ? 0 : 1
-            control.tintColor = Theme.accent
-            control.frame = CGRect(x: 0, y: 0, width: 200, height: 30)
+            let control = M3Segmented(items: [UpdateChannel.stable.title, UpdateChannel.dev.title], selected: AppSettings.channel == .stable ? 0 : 1)
             control.addTarget(self, action: #selector(channelChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
             cell.selectionStyle = .none
@@ -393,13 +342,13 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     // MARK: - Hành động
 
-    @objc private func themeChanged(_ sender: UISegmentedControl) {
+    @objc private func themeChanged(_ sender: M3Segmented) {
         guard let mode = ThemeMode(rawValue: sender.selectedSegmentIndex) else { return }
         Theme.mode = mode
         NotificationCenter.default.post(name: .themeChanged, object: nil)
     }
 
-    @objc private func qualityChanged(_ sender: UISegmentedControl) {
+    @objc private func qualityChanged(_ sender: M3Segmented) {
         AppSettings.audioQuality = sender.selectedSegmentIndex == 0 ? .best : .saver
     }
 
@@ -410,7 +359,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         present(alert, animated: true, completion: nil)
     }
 
-    @objc private func channelChanged(_ sender: UISegmentedControl) {
+    @objc private func channelChanged(_ sender: M3Segmented) {
         AppSettings.channel = sender.selectedSegmentIndex == 0 ? .stable : .dev
         Updater.shared.channelDidChange()
     }

@@ -1,3 +1,10 @@
+Mochy iOS 0.7.1 — đăng nhập tài khoản thật, thanh mờ trong suốt, nút tải tròn
+
+- Liên kết tài khoản nay mở trang đăng nhập thật của Spotify, Deezer, SoundCloud, Apple Music, YouTube Music ngay trong app; sau khi đăng nhập Mochy đọc được thư viện riêng tư của tài khoản (bài đã thích, playlist) và tự đồng bộ. Cookie đăng nhập lưu trong Keychain.
+- Thanh trên của mọi màn hình trong app là kính mờ trong suốt (chỉ làm mờ nền, không phủ màu sáng/tối) nhạt dần xuống dưới; bỏ nút quay lại riêng ở tab Cài đặt.
+- Sửa ô chọn Sáng/Tối/Tự động (và Chất lượng, Kênh cập nhật) bị lỗi bo góc: đổi sang nút chọn Material 3 dạng viên thuốc.
+- Danh sách bài (Yêu thích, playlist, lịch sử): thu hẹp nút Ngẫu nhiên và thêm nút tròn tải xuống; khi tải hiện vòng tiến độ như App Store (bấm để dừng), tải xong hiện dấu ✓.
+
 Mochy iOS 0.7.0 — Material 3, hộp thoại động, liên kết tài khoản nhạc
 
 - Cài đặt dạng Material 3: thẻ bo góc theo nhóm, công tắc M3, tiêu đề nhóm màu nhấn; thanh trên kính mờ nhạt dần như ảnh mẫu (nút quay lại tròn bằng kính, tiêu đề ở giữa).

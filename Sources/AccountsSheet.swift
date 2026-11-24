@@ -256,7 +256,7 @@ final class AccountsSheetViewController: UIViewController {
         titleLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
         titleLabel.textColor = Theme.primaryText
         card.addSubview(titleLabel)
-        noteLabel.text = "Đăng nhập để Mochy tự tạo playlist \"Bài hát đã thích\" và các playlist của bạn, ảnh bìa là biểu tượng dịch vụ. Tự đồng bộ mỗi khi mở app."
+        noteLabel.text = "Đăng nhập thật bằng trang của từng dịch vụ để Mochy truy cập tài khoản, tự tạo playlist \"Bài hát đã thích\" và các playlist của bạn, ảnh bìa là biểu tượng dịch vụ. Tự đồng bộ mỗi khi mở app."
         noteLabel.font = UIFont.systemFont(ofSize: 13)
         noteLabel.textColor = Theme.secondaryText
         noteLabel.numberOfLines = 0
@@ -391,7 +391,7 @@ final class AccountsSheetViewController: UIViewController {
             sheet.addAction(UIAlertAction(title: "Đồng bộ ngay", style: .default) { _ in
                 AccountSync.shared.syncSoon(s)
             })
-            let relabel: String = s.isLinkBased ? "Thêm link playlist…" : (s == .spotify ? "Đăng nhập lại" : "Đổi tài khoản…")
+            let relabel = "Đăng nhập lại"
             sheet.addAction(UIAlertAction(title: relabel, style: .default) { [weak self] _ in
                 self?.pick(sender)
             })

@@ -12,6 +12,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
     private let source: Source
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let header = UIView()
+    private let downloadButton = DownloadRingButton(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
     private let cover = UIImageView()
     private let nameLabel = UILabel()
     private let countLabel = UILabel()
@@ -105,12 +106,15 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
 
         playButton.setTitle("  Phát", for: .normal)
         playButton.setImage(Icons.play(15), for: .normal)
-        shuffleButton.setTitle("  Ngẫu nhiên", for: .normal)
+        shuffleButton.setTitle(" Ngẫu nhiên", for: .normal)
         shuffleButton.setImage(Icons.shuffle(17), for: .normal)
+        downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
+        downloadButton.isHidden = true
+        header.addSubview(downloadButton)
         for b in [playButton, shuffleButton] {
             b.tintColor = Theme.accent
             b.setTitleColor(Theme.accent, for: .normal)
-            b.titleLabel?.font = Theme.bold(16)
+            b.titleLabel?.font = Theme.bold(15)
             b.backgroundColor = Theme.chip
             b.layer.cornerRadius = 22
             header.addSubview(b)
@@ -136,7 +140,6 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         switch source {
         case .playlist:
             items.append(UIBarButtonItem(title: "Tuỳ chọn", style: .plain, target: self, action: #selector(playlistOptions)))
-            items.append(UIBarButtonItem(image: Icons.download(24), style: .plain, target: self, action: #selector(downloadAll)))
             items.append(UIBarButtonItem(title: "Sắp xếp", style: .plain, target: self, action: #selector(toggleEditing(_:))))
         case .history:
             items.append(UIBarButtonItem(title: "Xoá hết", style: .plain, target: self, action: #selector(clearHistory)))
@@ -149,6 +152,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
 
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(dataChanged), name: .libraryChanged, object: nil)
+        center.addObserver(self, selector: #selector(downloadProgressChanged), name: .downloadChanged, object: nil)
         center.addObserver(self, selector: #selector(dataChanged), name: .playerStateChanged, object: nil)
         refresh()
     }
@@ -171,9 +175,22 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         cover.frame = CGRect(x: (width - coverSize) / 2, y: 16, width: coverSize, height: coverSize)
         nameLabel.frame = CGRect(x: 20, y: cover.frame.maxY + 16, width: width - 40, height: 58)
         countLabel.frame = CGRect(x: 20, y: nameLabel.frame.maxY, width: width - 40, height: 22)
-        let buttonWidth = (width - 32 - 12) / 2
-        playButton.frame = CGRect(x: 16, y: countLabel.frame.maxY + 16, width: buttonWidth, height: 44)
-        shuffleButton.frame = CGRect(x: 16 + buttonWidth + 12, y: playButton.frame.minY, width: buttonWidth, height: 44)
+        let rowY = countLabel.frame.maxY + 16
+        if showsDownload {
+            let avail = width - 32 - 24 - 44
+            let playW = floor(avail * 0.47)
+            playButton.frame = CGRect(x: 16, y: rowY, width: playW, height: 44)
+            shuffleButton.frame = CGRect(x: 16 + playW + 12, y: rowY, width: avail - playW, height: 44)
+            downloadButton.frame = CGRect(x: width - 16 - 44, y: rowY, width: 44, height: 44)
+        } else {
+            let buttonWidth = (width - 32 - 12) / 2
+            playButton.frame = CGRect(x: 16, y: rowY, width: buttonWidth, height: 44)
+            shuffleButton.frame = CGRect(x: 16 + buttonWidth + 12, y: rowY, width: buttonWidth, height: 44)
+        }
+    }
+
+    @objc private func downloadProgressChanged() {
+        updateDownloadButton()
     }
 
     @objc private func dataChanged() {
@@ -210,6 +227,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         }
         tableView.reloadData()
         layoutHeader()
+        updateDownloadButton()
         if !animatedOnce && !list.isEmpty {
             animatedOnce = true
             tableView.animateRowsIn()
@@ -225,19 +243,55 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         PlayerEngine.shared.play(queue: list, index: 0, context: listTitle)
     }
 
-    @objc private func downloadAll() {
+    private var downloadBase = 0.0
+
+    private var showsDownload: Bool {
+        if case .downloads = source { return false }
+        return true
+    }
+
+    @objc private func downloadTapped() {
         let list = songs
         guard !list.isEmpty else { return }
         let manager = DownloadManager.shared
-        let todo = list.filter { !Library.shared.isDownloaded($0) && !manager.isActive($0.videoId) }
-        if todo.isEmpty {
-            Toast.show("Tất cả bài trong playlist đã được tải hoặc đang tải")
-            return
-        }
-        let size = todo.count
-        confirm("Tải \(size) bài trong playlist về máy để nghe offline?", button: "Tải \(size) bài") {
+        switch downloadButton.phase {
+        case .done:
+            Toast.show("Tất cả bài trong danh sách đã được tải")
+        case .active:
+            manager.cancelQueue()
+            for s in list where manager.isActive(s.videoId) { manager.cancel(s.videoId) }
+            Toast.show("Đã dừng tải")
+        case .idle:
+            let todo = list.filter { !Library.shared.isDownloaded($0) && !manager.isActive($0.videoId) }
+            downloadBase = Double(list.count - todo.count)
             let added = manager.enqueue(todo)
             Toast.show("Đang tải \(added) bài (2 bài cùng lúc)…")
+        }
+        updateDownloadButton()
+    }
+
+    private func updateDownloadButton() {
+        guard showsDownload else { return }
+        let list = songs
+        downloadButton.isHidden = list.isEmpty
+        guard !list.isEmpty else { return }
+        let manager = DownloadManager.shared
+        var done = 0.0, partial = 0.0
+        var busy = false
+        for s in list {
+            if Library.shared.isDownloaded(s) { done += 1 }
+            else if let p = manager.progress[s.videoId] { partial += p; busy = true }
+            else if manager.isQueued(s.videoId) { busy = true }
+        }
+        let total = Double(list.count)
+        if done >= total {
+            downloadButton.set(.done)
+        } else if busy {
+            let base = min(downloadBase, done)
+            let span = max(1, total - base)
+            downloadButton.setProgress((done - base + partial) / span)
+        } else {
+            downloadButton.set(.idle)
         }
     }
 
@@ -261,7 +315,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
                 Library.shared.renamePlaylist(id: id, name: name)
             }
         })
-        sheet.addAction(UIAlertAction(title: "Tải tất cả bài", style: .default) { [weak self] _ in self?.downloadAll() })
+        sheet.addAction(UIAlertAction(title: "Tải tất cả bài", style: .default) { [weak self] _ in self?.downloadTapped() })
         sheet.addAction(UIAlertAction(title: "Xoá playlist", style: .destructive) { [weak self] _ in
             guard let self = self else { return }
             DeleteDialogViewController.present(from: self, title: "Xoá playlist này?",

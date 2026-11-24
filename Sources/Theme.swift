@@ -84,10 +84,22 @@ enum Theme {
     static func style(navigationBar bar: UINavigationBar) {
         bar.barStyle = isDark ? .black : .default
         bar.isTranslucent = true
-        bar.barTintColor = background
+        bar.setBackgroundImage(UIImage(), for: .default)
+        bar.shadowImage = UIImage()
+        bar.backgroundColor = UIColor.clear
+        bar.barTintColor = nil
         bar.tintColor = accent
         bar.titleTextAttributes = [.foregroundColor: primaryText]
         bar.largeTitleTextAttributes = [.foregroundColor: primaryText, .font: heavy(34)]
+        if #available(iOS 13.0, *) {
+            let a = UINavigationBarAppearance()
+            a.configureWithTransparentBackground()
+            a.titleTextAttributes = [.foregroundColor: primaryText]
+            a.largeTitleTextAttributes = [.foregroundColor: primaryText, .font: heavy(34)]
+            bar.standardAppearance = a
+            bar.scrollEdgeAppearance = a
+            bar.compactAppearance = a
+        }
     }
 
     static func style(searchBar bar: UISearchBar) {

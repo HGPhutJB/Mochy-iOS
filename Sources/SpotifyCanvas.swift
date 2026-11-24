@@ -87,6 +87,9 @@ final class SpotifyCanvas {
         return String(format: "%06d", code % 1_000_000)
     }
 
+    /// Token web của Spotify (từ cookie sp_dc); dùng cả để đọc thư viện của tài khoản đã đăng nhập.
+    func webToken() -> String? { return accessToken() }
+
     private func accessToken() -> String? {
         lock.lock()
         if let t = token, t.expires > Date().addingTimeInterval(60) { lock.unlock(); return t.value }

@@ -10,7 +10,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
     /// Mở trang nghệ sĩ dưới dạng cửa sổ phủ (dùng được từ màn hình đang phát lẫn danh sách).
     static func present(artist name: String, id: String?, from vc: UIViewController) {
         let page = MusicPageViewController(kind: .artist(id: id, name: name))
-        let nav = UINavigationController(rootViewController: page)
+        let nav = GlassNavigationController(rootViewController: page)
         nav.navigationBar.barStyle = Theme.isDark ? .black : .default
         vc.present(nav, animated: true, completion: nil)
     }

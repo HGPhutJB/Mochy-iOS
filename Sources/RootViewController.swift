@@ -43,7 +43,7 @@ final class RootViewController: UIViewController {
         let roots: [UIViewController] = [HomeViewController(), SearchViewController(),
                                          LibraryViewController(), SettingsViewController()]
         controllers = roots.map { vc in
-            let nav = UINavigationController(rootViewController: vc)
+            let nav = GlassNavigationController(rootViewController: vc)
             Theme.style(navigationBar: nav.navigationBar)
             nav.navigationBar.prefersLargeTitles = true
             return nav
