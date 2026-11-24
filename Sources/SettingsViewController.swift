@@ -12,6 +12,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case backup
         case restore
         case lastfm
+        case accounts
         case advanced
         case importList
         case recap
@@ -34,16 +35,20 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     private let tableView = UITableView(frame: .zero, style: .grouped)
     private var sections: [Section] = []
     private var documentController: UIDocumentInteractionController?
+    private let topBar = GlassTopBar(title: "Cài đặt")
+    private var barHeight: NSLayoutConstraint!
+    private var placedOffset = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Cài đặt"
         view.backgroundColor = Theme.groupedBackground
-        navigationController?.navigationBar.prefersLargeTitles = true
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = Theme.groupedBackground
-        tableView.separatorColor = Theme.separator
+        tableView.separatorStyle = .none
+        tableView.contentInset.top = 62
+        tableView.scrollIndicatorInsets.top = 62
         tableView.dataSource = self
         tableView.delegate = self
         view.addSubview(tableView)
@@ -54,6 +59,17 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
 
+        topBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(topBar)
+        barHeight = topBar.heightAnchor.constraint(equalToConstant: 100)
+        NSLayoutConstraint.activate([
+            topBar.topAnchor.constraint(equalTo: view.topAnchor),
+            topBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            topBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            barHeight
+        ])
+        topBar.onBack = { [weak self] in self?.goBack() }
+
         NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
                                                name: .updateStateChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
@@ -61,8 +77,35 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         rebuild()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        barHeight.constant = view.safeAreaInsets.top + 56 + 18
+        if !placedOffset && view.safeAreaInsets.top > 0 {
+            placedOffset = true
+            tableView.contentOffset = CGPoint(x: 0, y: -tableView.adjustedContentInset.top)
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
+
+    private func goBack() {
+        if let nav = navigationController, nav.viewControllers.count > 1 {
+            nav.popViewController(animated: true)
+            return
+        }
+        var p: UIViewController? = parent
+        while let c = p {
+            if let root = c as? RootViewController { root.select(0, animated: true); return }
+            p = c.parent
+        }
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
         rebuild()
         tableView.reloadData()
     }
@@ -90,7 +133,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
                     rows: [.quality, .videoBackdrop]),
-            Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .lastfm, .advanced]),
+            Section(title: "Tính năng", footer: nil, rows: [.accounts, .recap, .importList, .lastfm, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
                     rows: [.backup, .restore]),
@@ -118,12 +161,32 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         return sections[section].rows.count
     }
 
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return sections[section].title
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        guard let title = sections[section].title else { return nil }
+        return M3.headerView(title)
     }
 
-    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        return sections[section].footer
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return sections[section].title == nil ? 12 : 40
+    }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        guard let footer = sections[section].footer else { return nil }
+        return M3.footerView(footer)
+    }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        guard let footer = sections[section].footer else { return 8 }
+        return M3.footerHeight(footer, width: tableView.bounds.width)
+    }
+
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        guard let m3 = cell as? M3Cell else { return }
+        let count = sections[indexPath.section].rows.count
+        if count == 1 { m3.position = .single }
+        else if indexPath.row == 0 { m3.position = .top }
+        else if indexPath.row == count - 1 { m3.position = .bottom }
+        else { m3.position = .middle }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -132,7 +195,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         let cell: UITableViewCell
         switch row {
         case .theme:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             let control = UISegmentedControl(items: [ThemeMode.system.title, ThemeMode.light.title, ThemeMode.dark.title])
             control.selectedSegmentIndex = Theme.mode.rawValue
             control.tintColor = Theme.accent
@@ -143,7 +206,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.selectionStyle = .none
 
         case .quality:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             let control = UISegmentedControl(items: ["Cao nhất", "Tiết kiệm"])
             control.selectedSegmentIndex = AppSettings.audioQuality == .best ? 0 : 1
             control.tintColor = Theme.accent
@@ -154,35 +217,39 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.selectionStyle = .none
 
         case .downloadsInfo:
-            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = "Bài đã tải xuống"
             let size = ByteCountFormatter.string(fromByteCount: Library.shared.totalDownloadBytes(), countStyle: .file)
             cell.detailTextLabel?.text = "\(Library.shared.downloads.count) bài · \(size)"
             cell.selectionStyle = .none
 
         case .clearDownloads:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Xoá tất cả bài đã tải"
             cell.textLabel?.textColor = Theme.accent
 
         case .clearHistory:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Xoá lịch sử nghe"
             cell.textLabel?.textColor = Theme.accent
 
         case .backup:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Sao lưu dữ liệu ngay…"
             cell.textLabel?.textColor = Theme.accent
 
         case .restore:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Khôi phục từ tệp sao lưu…"
             cell.textLabel?.textColor = Theme.accent
 
-        case .recap, .importList, .lastfm, .advanced:
-            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+        case .accounts, .recap, .importList, .lastfm, .advanced:
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
             switch row {
+            case .accounts:
+                cell.textLabel?.text = "Tài khoản nhạc (đồng bộ playlist)"
+                let n = AccountSync.shared.linkedServices.count
+                cell.detailTextLabel?.text = n == 0 ? "Chưa liên kết" : "\(n) tài khoản"
             case .advanced: cell.textLabel?.text = "Nguồn nâng cao (Canvas, Spicy Lyrics)"
             case .recap: cell.textLabel?.text = "Recap"
             case .importList: cell.textLabel?.text = "Nhập playlist từ link"
@@ -193,19 +260,19 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.accessoryType = .disclosureIndicator
 
         case .credits:
-            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = "Credit và giấy phép"
             cell.detailTextLabel?.text = "Mochy Music"
             cell.accessoryType = .disclosureIndicator
 
         case .version:
-            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = "Phiên bản hiện tại"
             cell.detailTextLabel?.text = "\(AppInfo.version) (build \(AppInfo.build))"
             cell.selectionStyle = .none
 
         case .channel:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Kênh cập nhật"
             let control = UISegmentedControl(items: [UpdateChannel.stable.title, UpdateChannel.dev.title])
             control.selectedSegmentIndex = AppSettings.channel == .stable ? 0 : 1
@@ -216,27 +283,25 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.selectionStyle = .none
 
         case .videoBackdrop:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Video làm nền khi phát (nếu có)"
-            let toggle = UISwitch()
+            let toggle = M3Switch()
             toggle.isOn = AppSettings.videoBackdrop
-            toggle.onTintColor = Theme.accent
             toggle.addTarget(self, action: #selector(videoBackdropChanged(_:)), for: .valueChanged)
             cell.accessoryView = toggle
             cell.selectionStyle = .none
 
         case .autoCheck:
-            cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "Tự động kiểm tra cập nhật"
-            let toggle = UISwitch()
+            let toggle = M3Switch()
             toggle.isOn = AppSettings.autoCheck
-            toggle.onTintColor = Theme.accent
             toggle.addTarget(self, action: #selector(autoCheckChanged(_:)), for: .valueChanged)
             cell.accessoryView = toggle
             cell.selectionStyle = .none
 
         case .checkNow:
-            cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+            cell = M3Cell(style: .subtitle, reuseIdentifier: nil)
             cell.textLabel?.text = "Kiểm tra cập nhật ngay"
             cell.textLabel?.textColor = Theme.accent
             cell.detailTextLabel?.numberOfLines = 0
@@ -253,7 +318,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             }
 
         case .updateAvailable:
-            cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+            cell = M3Cell(style: .subtitle, reuseIdentifier: nil)
             if let info = updater.available {
                 cell.textLabel?.text = "Có bản mới: \(info.version) (build \(info.build))"
                 let kind = info.channel == "dev" ? "Bản thử nghiệm" : "Bản ổn định"
@@ -265,19 +330,22 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.accessoryType = .disclosureIndicator
 
         case .info(let title, let value):
-            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = title
             cell.detailTextLabel?.text = value
             cell.selectionStyle = .none
 
         case .link(let title, let value, _):
-            cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = title
             cell.detailTextLabel?.text = value
             cell.accessoryType = .disclosureIndicator
         }
         let keepColor = cell.textLabel?.textColor
         Theme.style(cell: cell, grouped: true)
+        cell.backgroundColor = Theme.cellBackground
+        if case .updateAvailable = row {} else { cell.textLabel?.font = Theme.regular(16) }
+        cell.detailTextLabel?.font = Theme.regular(14)
         switch row {
         case .checkNow, .updateAvailable, .clearDownloads, .clearHistory, .backup, .restore:
             cell.textLabel?.textColor = keepColor
@@ -291,6 +359,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.deselectRow(at: indexPath, animated: true)
         let row = sections[indexPath.section].rows[indexPath.row]
         switch row {
+        case .accounts:
+            AccountsSheetViewController.present(from: self)
         case .recap:
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:
@@ -320,13 +390,6 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
 
-    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
-        (view as? UITableViewHeaderFooterView)?.textLabel?.textColor = Theme.secondaryText
-    }
-
-    func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
-        (view as? UITableViewHeaderFooterView)?.textLabel?.textColor = Theme.secondaryText
-    }
 
     // MARK: - Hành động
 
@@ -352,11 +415,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         Updater.shared.channelDidChange()
     }
 
-    @objc private func videoBackdropChanged(_ sender: UISwitch) {
+    @objc private func videoBackdropChanged(_ sender: M3Switch) {
         AppSettings.videoBackdrop = sender.isOn
     }
 
-    @objc private func autoCheckChanged(_ sender: UISwitch) {
+    @objc private func autoCheckChanged(_ sender: M3Switch) {
         AppSettings.autoCheck = sender.isOn
         if sender.isOn {
             Updater.shared.autoCheckIfNeeded()

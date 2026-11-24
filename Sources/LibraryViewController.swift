@@ -63,14 +63,17 @@ final class LibraryRowCell: UITableViewCell {
         glyph.image = nil
     }
 
-    func configure(title: String, detail: String, icon: UIImage?, color: UIColor, coverURL: URL? = nil) {
+    func configure(title: String, detail: String, icon: UIImage?, color: UIColor, coverURL: URL? = nil, coverImage: UIImage? = nil) {
         titleLabel.text = title
         detailLabel.text = detail
         tile.backgroundColor = color
         tile.image = nil
         glyph.image = icon
         representedURL = coverURL
-        if let url = coverURL {
+        if let img = coverImage {
+            glyph.image = nil
+            tile.image = img
+        } else if let url = coverURL {
             glyph.image = nil
             ImageLoader.shared.load(url) { [weak self] image in
                 guard let self = self, self.representedURL == url else { return }
@@ -183,7 +186,8 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
         } else {
             let list = library.playlists[indexPath.row]
             cell.configure(title: list.name, detail: "\(list.songs.count) bài", icon: Icons.music(26),
-                           color: Theme.placeholder, coverURL: list.songs.first?.thumbnailURL)
+                           color: Theme.placeholder, coverURL: list.songs.first?.thumbnailURL,
+                           coverImage: MusicCover.image(for: list.cover))
         }
         return cell
     }
@@ -210,6 +214,14 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         guard editingStyle == .delete, indexPath.section == 1 else { return }
         let list = Library.shared.playlists[indexPath.row]
-        Library.shared.deletePlaylist(id: list.id)
+        DeleteDialogViewController.present(from: self, title: "Xoá playlist này?", message: LibraryViewController.deleteMessage(for: list),
+                                           onConfirm: { Library.shared.deletePlaylist(id: list.id) },
+                                           onCancel: { [weak self] in self?.tableView.reloadData() })
+    }
+
+    static func deleteMessage(for list: Playlist) -> String {
+        var text = "Playlist “\(list.name)” sẽ bị xoá khỏi thư viện. Các bài đã thích và đã tải xuống vẫn được giữ."
+        if (list.sourceURL ?? "").hasPrefix("acct:") { text += " Playlist đồng bộ này sẽ không được tạo lại nữa." }
+        return text + " Không thể hoàn tác."
     }
 }

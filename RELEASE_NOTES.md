@@ -1,3 +1,11 @@
+Mochy iOS 0.7.0 — Material 3, hộp thoại động, liên kết tài khoản nhạc
+
+- Cài đặt dạng Material 3: thẻ bo góc theo nhóm, công tắc M3, tiêu đề nhóm màu nhấn; thanh trên kính mờ nhạt dần như ảnh mẫu (nút quay lại tròn bằng kính, tiêu đề ở giữa).
+- Hộp thoại xoá playlist có hoạt ảnh thùng rác: nắp lật mở, tài liệu rơi vào, nắp đóng lại, thân thùng bóp nhẹ rồi hộp thoại tự đóng (Huỷ/Esc đóng ngay).
+- Liên kết tài khoản nhạc (Cài đặt ▸ Tài khoản nhạc): Spotify (đăng nhập thật, cần Client ID riêng), Deezer, SoundCloud (qua link hồ sơ công khai), Apple Music và YouTube Music (qua link playlist). Tự tạo playlist "Bài hát đã thích" và các playlist của bạn, ảnh bìa là biểu tượng dịch vụ, tự đồng bộ mỗi khi mở app (cách nhau 12 giờ).
+- Thêm nút tải tất cả bài trong playlist (tải 2 bài cùng lúc).
+- Sửa lỗi lời bài hát: các dòng mờ không còn "rõ một chớp" rồi mới mờ lại khi đổi dòng.
+
 Mochy iOS 0.6.7 — khôi phục blur như bản 0.6.4
 
 - Dải mờ dưới ảnh bìa trở lại 4 lớp và đúng vị trí cũ; chữ lời mờ và vầng sáng từng chữ trở lại chất lượng làm mờ Gaussian như trước (dựng ở luồng nền, không chặn giao diện nên vẫn mượt).

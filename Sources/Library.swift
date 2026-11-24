@@ -143,13 +143,14 @@ final class Library {
 
     /// Nhập một danh sách bài vào playlist: cùng link gốc thì cập nhật (chỉ thêm bài mới), không thì tạo playlist mới.
     @discardableResult
-    func importPlaylist(name: String, songs: [Song], sourceURL: String) -> (playlist: Playlist, added: Int) {
+    func importPlaylist(name: String, songs: [Song], sourceURL: String, cover: String? = nil) -> (playlist: Playlist, added: Int) {
         if let i = playlists.firstIndex(where: { $0.sourceURL == sourceURL }) {
             var added = 0
             for song in songs where !playlists[i].songs.contains(song) {
                 playlists[i].songs.append(song)
                 added += 1
             }
+            if playlists[i].cover == nil { playlists[i].cover = cover }
             save()
             return (playlists[i], added)
         }
@@ -158,6 +159,7 @@ final class Library {
         for song in songs where !unique.contains(song) { unique.append(song) }
         var list = Playlist(id: UUID().uuidString, name: clean.isEmpty ? "Playlist nhập" : clean, songs: unique, created: Date())
         list.sourceURL = sourceURL
+        list.cover = cover
         playlists.insert(list, at: 0)
         save()
         return (list, unique.count)
@@ -172,6 +174,9 @@ final class Library {
     }
 
     func deletePlaylist(id: String) {
+        if let key = playlists.first(where: { $0.id == id })?.sourceURL, key.hasPrefix("acct:") {
+            AccountSync.shared.dismiss(key)
+        }
         playlists.removeAll { $0.id == id }
         save()
     }

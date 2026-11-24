@@ -40,6 +40,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        AccountSync.shared.autoSyncIfNeeded()
         // Tự kiểm tra cập nhật (tối đa mỗi 6 giờ, và chỉ khi người dùng không tắt trong Cài đặt).
         Updater.shared.autoCheckIfNeeded()
         BackupManager.autoBackupIfNeeded()

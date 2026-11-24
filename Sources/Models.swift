@@ -32,6 +32,7 @@ struct Playlist: Codable {
     var name: String
     var songs: [Song]
     let created: Date
+    var cover: String? = nil       // khoá dịch vụ nhạc (spotify, deezer…) nếu là playlist đồng bộ từ tài khoản
     var sourceURL: String? = nil   // link gốc nếu playlist được nhập từ Spotify/Apple Music/…
 }
 

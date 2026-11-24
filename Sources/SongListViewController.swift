@@ -136,6 +136,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         switch source {
         case .playlist:
             items.append(UIBarButtonItem(title: "Tuỳ chọn", style: .plain, target: self, action: #selector(playlistOptions)))
+            items.append(UIBarButtonItem(image: Icons.download(24), style: .plain, target: self, action: #selector(downloadAll)))
             items.append(UIBarButtonItem(title: "Sắp xếp", style: .plain, target: self, action: #selector(toggleEditing(_:))))
         case .history:
             items.append(UIBarButtonItem(title: "Xoá hết", style: .plain, target: self, action: #selector(clearHistory)))
@@ -224,6 +225,22 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         PlayerEngine.shared.play(queue: list, index: 0, context: listTitle)
     }
 
+    @objc private func downloadAll() {
+        let list = songs
+        guard !list.isEmpty else { return }
+        let manager = DownloadManager.shared
+        let todo = list.filter { !Library.shared.isDownloaded($0) && !manager.isActive($0.videoId) }
+        if todo.isEmpty {
+            Toast.show("Tất cả bài trong playlist đã được tải hoặc đang tải")
+            return
+        }
+        let size = todo.count
+        confirm("Tải \(size) bài trong playlist về máy để nghe offline?", button: "Tải \(size) bài") {
+            let added = manager.enqueue(todo)
+            Toast.show("Đang tải \(added) bài (2 bài cùng lúc)…")
+        }
+    }
+
     @objc private func shuffleAll() {
         PlayerEngine.shared.playShuffled(songs)
     }
@@ -244,9 +261,14 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
                 Library.shared.renamePlaylist(id: id, name: name)
             }
         })
+        sheet.addAction(UIAlertAction(title: "Tải tất cả bài", style: .default) { [weak self] _ in self?.downloadAll() })
         sheet.addAction(UIAlertAction(title: "Xoá playlist", style: .destructive) { [weak self] _ in
-            Library.shared.deletePlaylist(id: id)
-            self?.navigationController?.popViewController(animated: true)
+            guard let self = self else { return }
+            DeleteDialogViewController.present(from: self, title: "Xoá playlist này?",
+                                               message: LibraryViewController.deleteMessage(for: list)) {
+                Library.shared.deletePlaylist(id: id)
+                self.navigationController?.popViewController(animated: true)
+            }
         })
         sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {

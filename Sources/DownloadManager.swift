@@ -41,6 +41,34 @@ final class DownloadManager {
         }
     }
 
+    private var waiting: [Song] = []
+    private let maxParallel = 2
+
+    /// Tải nhiều bài: xếp hàng, tối đa 2 bài cùng lúc. Trả về số bài được xếp (bỏ qua bài đã tải/đang tải).
+    @discardableResult
+    func enqueue(_ songs: [Song]) -> Int {
+        var added = 0
+        for song in songs where !Library.shared.isDownloaded(song) && progress[song.videoId] == nil
+            && !waiting.contains(where: { $0.videoId == song.videoId }) {
+            waiting.append(song)
+            added += 1
+        }
+        pump()
+        return added
+    }
+
+    var queuedCount: Int { return waiting.count }
+
+    func cancelQueue() {
+        waiting.removeAll()
+    }
+
+    private func pump() {
+        while progress.count < maxParallel, !waiting.isEmpty {
+            start(waiting.removeFirst())
+        }
+    }
+
     func cancel(_ videoId: String) {
         if progress[videoId] != nil {
             cancelled.insert(videoId)
@@ -61,6 +89,7 @@ final class DownloadManager {
             NotificationCenter.default.post(name: .downloadFailed, object: nil,
                                             userInfo: ["message": "\(song.title)\n\(error)"])
         }
+        pump()
     }
 
     private func begin(_ song: Song, info: StreamInfo) {
@@ -104,6 +133,7 @@ final class DownloadManager {
             Library.shared.addDownload(song)
             self?.progress[song.videoId] = nil
             self?.post()
+            self?.pump()
             LyricsService.shared.storeForDownload(song, durationHint: real)
         }
     }

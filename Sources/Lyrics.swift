@@ -821,6 +821,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
                 self.style(cell, time: time)
             }, completion: nil)
         }
+        prewarmBlur()
     }
 
     /// Đổi độ đậm/font: tính lại chiều cao, ảnh mờ và dựng lại các dòng.
@@ -918,7 +919,22 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         let bucket = min(max(distance, 1), 4)
         let base: [CGFloat] = [0, 0.72, 0.6, 0.5, 0.42]
         let alpha = immersive ? base[bucket] * 0.85 : base[bucket]
-        cell.showDim(image: blurred(row: cell.row, bucket: bucket, text: cell.label.text ?? ""), alpha: alpha)
+        cell.showDim(image: blurred(row: cell.row, bucket: bucket, text: cell.label.text ?? "", keep: cell.blurView.image), alpha: alpha)
+    }
+
+    /// Dựng sẵn ảnh mờ cho các dòng sắp đổi mức mờ (khi dòng hát chuyển 1–2 dòng tới) để lúc chuyển không bị rõ một chớp.
+    private func prewarmBlur() {
+        guard !lines.isEmpty, current >= 0 else { return }
+        let low = max(0, current - 3), high = min(lines.count - 1, current + 9)
+        guard low <= high else { return }
+        for step in 1...2 {
+            let target = current + step
+            for r in low...high where r != target {
+                let text = lines[r].text.isEmpty ? "♪" : lines[r].text
+                let bucket = min(max(abs(r - target), 1), 4)
+                _ = blurred(row: r, bucket: bucket, text: text, keep: nil, prewarm: true)
+            }
+        }
     }
 
     private let ciContext = CIContext(options: nil)
@@ -927,7 +943,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 
     /// Ảnh chữ mờ: trả ngay bản làm mờ nhanh (vẽ nhỏ rồi phóng to), đồng thời dựng bản Gaussian chất lượng đầy đủ
     /// ở luồng nền rồi thay vào — hình ảnh giống hệt trước, nhưng không còn chặn luồng chính khi đổi dòng.
-    private func blurred(row: Int, bucket: Int, text: String) -> UIImage? {
+    private func blurred(row: Int, bucket: Int, text: String, keep: UIImage?, prewarm: Bool = false) -> UIImage? {
         let width = max(40, table.bounds.width - LyricCell.sideInset * 2)
         let key = "\(row)-\(bucket)-\(Int(width))-\(immersive)"
         if let hit = blurCache[key] { return hit }
@@ -946,7 +962,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
                                         options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
             }
         }
-        let fast = drawFlat(scale: UIScreen.main.scale / max(1.5, radius * 0.85))
+        let hasOld = keep != nil && !prewarm
+        let fast: UIImage? = hasOld ? keep : (prewarm ? nil : drawFlat(scale: UIScreen.main.scale / max(3, radius * 1.7)))
         if !blurPending.contains(key) {
             blurPending.insert(key)
             let screenScale = UIScreen.main.scale

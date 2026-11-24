@@ -302,7 +302,7 @@ final class PlaylistImporter {
         return .success(collection)
     }
 
-    private func soundCloudClientId(html: String) -> String? {
+    func soundCloudClientId(html: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: "src=\"(https://a-v2\\.sndcdn\\.com/assets/[^\"]+\\.js)\"", options: []) else { return nil }
         let ns = html as NSString
         let urls = regex.matches(in: html, options: [], range: NSRange(location: 0, length: ns.length)).map { ns.substring(with: $0.range(at: 1)) }
@@ -396,7 +396,7 @@ final class PlaylistImporter {
         }
     }
 
-    private func bestMatch(for track: ImportedTrack) -> Song? {
+    func bestMatch(for track: ImportedTrack) -> Song? {
         let query = "\(SongMatcher.cleanTitle(track.title)) \(track.artist.components(separatedBy: ",").first ?? "")"
         let sem = DispatchSemaphore(value: 0)
         var results: [Song] = []
