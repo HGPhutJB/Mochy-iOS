@@ -1,3 +1,7 @@
+Mochy iOS 0.6.7 — khôi phục blur như bản 0.6.4
+
+- Dải mờ dưới ảnh bìa trở lại 4 lớp và đúng vị trí cũ; chữ lời mờ và vầng sáng từng chữ trở lại chất lượng làm mờ Gaussian như trước (dựng ở luồng nền, không chặn giao diện nên vẫn mượt).
+
 Mochy iOS 0.6.6 — sửa thanh tab thụt ra thụt vào khi cuộn
 
 - Thanh tab và thanh phát nhỏ không còn nhấp nháy giữa hai trạng thái khi vuốt lên xuống: tính theo quãng cuộn liên tục theo một hướng, bỏ qua đàn hồi ở hai đầu danh sách và có thời gian nghỉ để hiệu ứng chạy xong.

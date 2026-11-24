@@ -145,7 +145,7 @@ final class NowPlayingViewController: UIViewController {
     private let artView = UIImageView()
     private let video = VideoBackdrop()
     private let fluidView = FluidBackgroundView()
-    private let bandBlur = ProgressiveBlurView(layers: 2)
+    private let bandBlur = ProgressiveBlurView(layers: 4)
     private let bandShade = GradientView()
     private let topShade = GradientView()
     private let dragZone = UIView()
@@ -240,10 +240,9 @@ final class NowPlayingViewController: UIViewController {
         mediaView.frame = view.bounds
         artView.frame = mediaView.bounds
         video.layer.frame = mediaView.bounds
-        // Lớp mờ chỉ cần phủ vùng chuyển tiếp (dải màu đã che phần dưới), ít lớp hơn nên nhẹ hơn.
-        let bandTop = h * 0.36
-        bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h * 0.4)
-        bandShade.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
+        let bandTop = h * 0.42
+        bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
+        bandShade.frame = bandBlur.frame
         topShade.frame = CGRect(x: 0, y: 0, width: w, height: 170)
         updateLyricsFrame()
     }

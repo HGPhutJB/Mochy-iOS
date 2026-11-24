@@ -393,6 +393,7 @@ final class WordView: UIView {
         let pad = WordView.glowPad
         glow.frame = CGRect(x: -pad, y: -pad, width: frame.width + 3 + pad * 2, height: frame.height + pad * 2)
         glow.image = WordView.glowImage(text: text, font: font, width: frame.width + 3, height: frame.height)
+        WordView.upgradeGlow(text: text, font: font, width: frame.width + 3, height: frame.height) { [weak self] image in self?.glow.image = image }
         glow.alpha = 0
         addSubview(glow)
         for label in [dim, bright] {
@@ -416,6 +417,30 @@ final class WordView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
     private var lastLift: CGFloat = -1
+
+    private static let glowQueue = DispatchQueue(label: "mochyios.lyrics.glow", qos: .userInitiated)
+    private static let ciContext = CIContext(options: nil)
+
+    /// Bản vầng sáng Gaussian đầy đủ, dựng ở luồng nền và thay vào khi xong (bản nhanh hiện ngay).
+    private static func upgradeGlow(text: String, font: UIFont, width: CGFloat, height: CGFloat, apply: @escaping (UIImage) -> Void) {
+        let key = "hq|\(text)|\(font.pointSize)|\(Int(width))" as NSString
+        if let hit = glowCache.object(forKey: key) { apply(hit); return }
+        glowQueue.async {
+            let pad = glowPad
+            let size = CGSize(width: width + pad * 2, height: height + pad * 2)
+            let flat = UIGraphicsImageRenderer(size: size).image { _ in
+                (text as NSString).draw(in: CGRect(x: pad, y: pad, width: width, height: height),
+                                        withAttributes: [.font: font, .foregroundColor: UIColor.white])
+            }
+            guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return }
+            filter.setValue(input, forKey: kCIInputImageKey)
+            filter.setValue(Double(9 * flat.scale), forKey: kCIInputRadiusKey)
+            guard let output = filter.outputImage, let cg = ciContext.createCGImage(output, from: input.extent) else { return }
+            let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
+            glowCache.setObject(image, forKey: key)
+            DispatchQueue.main.async { apply(image) }
+        }
+    }
 
     private static func glowImage(text: String, font: UIFont, width: CGFloat, height: CGFloat) -> UIImage? {
         let key = "\(text)|\(font.pointSize)|\(Int(width))" as NSString
@@ -896,29 +921,53 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         cell.showDim(image: blurred(row: cell.row, bucket: bucket, text: cell.label.text ?? ""), alpha: alpha)
     }
 
+    private let ciContext = CIContext(options: nil)
+    private let blurQueue = DispatchQueue(label: "mochyios.lyrics.blur", qos: .userInitiated)
+    private var blurPending = Set<String>()
+
+    /// Ảnh chữ mờ: trả ngay bản làm mờ nhanh (vẽ nhỏ rồi phóng to), đồng thời dựng bản Gaussian chất lượng đầy đủ
+    /// ở luồng nền rồi thay vào — hình ảnh giống hệt trước, nhưng không còn chặn luồng chính khi đổi dòng.
     private func blurred(row: Int, bucket: Int, text: String) -> UIImage? {
         let width = max(40, table.bounds.width - LyricCell.sideInset * 2)
         let key = "\(row)-\(bucket)-\(Int(width))-\(immersive)"
         if let hit = blurCache[key] { return hit }
-        let ns = text as NSString
         let attrs = LyricCell.attributes(font: LyricCell.font, color: .white)
         let height = LyricCell.measure(text, width: width, font: LyricCell.font)
         let pad = LyricCell.blurPad
         let size = CGSize(width: width + pad * 2, height: height + pad * 2)
-        // Vẽ chữ vào ảnh rất nhỏ rồi để GPU phóng to (lọc tuyến tính) = làm mờ gần như miễn phí,
-        // thay cho CIGaussianBlur chạy trên luồng chính mỗi lần đổi dòng (nguyên nhân giật khi lời chạy).
         let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
         let radius = points[bucket] * (immersive ? 1.5 : 1.0)
-        let down = max(1.5, radius * 0.85)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = UIScreen.main.scale / down
-        format.opaque = false
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            ns.draw(with: CGRect(x: pad, y: pad, width: width, height: height),
-                    options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
+        func drawFlat(scale: CGFloat) -> UIImage {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = scale
+            format.opaque = false
+            return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+                (text as NSString).draw(with: CGRect(x: pad, y: pad, width: width, height: height),
+                                        options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
+            }
         }
-        blurCache[key] = image
-        return image
+        let fast = drawFlat(scale: UIScreen.main.scale / max(1.5, radius * 0.85))
+        if !blurPending.contains(key) {
+            blurPending.insert(key)
+            let screenScale = UIScreen.main.scale
+            blurQueue.async { [weak self] in
+                guard let self = self else { return }
+                let flat = drawFlat(scale: screenScale)
+                guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return }
+                filter.setValue(input, forKey: kCIInputImageKey)
+                filter.setValue(Double(radius * screenScale), forKey: kCIInputRadiusKey)
+                guard let output = filter.outputImage, let cg = self.ciContext.createCGImage(output, from: input.extent) else { return }
+                let image = UIImage(cgImage: cg, scale: screenScale, orientation: .up)
+                DispatchQueue.main.async {
+                    self.blurPending.remove(key)
+                    self.blurCache[key] = image
+                    if let cell = self.table.visibleCells.compactMap({ $0 as? LyricCell }).first(where: { $0.row == row }), row != self.current {
+                        self.style(cell, time: PlayerEngine.shared.livePosition)
+                    }
+                }
+            }
+        }
+        return fast
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
