@@ -246,7 +246,7 @@ final class DeleteDialogViewController: UIViewController {
     override var canBecomeFirstResponder: Bool { return true }
 
     override var keyCommands: [UIKeyCommand]? {
-        return [UIKeyCommand(input: UIKeyInputEscape, modifierFlags: [], action: #selector(cancelTapped))]
+        return [UIKeyCommand(input: "UIKeyInputEscape", modifierFlags: [], action: #selector(cancelTapped))]
     }
 
     override func viewDidLoad() {

@@ -2,7 +2,7 @@ import UIKit
 
 /// Nút dịch vụ nhạc trong bảng liên kết: có trạng thái "đang kết nối" (vòng xoay) và "đã kết nối" (dấu ✓ tự vẽ).
 final class AccountButton: UIControl {
-    enum State { case idle, busy, ok }
+    enum Phase { case idle, busy, ok }
 
     let service: MusicService
     private let icon = UIImageView()
@@ -12,7 +12,7 @@ final class AccountButton: UIControl {
     private let check = CAShapeLayer()
     private let busyLabel = UILabel()
     private let okLabel = UILabel()
-    private(set) var state: State = .idle
+    private(set) var phase: Phase = .idle
 
     private var fg: UIColor {
         switch service {
@@ -114,10 +114,10 @@ final class AccountButton: UIControl {
         okLabel.frame = CGRect(x: 24, y: 0, width: textW, height: 20)
     }
 
-    func setState(_ new: State) {
-        guard new != state else { return }
-        let old = state
-        state = new
+    func setPhase(_ new: Phase) {
+        guard new != phase else { return }
+        let old = phase
+        phase = new
         let spring = UIView.AnimationOptions.allowUserInteraction
         switch new {
         case .busy:
@@ -158,7 +158,7 @@ final class AccountButton: UIControl {
                 self.statusHost.alpha = 0
                 self.statusHost.transform = CGAffineTransform(translationX: 0, y: 9)
             }, completion: { _ in
-                if self.state == .idle {
+                if self.phase == .idle {
                     self.check.removeAllAnimations()
                     self.check.strokeEnd = 0
                     self.ring.removeAllAnimations()
@@ -428,7 +428,7 @@ final class AccountsSheetViewController: UIViewController {
                 o.isUserInteractionEnabled = false
             }
         }
-        button.setState(.busy)
+        button.setPhase(.busy)
         let started = Date()
         AccountSync.shared.connect(button.service, from: self) { [weak self] result in
             guard let self = self else { return }
@@ -437,7 +437,7 @@ final class AccountsSheetViewController: UIViewController {
                 switch result {
                 case .success:
                     button.refreshTitle()
-                    button.setState(.ok)
+                    button.setPhase(.ok)
                     DispatchQueue.main.asyncAfter(deadline: .now() + (self.reduce ? 0.8 : 1.2)) { self.restore(picked: i) }
                 case .failure(let e):
                     if !e.cancelled { Toast.show(e.message) }
@@ -449,7 +449,7 @@ final class AccountsSheetViewController: UIViewController {
 
     private func restore(picked i: Int) {
         let button = buttons[i]
-        button.setState(.idle)
+        button.setPhase(.idle)
         button.refreshTitle()
         for (k, o) in buttons.enumerated() {
             let d = Double(max(0, abs(k - i) - 1)) * 0.05
