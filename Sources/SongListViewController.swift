@@ -202,7 +202,6 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
             return
         }
         lastSignature = sig
-        title = listTitle
         nameLabel.text = listTitle
         var count = "\(list.count) bài"
         if case .downloads = source {

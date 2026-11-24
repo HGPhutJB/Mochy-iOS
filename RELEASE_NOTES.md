@@ -1,3 +1,8 @@
+Mochy iOS 0.7.6 — sửa lịch sử nghe
+
+- Lịch sử nghe không còn lặp một bài nhiều lần (bài nghe lại được đưa lên đầu).
+- Bỏ tiêu đề bị lặp hai lần ở đầu trang danh sách bài.
+
 Mochy iOS 0.7.5 — khôi phục dải mờ, tiêu đề mục không còn dính khi lướt
 
 - Khôi phục dải mờ trong suốt ở đầu mọi màn hình (0.7.4 lỡ bỏ).

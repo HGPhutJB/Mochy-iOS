@@ -209,7 +209,8 @@ final class Library {
     // MARK: - Lịch sử
 
     func addHistory(_ song: Song) {
-        if let first = history.first, first.song == song, Date().timeIntervalSince(first.date) < 30 { return }
+        // Mỗi bài chỉ xuất hiện một lần trong lịch sử, lần nghe gần nhất nằm trên cùng.
+        history.removeAll { $0.song == song }
         history.insert(HistoryEntry(song: song, date: Date()), at: 0)
         if history.count > historyLimit { history.removeLast(history.count - historyLimit) }
         save()
