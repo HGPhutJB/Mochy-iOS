@@ -1,3 +1,7 @@
+Mochy iOS 0.7.3 — sửa thanh tab bị tối ở chế độ sáng
+
+- Thanh tab nổi giờ theo chế độ giao diện: chế độ sáng thì thanh sáng (trước đây đo nền thất bại nên luôn tối).
+
 Mochy iOS 0.7.2 — trang nghệ sĩ mới, sửa album, gợi ý tìm kiếm
 
 - Làm lại trang nghệ sĩ: ảnh lớn tràn đầu trang, tên + người nghe, nút Phát/Ngẫu nhiên, bài nổi bật (xem tất cả bài), các hàng ngang Album / Đĩa đơn & EP / Video / Nghệ sĩ tương tự, mỗi hàng có "Xem tất cả" mở lưới toàn bộ đĩa.

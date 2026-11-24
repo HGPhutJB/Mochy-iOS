@@ -86,7 +86,7 @@ final class FloatingTabBar: UIView {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
         pan.cancelsTouchesInView = true
         addGestureRecognizer(pan)
-        applyLook(light: false, animated: false)
+        applyLook(light: !Theme.isDark, animated: false)
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -186,10 +186,13 @@ final class FloatingTabBar: UIView {
         snap.drawHierarchy(in: snap.bounds, afterScreenUpdates: false)
         UIGraphicsPopContext()
         var total: CGFloat = 0
+        var alphaSum: CGFloat = 0
         for i in 0..<(w * h) {
             total += 0.299 * CGFloat(pixels[i * 4]) + 0.587 * CGFloat(pixels[i * 4 + 1]) + 0.114 * CGFloat(pixels[i * 4 + 2])
+            alphaSum += CGFloat(pixels[i * 4 + 3])
         }
-        let luminance = total / CGFloat(w * h) / 255
+        // Chụp không được (ảnh trong suốt) thì đừng coi là "đen"; dùng chế độ giao diện của app.
+        let luminance: CGFloat = alphaSum / CGFloat(w * h) / 255 < 0.5 ? (Theme.isDark ? 0 : 1) : total / CGFloat(w * h) / 255
         // Có độ trễ để không nhấp nháy quanh ngưỡng.
         let wantLight = lightBackdrop == true ? luminance > 0.52 : luminance > 0.64
         if wantLight != lightBackdrop { applyLook(light: wantLight, animated: true) }
