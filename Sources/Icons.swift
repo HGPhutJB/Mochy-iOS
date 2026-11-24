@@ -21,20 +21,22 @@ enum Icons {
 
     private static func triangle(_ s: CGFloat, x0: CGFloat, x1: CGFloat) {
         let p = UIBezierPath()
-        p.move(to: CGPoint(x: s * x0, y: s * 0.14))
-        p.addLine(to: CGPoint(x: s * x1, y: s * 0.5))
-        p.addLine(to: CGPoint(x: s * x0, y: s * 0.86))
+        p.move(to: CGPoint(x: s * (x0 + 0.04), y: s * 0.19))
+        p.addLine(to: CGPoint(x: s * (x1 - 0.05), y: s * 0.5))
+        p.addLine(to: CGPoint(x: s * (x0 + 0.04), y: s * 0.81))
         p.close()
         p.fill()
+        line(p, s, 0.09)
     }
 
     private static func backTriangle(_ s: CGFloat, x0: CGFloat, x1: CGFloat) {
         let p = UIBezierPath()
-        p.move(to: CGPoint(x: s * x1, y: s * 0.14))
-        p.addLine(to: CGPoint(x: s * x0, y: s * 0.5))
-        p.addLine(to: CGPoint(x: s * x1, y: s * 0.86))
+        p.move(to: CGPoint(x: s * (x1 - 0.04), y: s * 0.19))
+        p.addLine(to: CGPoint(x: s * (x0 + 0.05), y: s * 0.5))
+        p.addLine(to: CGPoint(x: s * (x1 - 0.04), y: s * 0.81))
         p.close()
         p.fill()
+        line(p, s, 0.09)
     }
 
     private static func arrowHead(_ s: CGFloat, at tip: CGPoint, pointingRight: Bool) {

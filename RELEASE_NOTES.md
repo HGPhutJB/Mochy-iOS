@@ -1,3 +1,10 @@
+Mochy iOS 0.7.4 — bỏ dải mờ dính ở đầu trang, nút qua bài bo tròn, ba chấm chờ lời
+
+- Bỏ dải mờ dính ở đầu mọi màn hình khi lướt xuống.
+- Hai nút qua bài/lùi bài bo tròn góc.
+- Khi lời chưa tới: hiện ba chấm sáng dần như Apple Music.
+- Thanh tab nổi theo đúng chế độ sáng/tối (0.7.3).
+
 Mochy iOS 0.7.3 — sửa thanh tab bị tối ở chế độ sáng
 
 - Thanh tab nổi giờ theo chế độ giao diện: chế độ sáng thì thanh sáng (trước đây đo nền thất bại nên luôn tối).

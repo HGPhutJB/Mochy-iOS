@@ -291,7 +291,7 @@ final class GlassNavigationController: UINavigationController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        backdrop.isHidden = navigationBar.isHidden
+        backdrop.isHidden = true
         backdrop.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: view.safeAreaInsets.top + 44 + 26)
     }
 }

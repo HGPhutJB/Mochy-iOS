@@ -648,6 +648,40 @@ private extension UIColor {
 }
 
 /// Khu vực hiển thị lời: cuộn mượt theo dòng đang hát, dòng khác mờ, chạm vào dòng để tua.
+/// Ba chấm báo "chưa tới lời": sáng dần theo thời gian tới dòng đầu, nhấp nhô nhẹ.
+final class LyricDotsView: UIView {
+    private let dots: [UIView] = (0..<3).map { _ in UIView() }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        for d in dots {
+            d.backgroundColor = UIColor.white
+            d.layer.cornerRadius = 7
+            addSubview(d)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        for (i, d) in dots.enumerated() {
+            d.bounds = CGRect(x: 0, y: 0, width: 14, height: 14)
+            d.center = CGPoint(x: 28 + 7 + CGFloat(i) * 26, y: bounds.midY)
+        }
+    }
+
+    func update(progress: Double, time: Double) {
+        for (i, d) in dots.enumerated() {
+            let fill = CGFloat(min(1, max(0, progress * 3 - Double(i))))
+            d.alpha = 0.3 + 0.7 * fill
+            let pulse = 1 + 0.12 * CGFloat(sin(time * 3.2 - Double(i) * 0.8)) * (0.4 + 0.6 * fill)
+            d.transform = CGAffineTransform(scaleX: pulse, y: pulse)
+        }
+    }
+}
+
 final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private let table = UITableView(frame: .zero, style: .plain)
     private let statusLabel = UILabel()
@@ -660,6 +694,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private var lastWidth: CGFloat = 0
     private static var plainFont: UIFont { return RoundedFont.font(22, index: AppSettings.lyricWeight - 1) }
     private var link: CADisplayLink?
+    private let dotsView = LyricDotsView(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
+    private var dotsShown = false
     private let fadeMask = CAGradientLayer()
     var onSeek: ((Double) -> Void)?
     var onInteraction: (() -> Void)?
@@ -752,6 +788,15 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         heightCache.removeAll()
         statusLabel.text = message
         statusLabel.isHidden = message == nil
+        dotsShown = false
+        if let first = lines.first, first.time > 1.5 {
+            dotsShown = true
+            dotsView.alpha = 1
+            dotsView.frame = CGRect(x: 0, y: 0, width: max(1, table.bounds.width), height: 44)
+            table.tableHeaderView = dotsView
+        } else {
+            table.tableHeaderView = nil
+        }
         table.reloadData()
         table.contentOffset = CGPoint(x: 0, y: -table.contentInset.top)
     }
@@ -785,6 +830,14 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         }
         if idx != current {
             changeCurrent(to: idx, time: time)
+        }
+        if dotsShown {
+            if idx < 0 {
+                dotsView.alpha = 1
+                dotsView.update(progress: time / max(0.5, lines[0].time), time: time)
+            } else if dotsView.alpha > 0 && !(time < lines[0].time) {
+                UIView.animate(withDuration: 0.35) { self.dotsView.alpha = 0 }
+            }
         }
         if current >= 0, let cell = table.cellForRow(at: IndexPath(row: current, section: 0)) as? LyricCell {
             cell.showActive(time: time)
