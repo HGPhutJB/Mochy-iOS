@@ -181,7 +181,6 @@ final class RootViewController: UIViewController {
             else if self.travel < -56 { self.requestCompact(false); self.travel = 0 }
         }
     }
-    }
 
     // MARK: - Chuyển tab
 
