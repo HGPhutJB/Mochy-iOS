@@ -9,7 +9,7 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
     }
 
     private let searchBar = UISearchBar()
-    private let tableView = UITableView(frame: .zero, style: .plain)
+    private let tableView = UITableView(frame: .zero, style: .grouped)
     private let messageLabel = UILabel()
     private let spinner = UIActivityIndicatorView(style: Theme.spinnerStyle())
     private var songs: [Song] = []
@@ -41,6 +41,8 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
         tableView.keyboardDismissMode = .onDrag
         tableView.tableHeaderView = searchBar
         tableView.tableFooterView = UIView()
+        tableView.estimatedSectionHeaderHeight = 0
+        tableView.estimatedSectionFooterHeight = 0
         view.addSubview(tableView)
 
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -221,6 +223,10 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
         container.addSubview(clear)
         return container
     }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat { return 0.01 }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? { return UIView() }
 
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return (mode == .recents && !AppSettings.recentSearches.isEmpty) ? 46 : 0.01

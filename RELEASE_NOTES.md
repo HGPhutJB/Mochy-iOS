@@ -1,3 +1,8 @@
+Mochy iOS 0.7.5 — khôi phục dải mờ, tiêu đề mục không còn dính khi lướt
+
+- Khôi phục dải mờ trong suốt ở đầu mọi màn hình (0.7.4 lỡ bỏ).
+- Tiêu đề các mục ("Nhạc Việt mới"...) cuộn theo nội dung, không dính lại phía trên ở Trang chủ, Nghệ sĩ, Thư viện, Tìm kiếm.
+
 Mochy iOS 0.7.4 — bỏ dải mờ dính ở đầu trang, nút qua bài bo tròn, ba chấm chờ lời
 
 - Bỏ dải mờ dính ở đầu mọi màn hình khi lướt xuống.

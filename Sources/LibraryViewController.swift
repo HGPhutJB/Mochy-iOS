@@ -85,7 +85,7 @@ final class LibraryRowCell: UITableViewCell {
 
 /// Tab "Thư viện": Yêu thích, Đã tải xuống, Lịch sử và danh sách playlist.
 final class LibraryViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
-    private let tableView = UITableView(frame: .zero, style: .plain)
+    private let tableView = UITableView(frame: .zero, style: .grouped)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -103,6 +103,8 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
         tableView.separatorColor = Theme.separator
         tableView.separatorInset = UIEdgeInsets(top: 0, left: 82, bottom: 0, right: 0)
         tableView.tableFooterView = UIView()
+        tableView.estimatedSectionHeaderHeight = 0
+        tableView.estimatedSectionFooterHeight = 0
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.topAnchor),

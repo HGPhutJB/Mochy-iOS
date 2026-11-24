@@ -223,7 +223,7 @@ final class HeroView: UIView {
 
 /// Tab "Trang chủ": thẻ gợi ý hôm nay, nghe gần đây, nhạc mới, bảng xếp hạng, "Vì bạn nghe …".
 final class HomeViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
-    private let tableView = UITableView(frame: .zero, style: .plain)
+    private let tableView = UITableView(frame: .zero, style: .grouped)
     private let headerContainer = UIView()
     private let hero = HeroView()
     private let statusLabel = UILabel()
@@ -246,6 +246,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         tableView.allowsSelection = false
         tableView.tableFooterView = UIView()
         tableView.estimatedSectionHeaderHeight = 0
+        tableView.estimatedSectionFooterHeight = 0
         let refresh = UIRefreshControl()
         refresh.addTarget(self, action: #selector(pulledToRefresh(_:)), for: .valueChanged)
         tableView.refreshControl = refresh
@@ -375,6 +376,10 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return 48
     }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat { return 0.01 }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? { return UIView() }
 
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let container = UIView()

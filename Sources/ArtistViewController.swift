@@ -148,7 +148,7 @@ final class CardShelfCell: UITableViewCell, UICollectionViewDataSource, UICollec
 final class ArtistViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private let artistId: String?
     private let artistName: String
-    private let tableView = UITableView(frame: .zero, style: .plain)
+    private let tableView = UITableView(frame: .zero, style: .grouped)
     private let header = UIView()
     private let hero = UIImageView()
     private let heroShade = GradientView()
@@ -383,6 +383,10 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
         if hasSongs && indexPath.section == 0 { return indexPath.row < shownSongs ? 66 : 48 }
         return CardShelfCell.height + 10
     }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat { return 0.01 }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? { return UIView() }
 
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return 50
