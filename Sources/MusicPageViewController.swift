@@ -9,7 +9,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
 
     /// Mở trang nghệ sĩ dưới dạng cửa sổ phủ (dùng được từ màn hình đang phát lẫn danh sách).
     static func present(artist name: String, id: String?, from vc: UIViewController) {
-        let page = MusicPageViewController(kind: .artist(id: id, name: name))
+        let page = ArtistViewController(id: id, name: name)
         let nav = GlassNavigationController(rootViewController: page)
         nav.navigationBar.barStyle = Theme.isDark ? .black : .default
         vc.present(nav, animated: true, completion: nil)
@@ -255,7 +255,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
         if card.browseId.hasPrefix("MPRE") {
             navigationController?.pushViewController(MusicPageViewController(kind: .album(id: card.browseId, title: card.title)), animated: true)
         } else if card.browseId.hasPrefix("UC") {
-            navigationController?.pushViewController(MusicPageViewController(kind: .artist(id: card.browseId, name: card.title)), animated: true)
+            navigationController?.pushViewController(ArtistViewController(id: card.browseId, name: card.title), animated: true)
         } else {
             Toast.show("Chưa mở được mục này")
         }

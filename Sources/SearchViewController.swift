@@ -4,6 +4,7 @@ import UIKit
 final class SearchViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate {
     private enum Mode {
         case recents
+        case suggestions
         case results
     }
 
@@ -14,6 +15,8 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
     private var songs: [Song] = []
     private var mode: Mode = .recents
     private var searchToken = 0
+    private var suggestions: [String] = []
+    private var suggestToken = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -89,10 +92,28 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
     }
 
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        if searchText.isEmpty {
+        let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        suggestToken += 1
+        if text.isEmpty {
             searchToken += 1
             spinner.stopAnimating()
             showRecents()
+            return
+        }
+        let token = suggestToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { [weak self] in
+            guard let self = self, token == self.suggestToken else { return }
+            InnerTube.shared.suggestions(text) { [weak self] list in
+                guard let self = self, token == self.suggestToken, !list.isEmpty else { return }
+                // Chỉ hiện gợi ý khi chưa chuyển sang kết quả cho đúng nội dung đang gõ.
+                self.searchToken += 1
+                self.spinner.stopAnimating()
+                self.mode = .suggestions
+                self.songs = []
+                self.suggestions = list
+                self.messageLabel.text = nil
+                self.tableView.reloadData()
+            }
         }
     }
 
@@ -102,6 +123,7 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
         recents.insert(query, at: 0)
         AppSettings.recentSearches = recents
 
+        suggestToken += 1
         searchToken += 1
         let token = searchToken
         mode = .results
@@ -129,7 +151,11 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
     // MARK: - Bảng
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return mode == .results ? songs.count : AppSettings.recentSearches.count
+        switch mode {
+        case .results: return songs.count
+        case .suggestions: return suggestions.count
+        case .recents: return AppSettings.recentSearches.count
+        }
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -137,6 +163,21 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if mode == .suggestions {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "recent", for: indexPath)
+            Theme.style(cell: cell, grouped: false)
+            let text = suggestions[indexPath.row]
+            let typed = (searchBar.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let attributed = NSMutableAttributedString(string: text, attributes: [.font: Theme.bold(16), .foregroundColor: Theme.primaryText])
+            if !typed.isEmpty, text.lowercased().hasPrefix(typed.lowercased()) {
+                attributed.addAttributes([.font: Theme.regular(16), .foregroundColor: Theme.secondaryText],
+                                         range: NSRange(location: 0, length: (typed as NSString).length))
+            }
+            cell.textLabel?.attributedText = attributed
+            cell.imageView?.image = Icons.search(18)
+            cell.imageView?.tintColor = Theme.secondaryText
+            return cell
+        }
         if mode == .recents {
             let cell = tableView.dequeueReusableCell(withIdentifier: "recent", for: indexPath)
             Theme.style(cell: cell, grouped: false)
@@ -192,6 +233,13 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        if mode == .suggestions {
+            let query = suggestions[indexPath.row]
+            searchBar.text = query
+            searchBar.resignFirstResponder()
+            runSearch(query)
+            return
+        }
         if mode == .recents {
             let query = AppSettings.recentSearches[indexPath.row]
             searchBar.text = query

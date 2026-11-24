@@ -216,34 +216,16 @@ final class M3Switch: UIControl {
     }
 }
 
-/// Làm mờ trong suốt: chỉ làm mờ nền phía sau, không phủ màu sáng/tối (dùng lớp backdrop của hệ thống;
-/// nếu máy không có thì quay về hiệu ứng mờ thường đã bỏ lớp phủ màu).
+/// Làm mờ gần như trong suốt: hiệu ứng mờ của hệ thống đã bỏ lớp phủ màu sáng/tối.
 final class ClearBlurView: UIView {
     private var fallback: UIVisualEffectView?
-
-    override class var layerClass: AnyClass {
-        return (NSClassFromString("CABackdropLayer") as? CALayer.Type) ?? CALayer.self
-    }
 
     init(radius: CGFloat) {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
-        var ok = false
-        if NSClassFromString("CABackdropLayer") != nil,
-           let filterClass = NSClassFromString("CAFilter") as? NSObject.Type,
-           let made = filterClass.perform(NSSelectorFromString("filterWithType:"), with: "gaussianBlur")?.takeUnretainedValue() as? NSObject {
-            made.setValue(radius, forKey: "inputRadius")
-            made.setValue(true, forKey: "inputNormalizeEdges")
-            layer.setValue([made], forKey: "filters")
-            layer.setValue(1.0, forKey: "scale")
-            layer.setValue(true, forKey: "allowsInPlaceFiltering")
-            ok = true
-        }
-        if !ok {
-            let v = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
-            addSubview(v)
-            fallback = v
-        }
+        let v = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
+        addSubview(v)
+        fallback = v
     }
 
     required init?(coder aDecoder: NSCoder) {

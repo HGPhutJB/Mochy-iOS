@@ -1005,8 +1005,10 @@ final class FluidBackgroundView: UIView {
     private(set) var revealState: Reveal = .full
     private var revealToken = 0
     // vị trí tương đối và biên độ trôi của từng đốm màu
-    private let spots: [(x: CGFloat, y: CGFloat, dx: CGFloat, dy: CGFloat, seconds: Double)] = [
-        (0.18, 0.16, 0.10, 0.07, 17), (0.86, 0.30, -0.09, 0.09, 21), (0.22, 0.80, 0.11, -0.08, 19), (0.82, 0.86, -0.10, -0.07, 23)
+    // (tâm quỹ đạo, bán kính quỹ đạo theo tỉ lệ màn hình, thời gian một vòng, quay ngược?)
+    private let spots: [(x: CGFloat, y: CGFloat, rx: CGFloat, ry: CGFloat, seconds: Double, reverse: Bool)] = [
+        (0.20, 0.18, 0.26, 0.14, 13, false), (0.84, 0.30, 0.24, 0.16, 16, true), (0.22, 0.78, 0.28, 0.13, 15, true),
+        (0.80, 0.84, 0.26, 0.15, 18, false), (0.52, 0.48, 0.30, 0.20, 21, false), (0.50, 0.10, 0.34, 0.10, 19, true)
     ]
 
     override init(frame: CGRect) {
@@ -1107,7 +1109,7 @@ final class FluidBackgroundView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let size = max(bounds.width, bounds.height) * 1.25
+        let size = max(bounds.width, bounds.height) * 1.35
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for (i, g) in blobs.enumerated() {
@@ -1127,28 +1129,36 @@ final class FluidBackgroundView: UIView {
         if window != nil { startDrifting() }
     }
 
-    /// Cho từng đốm màu trôi chậm qua lại (ease-in-out, lặp vô hạn).
+    /// Cho từng đốm màu quay quanh một quỹ đạo elip rộng, vừa quay vừa phồng/xẹp (lặp vô hạn).
     private func startDrifting() {
         guard bounds.width > 0 else { return }
         for (i, g) in blobs.enumerated() where g.animation(forKey: "drift") == nil {
             let s = spots[i]
-            let move = CABasicAnimation(keyPath: "position")
-            move.fromValue = NSValue(cgPoint: CGPoint(x: bounds.width * s.x, y: bounds.height * s.y))
-            move.toValue = NSValue(cgPoint: CGPoint(x: bounds.width * (s.x + s.dx), y: bounds.height * (s.y + s.dy)))
-            move.duration = s.seconds
-            move.autoreverses = true
-            move.repeatCount = .infinity
-            move.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            g.add(move, forKey: "drift")
+            let cx = bounds.width * s.x, cy = bounds.height * s.y
+            let rx = bounds.width * s.rx, ry = bounds.height * s.ry
+            let orbit = CAKeyframeAnimation(keyPath: "position")
+            let oval = UIBezierPath(ovalIn: CGRect(x: cx - rx, y: cy - ry, width: rx * 2, height: ry * 2))
+            var mirror = reflectX(cx)
+            let mirrored = oval.cgPath.copy(using: &mirror) ?? oval.cgPath
+            orbit.path = s.reverse ? mirrored : oval.cgPath
+            orbit.duration = s.seconds
+            orbit.repeatCount = .infinity
+            orbit.calculationMode = .paced
+            orbit.timeOffset = s.seconds * Double(i) / Double(spots.count)
+            g.add(orbit, forKey: "drift")
             let pulse = CABasicAnimation(keyPath: "transform.scale")
-            pulse.fromValue = 0.92
-            pulse.toValue = 1.12
-            pulse.duration = s.seconds * 0.8
+            pulse.fromValue = 0.8
+            pulse.toValue = 1.3
+            pulse.duration = s.seconds * 0.55
             pulse.autoreverses = true
             pulse.repeatCount = .infinity
             pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             g.add(pulse, forKey: "pulse")
         }
+    }
+
+    private func reflectX(_ cx: CGFloat) -> CGAffineTransform {
+        return CGAffineTransform(translationX: cx, y: 0).scaledBy(x: -1, y: 1).translatedBy(x: -cx, y: 0)
     }
 
     func setImage(_ image: UIImage) {
@@ -1165,7 +1175,7 @@ final class FluidBackgroundView: UIView {
 
     /// Lấy bốn màu nổi bật, khác nhau của bìa rồi chỉnh sao cho đậm màu nhưng đủ tối để chữ trắng đọc rõ.
     private static func makePalette(_ image: UIImage) -> [UIColor] {
-        let n = 6
+        let n = 8
         var pixels = [UInt8](repeating: 0, count: n * n * 4)
         let space = CGColorSpaceCreateDeviceRGB()
         let info = CGImageAlphaInfo.premultipliedLast.rawValue
@@ -1196,8 +1206,9 @@ final class FluidBackgroundView: UIView {
         }
         var i = 0
         while picked.count < 4 { picked.append(ranked[i % ranked.count]); i += 1 }
+        // Giữ gần màu thật của bìa: chỉ hạ độ sáng vừa đủ cho chữ trắng đọc rõ.
         return picked.map { c in
-            UIColor(hue: c.h, saturation: min(1, max(0.35, c.s * 1.25)), brightness: min(0.62, max(0.38, c.b * 0.95)), alpha: 1)
+            UIColor(hue: c.h, saturation: min(1, max(0.28, c.s * 1.08)), brightness: min(0.80, max(0.34, c.b * 0.92)), alpha: 1)
         }
     }
 
@@ -1230,7 +1241,7 @@ final class FluidBackgroundView: UIView {
         CATransaction.begin()
         CATransaction.setAnimationDuration(1.4)
         UIView.animate(withDuration: 1.4) {
-            self.backgroundColor = UIColor(hue: h, saturation: min(1, s * 0.9), brightness: 0.2, alpha: 1)
+            self.backgroundColor = UIColor(hue: h, saturation: min(1, s * 0.95), brightness: max(0.16, min(0.34, b * 0.45)), alpha: 1)
         }
         for (i, g) in blobs.enumerated() {
             g.contents = FluidBackgroundView.blobImage(colors[i % colors.count])

@@ -91,7 +91,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
                     rows: [.quality, .videoBackdrop]),
-            Section(title: "Tính năng", footer: nil, rows: [.accounts, .recap, .importList, .lastfm, .advanced]),
+            Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
                     rows: [.backup, .restore]),

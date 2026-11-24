@@ -1,3 +1,14 @@
+Mochy iOS 0.7.2 — trang nghệ sĩ mới, sửa album, gợi ý tìm kiếm
+
+- Làm lại trang nghệ sĩ: ảnh lớn tràn đầu trang, tên + người nghe, nút Phát/Ngẫu nhiên, bài nổi bật (xem tất cả bài), các hàng ngang Album / Đĩa đơn & EP / Video / Nghệ sĩ tương tự, mỗi hàng có "Xem tất cả" mở lưới toàn bộ đĩa.
+- Sửa trang album bị trống tên/ảnh bìa (YouTube Music đổi cấu trúc trang).
+- Sửa trang playlist rỗng bị giật/đè chữ sau khi tạo playlist.
+- Tìm kiếm có gợi ý khi gõ.
+- Nền màu ở màn hình đang phát/lời: chuyển động nhiều hơn (6 đốm quay quanh quỹ đạo rộng) và bám sát màu bìa hơn.
+- Trang chủ bỏ các hàng "Nghe gần đây", "Vì bạn nghe …".
+- Tạm gỡ mục Tài khoản nhạc và Last.fm khỏi Cài đặt.
+- Dải mờ trên cùng dùng lại hiệu ứng mờ hệ thống bỏ lớp phủ màu (hết đốm màu lạ).
+
 Mochy iOS 0.7.1 — đăng nhập tài khoản thật, thanh mờ trong suốt, nút tải tròn
 
 - Liên kết tài khoản nay mở trang đăng nhập thật của Spotify, Deezer, SoundCloud, Apple Music, YouTube Music ngay trong app; sau khi đăng nhập Mochy đọc được thư viện riêng tư của tài khoản (bài đã thích, playlist) và tự đồng bộ. Cookie đăng nhập lưu trong Keychain.

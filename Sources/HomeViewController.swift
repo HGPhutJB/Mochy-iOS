@@ -325,12 +325,12 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     }
 
     private func reload(animated: Bool) {
-        var list: [Shelf] = []
-        let recent = Library.shared.recentSongs(limit: 20)
-        if recent.count >= 1 {
-            list.append(Shelf(title: "Nghe gần đây", songs: recent))
+        // Bỏ các hàng cá nhân hoá kiểu "Nghe gần đây", "Vì bạn nghe …", "Bạn đã nghe …".
+        let hidden = ["vì bạn nghe", "bạn đã nghe", "nghe gần đây", "nghe lại", "because you", "listen again", "recently"]
+        let list = HomeFeed.shared.shelves.filter { shelf in
+            let t = shelf.title.lowercased()
+            return !hidden.contains { t.contains($0) }
         }
-        list.append(contentsOf: HomeFeed.shared.shelves)
         shelves = list
         if let hero = HomeFeed.shared.heroSong() {
             heroSong = hero.song

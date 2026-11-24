@@ -122,19 +122,12 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         playButton.addTarget(self, action: #selector(playAll), for: .touchUpInside)
         shuffleButton.addTarget(self, action: #selector(shuffleAll), for: .touchUpInside)
 
-        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
         emptyLabel.numberOfLines = 0
         emptyLabel.textAlignment = .center
         emptyLabel.font = Theme.regular(15)
         emptyLabel.textColor = Theme.secondaryText
         emptyLabel.text = emptyText
-        view.addSubview(emptyLabel)
-        NSLayoutConstraint.activate([
-            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 60),
-            emptyLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            emptyLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32)
-        ])
+        header.addSubview(emptyLabel)
 
         var items: [UIBarButtonItem] = []
         switch source {
@@ -166,7 +159,8 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         let width = tableView.bounds.width
         guard width > 0 else { return }
         let coverSize: CGFloat = min(200, width - 120)
-        let height: CGFloat = 16 + coverSize + 16 + 58 + 22 + 16 + 44 + 20
+        let emptyExtra: CGFloat = songs.isEmpty ? 110 : 0
+        let height: CGFloat = 16 + coverSize + 16 + 58 + 22 + 16 + 44 + 20 + emptyExtra
         let frame = CGRect(x: 0, y: 0, width: width, height: height)
         if header.frame != frame {
             header.frame = frame
@@ -176,6 +170,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         nameLabel.frame = CGRect(x: 20, y: cover.frame.maxY + 16, width: width - 40, height: 58)
         countLabel.frame = CGRect(x: 20, y: nameLabel.frame.maxY, width: width - 40, height: 22)
         let rowY = countLabel.frame.maxY + 16
+        emptyLabel.frame = CGRect(x: 32, y: rowY + 44 + 24, width: width - 64, height: 70)
         if showsDownload {
             let avail = width - 32 - 24 - 44
             let playW = floor(avail * 0.47)
@@ -197,8 +192,16 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         if !tableView.isEditing { refresh() }
     }
 
+    private var lastSignature = ""
+
     private func refresh() {
         let list = songs
+        let sig = listTitle + "|" + list.map { $0.videoId }.joined(separator: ",") + "|" + (PlayerEngine.shared.currentSong?.videoId ?? "")
+        if sig == lastSignature && !tableView.isDragging {
+            updateDownloadButton()
+            return
+        }
+        lastSignature = sig
         title = listTitle
         nameLabel.text = listTitle
         var count = "\(list.count) bài"
