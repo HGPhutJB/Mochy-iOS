@@ -1,3 +1,7 @@
+Mochy iOS 0.8.4 — ảnh đại diện tài khoản
+
+- Chọn ảnh đại diện từ thư viện ảnh (cắt vuông), lưu vào tài khoản và đồng bộ giữa các máy; hiện ở nút tài khoản trang chủ và màn hình tài khoản. Có thể xoá ảnh.
+
 Mochy iOS 0.8.3 — nút tài khoản ở trang chủ
 
 - Thêm nút tài khoản ở góc phải trang chủ (như App Store): chưa đăng nhập hiện hình người kiểu iOS 16, đã đăng nhập hiện chữ cái đầu tên; chạm để mở màn hình tài khoản.

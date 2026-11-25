@@ -1,7 +1,7 @@
 import UIKit
 
 /// Màn hình tài khoản Mochy: đăng nhập / đăng ký, và khi đã đăng nhập thì xem trạng thái đồng bộ, đổi mật khẩu, đăng xuất, xoá tài khoản.
-final class MochyAccountViewController: UIViewController, UITextFieldDelegate {
+final class MochyAccountViewController: UIViewController, UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     private let scroll = UIScrollView()
     private let stack = UIStackView()
     private let mode = M3Segmented(items: ["Đăng nhập", "Đăng ký"], selected: 0)
@@ -126,6 +126,15 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate {
     }
 
     private func buildLoggedIn(_ cloud: MochyCloud) {
+        let big: CGFloat = 96
+        let avatar = UIButton(type: .custom)
+        avatar.setImage(AccountAvatarButton.render(letter: String((cloud.username ?? "?").prefix(1)).uppercased(), photo: cloud.avatarImage, side: big), for: .normal)
+        avatar.widthAnchor.constraint(equalToConstant: big).isActive = true
+        avatar.heightAnchor.constraint(equalToConstant: big).isActive = true
+        avatar.addTarget(self, action: #selector(pickAvatar), for: .touchUpInside)
+        let avatarRow = UIStackView(arrangedSubviews: [avatar, UIView()])
+        avatarRow.axis = .horizontal
+        stack.addArrangedSubview(avatarRow)
         stack.addArrangedSubview(label("@" + (cloud.username ?? ""), font: Theme.heavy(30), color: Theme.primaryText))
         var status = "Chưa đồng bộ"
         if let t = cloud.lastSync {
@@ -138,6 +147,10 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate {
         stack.addArrangedSubview(label("Yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải được lưu vào tài khoản và tự đồng bộ khi có thay đổi.",
                                        font: Theme.regular(14), color: Theme.secondaryText))
         stack.addArrangedSubview(makeButton("Đồng bộ ngay", filled: true, action: #selector(syncTapped)))
+        stack.addArrangedSubview(makeButton("Đổi ảnh đại diện", filled: false, action: #selector(pickAvatar)))
+        if cloud.avatarImage != nil {
+            stack.addArrangedSubview(makeButton("Xoá ảnh đại diện", filled: false, action: #selector(removeAvatarTapped)))
+        }
         stack.addArrangedSubview(makeButton("Đổi mật khẩu", filled: false, action: #selector(changePasswordTapped)))
         stack.addArrangedSubview(makeButton("Đăng xuất", filled: false, action: #selector(logoutTapped)))
         stack.addArrangedSubview(makeButton("Xoá tài khoản", filled: false, action: #selector(deleteTapped), danger: true))
@@ -206,6 +219,40 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate {
         setBusy(true)
         MochyCloud.shared.syncNow { [weak self] _ in
             self?.setBusy(false)
+            self?.rebuild()
+        }
+    }
+
+    @objc private func pickAvatar() {
+        guard UIImagePickerController.isSourceTypeAvailable(.photoLibrary) else { info("Không mở được thư viện ảnh."); return }
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.allowsEditing = true   // cắt vuông ngay trong bộ chọn
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        let image = (info[.editedImage] as? UIImage) ?? (info[.originalImage] as? UIImage)
+        picker.dismiss(animated: true)
+        guard let picked = image else { return }
+        setBusy(true)
+        MochyCloud.shared.uploadAvatar(picked) { [weak self] error in
+            self?.setBusy(false)
+            if let error = error { self?.info(error) }
+            self?.rebuild()
+        }
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+    }
+
+    @objc private func removeAvatarTapped() {
+        setBusy(true)
+        MochyCloud.shared.removeAvatar { [weak self] error in
+            self?.setBusy(false)
+            if let error = error { self?.info(error) }
             self?.rebuild()
         }
     }

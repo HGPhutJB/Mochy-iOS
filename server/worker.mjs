@@ -127,7 +127,30 @@ export default {
     if (path === '/account' && request.method === 'DELETE') {
       await env.MOCHY_KV.delete(`user:${who.name}`);
       await env.MOCHY_KV.delete(`data:${who.name}`);
+      await env.MOCHY_KV.delete(`avatar:${who.name}`);
       await env.MOCHY_KV.delete(`sess:${who.token}`);
+      return reply({ ok: true });
+    }
+
+    if (path === '/avatar' && request.method === 'GET') {
+      const image = await env.MOCHY_KV.get(`avatar:${who.name}`);
+      return reply({ image: image || null });
+    }
+
+    if (path === '/avatar' && request.method === 'PUT') {
+      const body = await readJSON(request);
+      const image = body && body.image;
+      // Chỉ nhận ảnh JPEG (base64) nhỏ; app tự thu nhỏ về 256px trước khi gửi.
+      if (typeof image !== 'string' || image.length > 150000 || !image.startsWith('/9j/') || !/^[A-Za-z0-9+/=]+$/.test(image)) {
+        return fail(400, 'Ảnh không hợp lệ hoặc quá lớn');
+      }
+      if (!(await throttle(env, `avatar:${who.name}`, 20, 3600))) return fail(429, 'Đổi ảnh quá nhiều lần, thử lại sau');
+      await env.MOCHY_KV.put(`avatar:${who.name}`, image);
+      return reply({ ok: true });
+    }
+
+    if (path === '/avatar' && request.method === 'DELETE') {
+      await env.MOCHY_KV.delete(`avatar:${who.name}`);
       return reply({ ok: true });
     }
 

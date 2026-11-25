@@ -21,11 +21,11 @@ final class AccountAvatarButton: UIButton {
     @objc func refresh() {
         let cloud = MochyCloud.shared
         let letter = cloud.isLoggedIn ? String((cloud.username ?? "?").prefix(1)).uppercased() : nil
-        setImage(AccountAvatarButton.render(letter: letter), for: .normal)
+        setImage(AccountAvatarButton.render(letter: letter, photo: cloud.avatarImage), for: .normal)
     }
 
-    static func render(letter: String?) -> UIImage {
-        let s = size
+    static func render(letter: String?, photo: UIImage? = nil, side: CGFloat = AccountAvatarButton.size) -> UIImage {
+        let s = side
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
         return renderer.image { ctx in
             let c = ctx.cgContext
@@ -33,7 +33,9 @@ final class AccountAvatarButton: UIButton {
             c.saveGState()
             c.addEllipse(in: rect)
             c.clip()
-            if let letter = letter {
+            if let photo = photo {
+                photo.draw(in: rect)
+            } else if let letter = letter {
                 let colors = [UIColor(red: 1.0, green: 0.36, blue: 0.45, alpha: 1).cgColor, Theme.accent.cgColor] as CFArray
                 if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
                     c.drawLinearGradient(g, start: CGPoint(x: 0, y: 0), end: CGPoint(x: s, y: s), options: [])

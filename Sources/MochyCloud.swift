@@ -104,6 +104,8 @@ final class MochyCloud {
         version = 0
         lastHash = nil
         lastSync = nil
+        try? FileManager.default.removeItem(at: avatarFile)
+        cachedAvatar = nil
         UserDefaults.standard.removeObject(forKey: "cloud.lastSync")
         NotificationCenter.default.post(name: .cloudStateChanged, object: nil)
     }
@@ -121,6 +123,77 @@ final class MochyCloud {
                 completion(nil)
             } else {
                 completion((json?["error"] as? String) ?? "Không xoá được tài khoản.")
+            }
+        }
+    }
+
+    // MARK: - Ảnh đại diện
+
+    private var avatarFile: URL { return Library.supportDirectory.appendingPathComponent("avatar.jpg") }
+    private var cachedAvatar: UIImage?
+
+    /// Ảnh đại diện của tài khoản đang đăng nhập (lưu sẵn trên máy, tự cập nhật từ máy chủ).
+    var avatarImage: UIImage? {
+        guard isLoggedIn else { return nil }
+        if let image = cachedAvatar { return image }
+        if let data = try? Data(contentsOf: avatarFile), let image = UIImage(data: data) {
+            cachedAvatar = image
+            return image
+        }
+        return nil
+    }
+
+    private func setLocalAvatar(_ data: Data?) {
+        if let data = data, let image = UIImage(data: data) {
+            try? data.write(to: avatarFile, options: .atomic)
+            cachedAvatar = image
+        } else {
+            try? FileManager.default.removeItem(at: avatarFile)
+            cachedAvatar = nil
+        }
+        NotificationCenter.default.post(name: .cloudStateChanged, object: nil)
+    }
+
+    /// Thu ảnh về hình vuông 256px (JPEG) rồi tải lên.
+    func uploadAvatar(_ image: UIImage, completion: @escaping (String?) -> Void) {
+        let side: CGFloat = 256
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side))
+        let square = renderer.image { _ in
+            let w = image.size.width, h = image.size.height
+            let scale = max(side / max(w, 1), side / max(h, 1))
+            let draw = CGSize(width: w * scale, height: h * scale)
+            image.draw(in: CGRect(x: (side - draw.width) / 2, y: (side - draw.height) / 2, width: draw.width, height: draw.height))
+        }
+        guard let data = square.jpegData(compressionQuality: 0.82) else { completion("Không xử lý được ảnh."); return }
+        request("/avatar", method: "PUT", body: ["image": data.base64EncodedString()], auth: true) { status, json in
+            if status == 200 {
+                self.setLocalAvatar(data)
+                completion(nil)
+            } else {
+                completion((json?["error"] as? String) ?? "Không tải được ảnh lên.")
+            }
+        }
+    }
+
+    func removeAvatar(completion: @escaping (String?) -> Void) {
+        request("/avatar", method: "DELETE", body: nil, auth: true) { status, json in
+            if status == 200 {
+                self.setLocalAvatar(nil)
+                completion(nil)
+            } else {
+                completion((json?["error"] as? String) ?? "Không xoá được ảnh.")
+            }
+        }
+    }
+
+    func refreshAvatar() {
+        guard isLoggedIn else { return }
+        request("/avatar", method: "GET", body: nil, auth: true) { status, json in
+            guard status == 200 else { return }
+            if let text = json?["image"] as? String, let data = Data(base64Encoded: text) {
+                self.setLocalAvatar(data)
+            } else if self.cachedAvatar != nil || FileManager.default.fileExists(atPath: self.avatarFile.path) {
+                self.setLocalAvatar(nil)
             }
         }
     }
@@ -248,6 +321,7 @@ final class MochyCloud {
         syncing = false
         lastError = error
         if error == nil {
+            refreshAvatar()
             lastSync = Date()
             UserDefaults.standard.set(lastSync, forKey: "cloud.lastSync")
         }
