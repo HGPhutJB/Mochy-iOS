@@ -1,7 +1,7 @@
 import UIKit
 
 /// Danh sách bài của Yêu thích / Đã tải / Lịch sử / một playlist, có nút Phát và Phát ngẫu nhiên.
-final class SongListViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+final class SongListViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITableViewDataSource, UITableViewDelegate {
     enum Source {
         case liked
         case downloads
@@ -132,8 +132,7 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         var items: [UIBarButtonItem] = []
         switch source {
         case .playlist:
-            items.append(UIBarButtonItem(title: "Tuỳ chọn", style: .plain, target: self, action: #selector(playlistOptions)))
-            items.append(UIBarButtonItem(title: "Sắp xếp", style: .plain, target: self, action: #selector(toggleEditing(_:))))
+            items.append(moreItem())
         case .history:
             items.append(UIBarButtonItem(title: "Xoá hết", style: .plain, target: self, action: #selector(clearHistory)))
         case .downloads:
@@ -196,7 +195,9 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
 
     private func refresh() {
         let list = songs
-        let sig = listTitle + "|" + list.map { $0.videoId }.joined(separator: ",") + "|" + (PlayerEngine.shared.currentSong?.videoId ?? "")
+        var customFile = ""
+        if case .playlist(let pid) = source { customFile = Library.shared.playlist(id: pid)?.customCover ?? "" }
+        let sig = listTitle + "|" + customFile + "|" + list.map { $0.videoId }.joined(separator: ",") + "|" + (PlayerEngine.shared.currentSong?.videoId ?? "")
         if sig == lastSignature && !tableView.isDragging {
             updateDownloadButton()
             return
@@ -213,7 +214,12 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         shuffleButton.isEnabled = !list.isEmpty
         playButton.alpha = list.isEmpty ? 0.4 : 1
         shuffleButton.alpha = list.isEmpty ? 0.4 : 1
-        if let url = list.first?.largeThumbnailURL {
+        var custom: UIImage?
+        if case .playlist(let pid) = source, let pl = Library.shared.playlist(id: pid) { custom = PlaylistCover.image(for: pl) }
+        if let custom = custom {
+            shownCover = nil
+            cover.image = custom
+        } else if let url = list.first?.largeThumbnailURL {
             if shownCover != url {
                 shownCover = url
                 ImageLoader.shared.load(url) { [weak self] image in
@@ -301,22 +307,32 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
         PlayerEngine.shared.playShuffled(songs)
     }
 
-    @objc private func toggleEditing(_ sender: UIBarButtonItem) {
-        let editing = !tableView.isEditing
+    private func moreItem() -> UIBarButtonItem {
+        return UIBarButtonItem(image: Icons.more(24).withRenderingMode(.alwaysTemplate), style: .plain, target: self, action: #selector(playlistOptions))
+    }
+
+    private func setEditingMode(_ editing: Bool) {
         tableView.setEditing(editing, animated: true)
-        sender.title = editing ? "Xong" : "Sắp xếp"
+        navigationItem.rightBarButtonItems = editing
+            ? [UIBarButtonItem(title: "Xong", style: .done, target: self, action: #selector(finishEditing))]
+            : [moreItem()]
         if !editing { refresh() }
     }
 
+    @objc private func finishEditing() { setEditingMode(false) }
+
+    /// Một nút ⋯ gộp mọi tuỳ chọn của playlist (sắp xếp, đổi tên, ảnh bìa, tải, xoá).
     @objc private func playlistOptions() {
         guard case .playlist(let id) = source, let list = Library.shared.playlist(id: id) else { return }
         let sheet = UIAlertController(title: list.name, message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: "Sắp xếp bài hát", style: .default) { [weak self] _ in self?.setEditingMode(true) })
         sheet.addAction(UIAlertAction(title: "Đổi tên", style: .default) { [weak self] _ in
             guard let self = self else { return }
             SongActions.promptNewPlaylist(from: self, initial: list.name, title: "Đổi tên playlist", confirm: "Lưu") { name in
                 Library.shared.renamePlaylist(id: id, name: name)
             }
         })
+        sheet.addAction(UIAlertAction(title: "Đặt ảnh bìa…", style: .default) { [weak self] _ in self?.coverOptions() })
         sheet.addAction(UIAlertAction(title: "Tải tất cả bài", style: .default) { [weak self] _ in self?.downloadTapped() })
         sheet.addAction(UIAlertAction(title: "Xoá playlist", style: .destructive) { [weak self] _ in
             guard let self = self else { return }
@@ -331,6 +347,70 @@ final class SongListViewController: UIViewController, UITableViewDataSource, UIT
             popover.barButtonItem = navigationItem.rightBarButtonItems?.first
         }
         present(sheet, animated: true, completion: nil)
+    }
+
+    // MARK: - Ảnh bìa playlist
+
+    private func coverOptions() {
+        guard case .playlist(let id) = source, let list = Library.shared.playlist(id: id) else { return }
+        let sheet = UIAlertController(title: "Ảnh bìa playlist", message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: "Chọn từ thư viện ảnh", style: .default) { [weak self] _ in
+            guard let self = self, UIImagePickerController.isSourceTypeAvailable(.photoLibrary) else { return }
+            let picker = UIImagePickerController()
+            picker.sourceType = .photoLibrary
+            picker.allowsEditing = true   // cắt vuông ngay trong bộ chọn
+            picker.delegate = self
+            self.present(picker, animated: true)
+        })
+        if !list.songs.isEmpty {
+            sheet.addAction(UIAlertAction(title: "Dùng ảnh bìa của một bài hát", style: .default) { [weak self] _ in self?.songCoverPicker() })
+        }
+        if list.customCover != nil {
+            sheet.addAction(UIAlertAction(title: "Xoá ảnh bìa (về tự động)", style: .destructive) { [weak self] _ in
+                Library.shared.clearCustomCover(id: id)
+                self?.lastSignature = ""
+                self?.refresh()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        if let popover = sheet.popoverPresentationController {
+            popover.barButtonItem = navigationItem.rightBarButtonItems?.first
+        }
+        present(sheet, animated: true)
+    }
+
+    private func songCoverPicker() {
+        guard case .playlist(let id) = source, let list = Library.shared.playlist(id: id) else { return }
+        let sheet = UIAlertController(title: "Chọn bài để lấy ảnh bìa", message: nil, preferredStyle: .actionSheet)
+        for song in list.songs.prefix(12) {
+            sheet.addAction(UIAlertAction(title: song.title, style: .default) { _ in
+                guard let url = song.largeThumbnailURL else { return }
+                ImageLoader.shared.load(url) { [weak self] image in
+                    guard let image = image else { Toast.show("Không tải được ảnh bìa"); return }
+                    Library.shared.setCustomCover(id: id, image: image)
+                    self?.lastSignature = ""
+                    self?.refresh()
+                }
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        if let popover = sheet.popoverPresentationController {
+            popover.barButtonItem = navigationItem.rightBarButtonItems?.first
+        }
+        present(sheet, animated: true)
+    }
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        let image = (info[.editedImage] as? UIImage) ?? (info[.originalImage] as? UIImage)
+        picker.dismiss(animated: true)
+        guard let picked = image, case .playlist(let id) = source else { return }
+        Library.shared.setCustomCover(id: id, image: picked)
+        lastSignature = ""
+        refresh()
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
     }
 
     @objc private func clearHistory() {

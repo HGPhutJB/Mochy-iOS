@@ -743,6 +743,10 @@ final class NowPlayingViewController: UIViewController {
         sheet.addAction(UIAlertAction(title: engine.sleepEnd != nil ? "Hẹn giờ tắt (đang bật)…" : "Hẹn giờ tắt nhạc…", style: .default) { [weak self] _ in
             self?.sleepTapped()
         })
+        sheet.addAction(UIAlertAction(title: ReverbSettings.enabled ? "Reverb (đang bật)…" : "Reverb…", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            ReverbPanelViewController.present(from: self)
+        })
         let manager = DownloadManager.shared
         if manager.isActive(song.videoId) {
             sheet.addAction(UIAlertAction(title: "Huỷ tải xuống", style: .default) { _ in manager.cancel(song.videoId) })

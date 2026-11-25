@@ -1,3 +1,10 @@
+Mochy iOS 0.9.0 — reverb, ảnh bìa playlist, nút ⋯ gộp
+
+- Reverb (độ vang): bật/tắt, thanh chỉnh 0–100% và 3 kiểu phòng (Phòng nhỏ, Hội trường, Nhà thờ). Mở từ menu ⋯ ở màn hình đang phát hoặc Cài đặt ▸ Âm thanh ▸ Reverb. Tắt reverb thì phát nguyên bản.
+- Ảnh bìa playlist tự tạo: chọn từ thư viện ảnh (cắt vuông), lấy từ ảnh bìa một bài hát, hoặc xoá về ảnh tự động.
+- Gộp "Sắp xếp" và "Tuỳ chọn" thành một nút ⋯ ở thanh trên trang playlist.
+- Chất lượng "Cao nhất" ghi rõ là luồng bitrate cao nhất YouTube Music có (không phải lossless thật).
+
 Mochy iOS 0.8.5 — huy hiệu tài khoản
 
 - Tài khoản do chủ app cấp huy hiệu: tick đen (đã xác minh) và nhãn OWNER, hiện cạnh tên ở màn hình tài khoản.

@@ -428,6 +428,38 @@ final class PlayerEngine: NSObject {
         }
     }
 
+    // MARK: - Reverb
+
+    private var reverbItem: AVPlayerItem?
+    private var reverbObserver: NSObjectProtocol?
+
+    /// Gắn/gỡ bộ reverb cho bài đang phát theo cài đặt. Tắt reverb thì gỡ audioMix, phát đúng như nguyên bản.
+    func refreshReverb() {
+        if reverbObserver == nil {
+            reverbObserver = NotificationCenter.default.addObserver(forName: .reverbChanged, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshReverb()
+            }
+        }
+        guard let item = player?.currentItem else { return }
+        guard ReverbSettings.enabled else {
+            if reverbItem === item { item.audioMix = nil }
+            reverbItem = nil
+            return
+        }
+        if reverbItem === item { return }
+        let asset = item.asset
+        asset.loadValuesAsynchronously(forKeys: ["tracks"]) { [weak self] in
+            DispatchQueue.main.async {
+                guard let self = self, item === self.player?.currentItem, ReverbSettings.enabled, self.reverbItem !== item else { return }
+                guard asset.statusOfValue(forKey: "tracks", error: nil) == .loaded,
+                      let track = asset.tracks(withMediaType: .audio).first,
+                      let mix = ReverbTap.makeMix(for: track) else { return }
+                item.audioMix = mix
+                self.reverbItem = item
+            }
+        }
+    }
+
     private func itemStatusChanged(_ item: AVPlayerItem) {
         guard item === player?.currentItem else { return }
         switch item.status {
@@ -444,6 +476,7 @@ final class PlayerEngine: NSObject {
             }
             isLoading = false
             isPlaying = true
+            refreshReverb()
             if pendingSeek > 1 {
                 let target = pendingSeek
                 pendingSeek = 0

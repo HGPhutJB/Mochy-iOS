@@ -189,7 +189,7 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
             let list = library.playlists[indexPath.row]
             cell.configure(title: list.name, detail: "\(list.songs.count) bài", icon: Icons.music(26),
                            color: Theme.placeholder, coverURL: list.songs.first?.thumbnailURL,
-                           coverImage: MusicCover.image(for: list.cover))
+                           coverImage: PlaylistCover.image(for: list) ?? MusicCover.image(for: list.cover))
         }
         return cell
     }

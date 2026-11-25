@@ -5,6 +5,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     private enum Row {
         case theme
         case quality
+        case reverb
         case videoBackdrop
         case downloadsInfo
         case clearDownloads
@@ -60,6 +61,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                                                name: .updateStateChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
                                                name: .libraryChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateStateChanged),
+                                               name: .reverbChanged, object: nil)
         rebuild()
     }
 
@@ -94,8 +97,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         sections = accountSections + [
             Section(title: "Giao diện", footer: "\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối.",
                     rows: [.theme]),
-            Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
-                    rows: [.quality, .videoBackdrop]),
+            Section(title: "Âm thanh", footer: "\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp.",
+                    rows: [.quality, .reverb, .videoBackdrop]),
             Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
@@ -172,6 +175,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.accessoryView = control
             cell.textLabel?.text = "Chất lượng"
             cell.selectionStyle = .none
+
+        case .reverb:
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = "Reverb (độ vang)"
+            cell.detailTextLabel?.text = ReverbSettings.enabled ? "Bật · \(Int(round(ReverbSettings.amount * 100)))%" : "Tắt"
+            cell.accessoryType = .disclosureIndicator
 
         case .downloadsInfo:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
@@ -320,6 +329,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             AccountsSheetViewController.present(from: self)
         case .mochyAccount:
             navigationController?.pushViewController(MochyAccountViewController(), animated: true)
+        case .reverb:
+            ReverbPanelViewController.present(from: self)
         case .recap:
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:

@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 extension Notification.Name {
     static let libraryChanged = Notification.Name("MochyiOSLibraryChanged")
@@ -202,7 +203,23 @@ final class Library {
         if let key = playlists.first(where: { $0.id == id })?.sourceURL, key.hasPrefix("acct:") {
             AccountSync.shared.dismiss(key)
         }
+        PlaylistCover.remove(file: playlists.first(where: { $0.id == id })?.customCover)
         playlists.removeAll { $0.id == id }
+        save()
+    }
+
+    func setCustomCover(id: String, image: UIImage) {
+        guard let index = playlists.firstIndex(where: { $0.id == id }),
+              let file = PlaylistCover.save(image, playlistId: id) else { return }
+        PlaylistCover.remove(file: playlists[index].customCover)
+        playlists[index].customCover = file
+        save()
+    }
+
+    func clearCustomCover(id: String) {
+        guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }
+        PlaylistCover.remove(file: playlists[index].customCover)
+        playlists[index].customCover = nil
         save()
     }
 
