@@ -7,6 +7,10 @@ const JSON_HEADERS = {
   'access-control-allow-headers': 'authorization, content-type',
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
+// Huy hiệu do chủ app cấp (sửa danh sách này rồi đẩy lên GitHub là tự triển khai).
+const BADGES = {
+  pucpucpuc: ['verified', 'owner'],
+};
 const MAX_BLOB = 2 * 1024 * 1024;
 const SESSION_TTL = 60 * 60 * 24 * 365;
 const ITERATIONS = 100000;
@@ -130,6 +134,10 @@ export default {
       await env.MOCHY_KV.delete(`avatar:${who.name}`);
       await env.MOCHY_KV.delete(`sess:${who.token}`);
       return reply({ ok: true });
+    }
+
+    if (path === '/profile' && request.method === 'GET') {
+      return reply({ username: who.name, badges: BADGES[who.name] || [] });
     }
 
     if (path === '/avatar' && request.method === 'GET') {

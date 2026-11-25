@@ -1,3 +1,7 @@
+Mochy iOS 0.8.5 — huy hiệu tài khoản
+
+- Tài khoản do chủ app cấp huy hiệu: tick đen (đã xác minh) và nhãn OWNER, hiện cạnh tên ở màn hình tài khoản.
+
 Mochy iOS 0.8.4 — ảnh đại diện tài khoản
 
 - Chọn ảnh đại diện từ thư viện ảnh (cắt vuông), lưu vào tài khoản và đồng bộ giữa các máy; hiện ở nút tài khoản trang chủ và màn hình tài khoản. Có thể xoá ảnh.

@@ -135,7 +135,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         let avatarRow = UIStackView(arrangedSubviews: [avatar, UIView()])
         avatarRow.axis = .horizontal
         stack.addArrangedSubview(avatarRow)
-        stack.addArrangedSubview(label("@" + (cloud.username ?? ""), font: Theme.heavy(30), color: Theme.primaryText))
+        stack.addArrangedSubview(nameRow(cloud))
         var status = "Chưa đồng bộ"
         if let t = cloud.lastSync {
             let f = DateFormatter()
@@ -155,6 +155,39 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         stack.addArrangedSubview(makeButton("Đăng xuất", filled: false, action: #selector(logoutTapped)))
         stack.addArrangedSubview(makeButton("Xoá tài khoản", filled: false, action: #selector(deleteTapped), danger: true))
         stack.addArrangedSubview(spinner)
+    }
+
+    /// Tên tài khoản kèm huy hiệu: tick đen (đã xác minh) và nhãn Owner.
+    private func nameRow(_ cloud: MochyCloud) -> UIView {
+        let name = label("@" + (cloud.username ?? ""), font: Theme.heavy(30), color: Theme.primaryText)
+        name.numberOfLines = 1
+        name.adjustsFontSizeToFitWidth = true
+        name.minimumScaleFactor = 0.6
+        let row = UIStackView(arrangedSubviews: [name])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 8
+        if cloud.isVerified {
+            let tick = UIImageView(image: AccountAvatarButton.verifiedTick(size: 24))
+            tick.setContentHuggingPriority(.required, for: .horizontal)
+            tick.widthAnchor.constraint(equalToConstant: 24).isActive = true
+            tick.heightAnchor.constraint(equalToConstant: 24).isActive = true
+            row.addArrangedSubview(tick)
+        }
+        if cloud.isOwner {
+            let pill = UILabel()
+            pill.text = "  👑 OWNER  "
+            pill.font = Theme.bold(12)
+            pill.textColor = Theme.isDark ? .black : .white
+            pill.backgroundColor = Theme.isDark ? .white : .black
+            pill.layer.cornerRadius = 11
+            pill.clipsToBounds = true
+            pill.setContentHuggingPriority(.required, for: .horizontal)
+            pill.heightAnchor.constraint(equalToConstant: 22).isActive = true
+            row.addArrangedSubview(pill)
+        }
+        row.addArrangedSubview(UIView())
+        return row
     }
 
     private func makeButton(_ title: String, filled: Bool, action: Selector, danger: Bool = false) -> UIButton {

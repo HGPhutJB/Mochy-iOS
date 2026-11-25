@@ -106,6 +106,7 @@ final class MochyCloud {
         lastSync = nil
         try? FileManager.default.removeItem(at: avatarFile)
         cachedAvatar = nil
+        UserDefaults.standard.removeObject(forKey: "cloud.badges")
         UserDefaults.standard.removeObject(forKey: "cloud.lastSync")
         NotificationCenter.default.post(name: .cloudStateChanged, object: nil)
     }
@@ -123,6 +124,23 @@ final class MochyCloud {
                 completion(nil)
             } else {
                 completion((json?["error"] as? String) ?? "Không xoá được tài khoản.")
+            }
+        }
+    }
+
+    // MARK: - Huy hiệu (tick xanh/đen, owner) do chủ app cấp trên máy chủ
+
+    var badges: [String] { return UserDefaults.standard.stringArray(forKey: "cloud.badges") ?? [] }
+    var isVerified: Bool { return badges.contains("verified") }
+    var isOwner: Bool { return badges.contains("owner") }
+
+    func refreshProfile() {
+        guard isLoggedIn else { return }
+        request("/profile", method: "GET", body: nil, auth: true) { status, json in
+            guard status == 200, let list = json?["badges"] as? [String] else { return }
+            if list != self.badges {
+                UserDefaults.standard.set(list, forKey: "cloud.badges")
+                NotificationCenter.default.post(name: .cloudStateChanged, object: nil)
             }
         }
     }
@@ -322,6 +340,7 @@ final class MochyCloud {
         lastError = error
         if error == nil {
             refreshAvatar()
+            refreshProfile()
             lastSync = Date()
             UserDefaults.standard.set(lastSync, forKey: "cloud.lastSync")
         }
