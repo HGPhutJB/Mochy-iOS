@@ -273,6 +273,20 @@ enum Icons {
     /// Biểu tượng "thiết bị này" (laptop) cho nút chọn nơi phát.
     static func device(_ size: CGFloat) -> UIImage { return png(IconData.laptop, size) }
 
+    /// Reverb tối giản: một chấm ở giữa và hai vòng sóng toả ra (vòng ngoài mờ hơn như tiếng vang dần).
+    static func reverb(_ size: CGFloat) -> UIImage {
+        return make(size) { s in
+            let c = CGPoint(x: s / 2, y: s / 2)
+            UIBezierPath(ovalIn: CGRect(x: c.x - s * 0.08, y: c.y - s * 0.08, width: s * 0.16, height: s * 0.16)).fill()
+            let rings: [(CGFloat, CGFloat)] = [(0.25, 1.0), (0.42, 0.5)]
+            for (radius, alpha) in rings {
+                UIColor.black.withAlphaComponent(alpha).setStroke()
+                let ring = UIBezierPath(arcCenter: c, radius: s * radius, startAngle: 0, endAngle: .pi * 2, clockwise: true)
+                line(ring, s, 0.075)
+            }
+        }
+    }
+
     static func sliders(_ size: CGFloat) -> UIImage {
         return make(size) { s in
             let ys: [CGFloat] = [0.24, 0.5, 0.76]

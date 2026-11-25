@@ -202,6 +202,8 @@ final class NowPlayingViewController: UIViewController {
         view.backgroundColor = UIColor.black
         buildLayout()
         let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(updateReverbIndicator), name: .reverbChanged, object: nil)
+        updateReverbIndicator()
         center.addObserver(self, selector: #selector(stateChanged), name: .playerStateChanged, object: nil)
         center.addObserver(self, selector: #selector(timeChanged), name: .playerTimeChanged, object: nil)
         center.addObserver(self, selector: #selector(libraryChanged), name: .libraryChanged, object: nil)
@@ -348,11 +350,12 @@ final class NowPlayingViewController: UIViewController {
         shuffleDot.alpha = 0
 
         icon(lyricsButton, Icons.lyrics(28), #selector(lyricsTapped))
-        icon(deviceButton, Icons.device(28), #selector(noop))
+        icon(deviceButton, Icons.reverb(28), #selector(reverbTapped))
         icon(queueButton, Icons.queue(28), #selector(queueTapped))
         deviceUnderline.translatesAutoresizingMaskIntoConstraints = false
         deviceUnderline.backgroundColor = NowPlayingViewController.green
         deviceUnderline.layer.cornerRadius = 1.5
+        routePicker.isUserInteractionEnabled = false
         routePicker.translatesAutoresizingMaskIntoConstraints = false
         routePicker.tintColor = UIColor.clear
         routePicker.activeTintColor = UIColor.clear
@@ -445,8 +448,8 @@ final class NowPlayingViewController: UIViewController {
             deviceUnderline.heightAnchor.constraint(equalToConstant: 3),
             routePicker.centerXAnchor.constraint(equalTo: deviceButton.centerXAnchor),
             routePicker.centerYAnchor.constraint(equalTo: deviceButton.centerYAnchor),
-            routePicker.widthAnchor.constraint(equalToConstant: 64),
-            routePicker.heightAnchor.constraint(equalToConstant: 48)
+            routePicker.widthAnchor.constraint(equalToConstant: 8),
+            routePicker.heightAnchor.constraint(equalToConstant: 8)
         ])
 
         let panA = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
@@ -714,6 +717,24 @@ final class NowPlayingViewController: UIViewController {
 
     @objc private func noop() {}
 
+    @objc private func reverbTapped() {
+        ReverbPanelViewController.present(from: self)
+    }
+
+    /// Gạch dưới dưới nút reverb khi đang bật.
+    @objc private func updateReverbIndicator() {
+        UIView.animate(withDuration: 0.25) {
+            self.deviceUnderline.backgroundColor = ReverbSettings.enabled ? NowPlayingViewController.green : UIColor.clear
+        }
+    }
+
+    /// Mở bảng chọn thiết bị phát (AirPlay) bằng nút bên trong AVRoutePickerView.
+    private func showRoutePicker() {
+        for sub in routePicker.subviews {
+            if let button = sub as? UIButton { button.sendActions(for: .touchUpInside); return }
+        }
+    }
+
     @objc private func lyricsTapped() {
         Haptics.tap()
         if mode == .cover {
@@ -746,6 +767,9 @@ final class NowPlayingViewController: UIViewController {
         sheet.addAction(UIAlertAction(title: ReverbSettings.enabled ? "Reverb (đang bật)…" : "Reverb…", style: .default) { [weak self] _ in
             guard let self = self else { return }
             ReverbPanelViewController.present(from: self)
+        })
+        sheet.addAction(UIAlertAction(title: "Thiết bị phát (AirPlay)…", style: .default) { [weak self] _ in
+            self?.showRoutePicker()
         })
         let manager = DownloadManager.shared
         if manager.isActive(song.videoId) {

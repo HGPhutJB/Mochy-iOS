@@ -1,3 +1,8 @@
+Mochy iOS 0.9.2 — nút reverb thay nút máy tính
+
+- Nút hình máy tính ở giữa hàng dưới màn hình đang phát thành nút Reverb (icon tối giản: chấm với hai vòng sóng); chạm để mở bảng chỉnh reverb, gạch xanh bên dưới khi đang bật.
+- Chọn thiết bị phát (AirPlay) chuyển vào menu ⋯ của màn hình đang phát.
+
 Mochy iOS 0.9.1 — sửa không bật được reverb
 
 - Sửa công tắc Reverb không bấm được (vùng chạm đóng bảng đang nuốt cú chạm vào công tắc).
