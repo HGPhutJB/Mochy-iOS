@@ -13,6 +13,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case restore
         case lastfm
         case accounts
+        case mochyAccount
         case advanced
         case importList
         case recap
@@ -91,6 +92,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Tiết kiệm\" chọn luồng âm thanh có bitrate thấp nhất, dùng ít dữ liệu hơn. Áp dụng từ bài kế tiếp.",
                     rows: [.quality, .videoBackdrop]),
+            Section(title: "Tài khoản", footer: "Đăng nhập để đồng bộ yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải giữa các máy.", rows: [.mochyAccount]),
             Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
@@ -195,13 +197,16 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.textLabel?.text = "Khôi phục từ tệp sao lưu…"
             cell.textLabel?.textColor = Theme.accent
 
-        case .accounts, .recap, .importList, .lastfm, .advanced:
+        case .accounts, .mochyAccount, .recap, .importList, .lastfm, .advanced:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
             switch row {
             case .accounts:
                 cell.textLabel?.text = "Tài khoản nhạc (đồng bộ playlist)"
                 let n = AccountSync.shared.linkedServices.count
                 cell.detailTextLabel?.text = n == 0 ? "Chưa liên kết" : "\(n) tài khoản"
+            case .mochyAccount:
+                cell.textLabel?.text = "Tài khoản Mochy"
+                cell.detailTextLabel?.text = MochyCloud.shared.isLoggedIn ? "@" + (MochyCloud.shared.username ?? "") : "Chưa đăng nhập"
             case .advanced: cell.textLabel?.text = "Nguồn nâng cao (Canvas, Spicy Lyrics)"
             case .recap: cell.textLabel?.text = "Recap"
             case .importList: cell.textLabel?.text = "Nhập playlist từ link"
@@ -310,6 +315,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         switch row {
         case .accounts:
             AccountsSheetViewController.present(from: self)
+        case .mochyAccount:
+            navigationController?.pushViewController(MochyAccountViewController(), animated: true)
         case .recap:
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:

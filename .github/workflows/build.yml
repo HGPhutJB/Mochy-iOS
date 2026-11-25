@@ -7,6 +7,8 @@ on:
       - '**.md'
       - 'LICENSE'
       - 'NOTICE'
+      - 'server/**'
+      - '.github/workflows/deploy-server.yml'
   workflow_dispatch:
     inputs:
       channel:

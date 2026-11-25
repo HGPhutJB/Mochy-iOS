@@ -1,3 +1,9 @@
+Mochy iOS 0.8.0 — tài khoản Mochy + đồng bộ
+
+- Mục "Tài khoản Mochy" trong Cài đặt: đăng ký / đăng nhập bằng tên + mật khẩu (mật khẩu được băm trên máy chủ).
+- Đồng bộ yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải giữa các máy; tự đồng bộ khi có thay đổi. Bài đã tải ở máy khác hiện trong playlist "Đã tải trên tài khoản" để tải lại.
+- Máy chủ là Cloudflare Worker (thư mục server/), tự triển khai bằng GitHub Actions.
+
 Mochy iOS 0.7.7 — ba chấm chờ lời mượt hơn, nền gradient chuyển động mạnh hơn
 
 - Ba chấm: to hơn, sáng lần lượt theo thời gian tới dòng đầu, phồng nhẹ theo nhịp, co lại rồi tan khi lời bắt đầu (không còn bị nhấp nháy/giật).

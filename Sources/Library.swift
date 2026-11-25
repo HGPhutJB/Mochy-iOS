@@ -101,6 +101,31 @@ final class Library {
         return added
     }
 
+    /// Thay yêu thích/playlist/lịch sử bằng dữ liệu từ tài khoản (dùng khi máy này chưa có thay đổi nào chưa đồng bộ).
+    /// Giữ lại danh sách bài đã tải trên máy và playlist "đã tải trên tài khoản" (tự dựng lại).
+    func replaceFromCloud(_ other: Store) {
+        liked = other.liked
+        let keep = playlists.filter { $0.id == Library.cloudDownloadsId }
+        playlists = other.playlists.filter { $0.id != Library.cloudDownloadsId } + keep
+        history = Array(other.history.sorted { $0.date > $1.date }.prefix(historyLimit))
+        save()
+    }
+
+    static let cloudDownloadsId = "acct-downloads"
+
+    /// Danh sách bài đã tải trên các máy khác của tài khoản: gom thành một playlist để tải lại một chạm.
+    func setCloudDownloads(_ songs: [Song]) {
+        let missing = songs.filter { !isDownloaded($0) }
+        if let index = playlists.firstIndex(where: { $0.id == Library.cloudDownloadsId }) {
+            if missing.isEmpty { playlists.remove(at: index) } else { playlists[index].songs = missing }
+        } else if !missing.isEmpty {
+            playlists.append(Playlist(id: Library.cloudDownloadsId, name: "Đã tải trên tài khoản", songs: missing, created: Date()))
+        } else {
+            return
+        }
+        save()
+    }
+
     // MARK: - Yêu thích
 
     func isLiked(_ song: Song) -> Bool {

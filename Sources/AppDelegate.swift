@@ -37,11 +37,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidEnterBackground(_ application: UIApplication) {
         PlayLog.shared.flush()
+        MochyCloud.shared.syncNow()
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Tự kiểm tra cập nhật (tối đa mỗi 6 giờ, và chỉ khi người dùng không tắt trong Cài đặt).
         Updater.shared.autoCheckIfNeeded()
         BackupManager.autoBackupIfNeeded()
+        MochyCloud.shared.syncNow()
     }
 }
