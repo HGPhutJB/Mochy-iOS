@@ -21,6 +21,7 @@ final class RootViewController: UIViewController {
     private var scrollObservation: NSKeyValueObservation?
     private var lastOffsetY: CGFloat = 0
     private var adaptTimer: Timer?
+    private var transitionToken = 0
 
     init(selectedIndex: Int = 0) {
         super.init(nibName: nil, bundle: nil)
@@ -210,33 +211,55 @@ final class RootViewController: UIViewController {
             self?.tabBar.adaptToBackdrop()
         }
 
-        addChild(new)
+        transitionToken += 1
+        let token = transitionToken
+        if new.parent == nil { addChild(new) }
+        new.view.layer.removeAllAnimations()
         new.view.frame = contentView.bounds
         new.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         if animated {
             new.view.alpha = 0
             new.view.transform = CGAffineTransform(translationX: 0, y: 18).scaledBy(x: 0.985, y: 0.985)
-            contentView.insertSubview(new.view, belowSubview: old.view)
+            if new.view.superview == nil { contentView.insertSubview(new.view, belowSubview: old.view) } else { contentView.bringSubviewToFront(new.view) }
             UIView.animate(withDuration: 0.38, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0.2,
                            options: [.allowUserInteraction], animations: {
                 new.view.alpha = 1
                 new.view.transform = CGAffineTransform.identity
                 old.view.alpha = 0
                 old.view.transform = CGAffineTransform(scaleX: 0.985, y: 0.985)
-            }, completion: { _ in
-                old.view.alpha = 1
-                old.view.transform = CGAffineTransform.identity
-                old.willMove(toParent: nil)
-                old.view.removeFromSuperview()
-                old.removeFromParent()
-                new.didMove(toParent: self)
+            }, completion: { [weak self] _ in
+                // Chỉ lần chuyển tab MỚI NHẤT được dọn dẹp; các lần cũ bị ghi đè (bấm nhanh) thì bỏ qua.
+                guard let self = self, token == self.transitionToken else { return }
+                self.settleTabs()
             })
         } else {
-            contentView.addSubview(new.view)
-            old.willMove(toParent: nil)
-            old.view.removeFromSuperview()
-            old.removeFromParent()
-            new.didMove(toParent: self)
+            new.view.alpha = 1
+            new.view.transform = .identity
+            if new.view.superview == nil { contentView.addSubview(new.view) }
+            settleTabs()
+        }
+    }
+
+    /// Đưa các tab về trạng thái chuẩn: chỉ tab đang chọn hiện (rõ nét, đúng chỗ), các tab khác gỡ khỏi màn hình.
+    private func settleTabs() {
+        for (i, nav) in controllers.enumerated() {
+            if i == selectedIndex {
+                nav.view.layer.removeAllAnimations()
+                nav.view.alpha = 1
+                nav.view.transform = .identity
+                nav.view.frame = contentView.bounds
+                if nav.parent == nil { addChild(nav) }
+                if nav.view.superview == nil { contentView.addSubview(nav.view) }
+                nav.didMove(toParent: self)
+            } else {
+                nav.view.alpha = 1
+                nav.view.transform = .identity
+                if nav.parent != nil {
+                    nav.willMove(toParent: nil)
+                    nav.view.removeFromSuperview()
+                    nav.removeFromParent()
+                }
+            }
         }
     }
 

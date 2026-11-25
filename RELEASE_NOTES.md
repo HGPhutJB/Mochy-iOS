@@ -1,3 +1,7 @@
+Mochy iOS 0.8.1 — sửa lỗi tab Cài đặt (và các tab) tự biến mất khi bấm chuyển tab nhanh
+
+- Chuyển tab liên tục không còn làm màn hình trống: các lần chuyển cũ bị ghi đè được bỏ qua, chỉ tab đang chọn được dựng lại đúng trạng thái.
+
 Mochy iOS 0.8.0 — tài khoản Mochy + đồng bộ
 
 - Mục "Tài khoản Mochy" trong Cài đặt: đăng ký / đăng nhập bằng tên + mật khẩu (mật khẩu được băm trên máy chủ).
