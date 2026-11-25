@@ -1,3 +1,7 @@
+Mochy iOS 0.8.2 — bật tài khoản Mochy
+
+- Mục "Tài khoản Mochy" trong Cài đặt đã hoạt động: đăng ký / đăng nhập và tự đồng bộ yêu thích, playlist, lịch sử nghe, cài đặt, danh sách bài đã tải giữa các máy.
+
 Mochy iOS 0.8.1 — sửa lỗi tab Cài đặt (và các tab) tự biến mất khi bấm chuyển tab nhanh
 
 - Chuyển tab liên tục không còn làm màn hình trống: các lần chuyển cũ bị ghi đè được bỏ qua, chỉ tab đang chọn được dựng lại đúng trạng thái.

@@ -7,7 +7,7 @@ extension Notification.Name {
 
 /// Địa chỉ máy chủ tài khoản Mochy (Cloudflare Worker trong thư mục server/). Để trống thì tính năng tài khoản báo "chưa cấu hình".
 enum CloudConfig {
-    static let baseURL = ""
+    static let baseURL = "https://mochy-cloud.pucpucput.workers.dev"
 }
 
 /// Dữ liệu đồng bộ của một tài khoản Mochy.
