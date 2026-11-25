@@ -651,7 +651,7 @@ private extension UIColor {
 /// Ba chấm báo "chưa tới lời": sáng dần theo thời gian tới dòng đầu, nhấp nhô nhẹ.
 final class LyricDotsView: UIView {
     private let dots: [UIView] = (0..<3).map { _ in UIView() }
-    private(set) var hidden = false
+    private var dismissed = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -678,7 +678,7 @@ final class LyricDotsView: UIView {
 
     /// progress 0...1: ba chấm sáng lần lượt; cả cụm phồng nhẹ theo nhịp thở.
     func update(progress: Double, time: Double) {
-        if hidden { hidden = false; alpha = 1 }
+        if dismissed { dismissed = false; alpha = 1 }
         let breath = 1 + 0.08 * CGFloat(sin(time * 2.6))
         for (i, d) in dots.enumerated() {
             let fill = CGFloat(min(1, max(0, progress * 3 - Double(i))))
@@ -690,8 +690,8 @@ final class LyricDotsView: UIView {
 
     /// Hết đoạn chờ: ba chấm co lại rồi tan đi.
     func dismiss() {
-        guard !hidden else { return }
-        hidden = true
+        guard !dismissed else { return }
+        dismissed = true
         UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn, .beginFromCurrentState], animations: {
             self.alpha = 0
             for d in self.dots { d.transform = CGAffineTransform(scaleX: 0.2, y: 0.2) }
