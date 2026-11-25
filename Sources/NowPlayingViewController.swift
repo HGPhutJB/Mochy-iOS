@@ -155,7 +155,7 @@ final class NowPlayingViewController: UIViewController {
     private let contextPill = GlassView(tint: nil)
     private let moreGlass = GlassView(tint: nil)
     private let infoA = InfoRow(withThumb: false)
-    private let infoB = InfoRow(withThumb: true, compact: true)
+    private let infoB = InfoRow(withThumb: true, compact: true, translate: true)
 
     private let progress = ProgressBar()
     private let elapsedLabel = UILabel()
@@ -312,6 +312,7 @@ final class NowPlayingViewController: UIViewController {
         view.addSubview(infoB)
         infoA.checkButton.addTarget(self, action: #selector(likeTapped), for: .touchUpInside)
         infoB.checkButton.addTarget(self, action: #selector(likeTapped), for: .touchUpInside)
+        infoB.translateButton.addTarget(self, action: #selector(translateTapped), for: .touchUpInside)
 
         // Thanh trên cùng.
         chevron.translatesAutoresizingMaskIntoConstraints = false
@@ -702,6 +703,7 @@ final class NowPlayingViewController: UIViewController {
         let engine = PlayerEngine.shared
         guard let song = engine.currentSong, lyricsVideoId != song.videoId else {
             lyricsView.update(time: engine.livePosition)
+            applyTranslation(manual: false)
             return
         }
         lyricsVideoId = song.videoId
@@ -710,6 +712,47 @@ final class NowPlayingViewController: UIViewController {
             guard let self = self, self.lyricsVideoId == song.videoId else { return }
             self.lyricsView.show(result)
             self.lyricsView.update(time: PlayerEngine.shared.livePosition)
+            self.applyTranslation(manual: false)
+        }
+    }
+
+    @objc private func translateTapped() {
+        Haptics.tap()
+        TranslateSettings.enabled.toggle()
+        infoB.translateButton.setImage(InfoRow.translateImage(on: TranslateSettings.enabled), for: .normal)
+        infoB.translateButton.pop()
+        if TranslateSettings.enabled {
+            applyTranslation(manual: true)
+        } else {
+            lyricsView.setTranslations(nil)
+        }
+    }
+
+    /// Dịch lời bài đang phát (nếu đang bật dịch) và hiện dưới từng dòng.
+    private func applyTranslation(manual: Bool) {
+        guard TranslateSettings.enabled, let song = PlayerEngine.shared.currentSong, lyricsVideoId == song.videoId else { return }
+        let texts = lyricsView.lineTexts
+        guard !texts.isEmpty else {
+            if manual { Toast.show("Bài này chưa có lời đồng bộ theo dòng để dịch") }
+            return
+        }
+        let target = TranslateSettings.target
+        if let hit = LyricTranslator.shared.cached(videoId: song.videoId, target: target, count: texts.count) {
+            lyricsView.setTranslations(hit)
+            return
+        }
+        if manual { Toast.show("Đang dịch sang \(TranslateSettings.targetName)…") }
+        LyricTranslator.shared.translate(videoId: song.videoId, lines: texts, target: target) { [weak self] result, error in
+            guard let self = self, TranslateSettings.enabled, self.lyricsVideoId == song.videoId, TranslateSettings.target == target else { return }
+            if let result = result {
+                if result.allSatisfy({ $0.isEmpty }) {
+                    if manual { Toast.show("Lời bài này đã là \(TranslateSettings.targetName)") }
+                } else {
+                    self.lyricsView.setTranslations(result)
+                }
+            } else {
+                Toast.show(error ?? "Không dịch được")
+            }
         }
     }
 

@@ -1,3 +1,10 @@
+Mochy iOS 0.11.0 — dịch lời bài hát
+
+- Nút "文A" cạnh tên bài trong màn hình lời: bật để hiện dòng dịch nhỏ dưới mỗi dòng lời.
+- Chọn ngôn ngữ đích trong Cài đặt ▸ Âm thanh ▸ Dịch lời sang (Việt, Anh, Nhật, Hàn, Trung, Thái, Pháp, Tây Ban Nha, Indonesia, Nga).
+- Dịch qua Google → máy chủ Mochy (Workers AI, cần đăng nhập) → MyMemory; nguồn nào lỗi tự chuyển nguồn kế tiếp. Bản dịch được nhớ trên máy.
+- Bài đã đúng ngôn ngữ đích thì không hiện dòng dịch.
+
 Mochy iOS 0.10.1 — trang cá nhân kiểu mạng xã hội, sửa lỗi đồng bộ
 
 - Màn hình tài khoản đổi sang dạng trang cá nhân: ảnh tròn bên trái, tên + tick + OWNER, số liệu (Yêu thích / Playlist) và hàng nút Đổi ảnh · Đồng bộ · ⋯.

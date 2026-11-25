@@ -328,10 +328,11 @@ final class InfoRow: UIView {
         artistLabel.textColor = dark ? UIColor(white: 0.06, alpha: 0.6) : UIColor(white: 1, alpha: 0.6)
     }
     let checkButton = UIButton(type: .custom)
+    let translateButton = UIButton(type: .custom)
     private let textColumn = UIView()
     private var artistLeading: NSLayoutConstraint?
 
-    init(withThumb: Bool, compact: Bool = false) {
+    init(withThumb: Bool, compact: Bool = false, translate: Bool = false) {
         super.init(frame: .zero)
         thumb.translatesAutoresizingMaskIntoConstraints = false
         thumb.contentMode = .scaleAspectFill
@@ -365,6 +366,9 @@ final class InfoRow: UIView {
 
         checkButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(checkButton)
+        translateButton.translatesAutoresizingMaskIntoConstraints = false
+        translateButton.isHidden = !translate
+        addSubview(translateButton)
 
         let thumbSize: CGFloat = compact ? 58 : 88
         var constraints: [NSLayoutConstraint] = [
@@ -372,7 +376,7 @@ final class InfoRow: UIView {
             checkButton.centerYAnchor.constraint(equalTo: centerYAnchor),
             checkButton.widthAnchor.constraint(equalToConstant: 38),
             checkButton.heightAnchor.constraint(equalToConstant: 38),
-            textColumn.trailingAnchor.constraint(equalTo: checkButton.leadingAnchor, constant: -14),
+            textColumn.trailingAnchor.constraint(equalTo: translate ? translateButton.leadingAnchor : checkButton.leadingAnchor, constant: -14),
             textColumn.centerYAnchor.constraint(equalTo: centerYAnchor),
             titleLabel.topAnchor.constraint(equalTo: textColumn.topAnchor),
             titleLabel.leadingAnchor.constraint(equalTo: textColumn.leadingAnchor),
@@ -400,10 +404,34 @@ final class InfoRow: UIView {
         } else {
             constraints.append(textColumn.leadingAnchor.constraint(equalTo: leadingAnchor))
         }
+        if translate {
+            constraints += [
+                translateButton.trailingAnchor.constraint(equalTo: checkButton.leadingAnchor, constant: -10),
+                translateButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+                translateButton.widthAnchor.constraint(equalToConstant: 38),
+                translateButton.heightAnchor.constraint(equalToConstant: 38)
+            ]
+            translateButton.setImage(InfoRow.translateImage(on: TranslateSettings.enabled), for: .normal)
+        }
         NSLayoutConstraint.activate(constraints)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    /// Nút dịch: vòng tròn mờ chứa "文A"; đang bật thì đặc, chữ tối.
+    static func translateImage(on: Bool) -> UIImage {
+        let size = CGSize(width: 38, height: 38)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let circle = UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1))
+            (on ? UIColor.white : UIColor(white: 1, alpha: 0.22)).setFill()
+            circle.fill()
+            let ink = on ? UIColor(white: 0.08, alpha: 1) : UIColor.white
+            let big = NSAttributedString(string: "文", attributes: [.font: UIFont.systemFont(ofSize: 15, weight: .bold), .foregroundColor: ink])
+            let small = NSAttributedString(string: "A", attributes: [.font: UIFont.systemFont(ofSize: 12, weight: .heavy), .foregroundColor: ink])
+            big.draw(at: CGPoint(x: 7, y: 7))
+            small.draw(at: CGPoint(x: 22, y: 17))
+        }
+    }
 
     func set(title: String, artist: String, explicit: Bool, liked: Bool) {
         if titleLabel.text != title { titleLabel.text = title }

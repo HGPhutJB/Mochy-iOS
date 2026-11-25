@@ -510,6 +510,10 @@ final class LyricCell: UITableViewCell {
     let holder = UIView()
     let label = UILabel()
     let blurView = UIImageView()
+    let subLabel = UILabel()
+    private var translation = ""
+    private var scaleNow: CGFloat = 1
+    static var translationFont: UIFont { return RoundedFont.font(17, index: 4) }
     private let wordsHost = UIView()
     private(set) var row = -1
     private var text = ""
@@ -534,6 +538,10 @@ final class LyricCell: UITableViewCell {
         holder.addSubview(blurView)
         holder.addSubview(label)
         holder.addSubview(wordsHost)
+        subLabel.numberOfLines = 0
+        subLabel.alpha = 0
+        subLabel.isHidden = true
+        contentView.addSubview(subLabel)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
@@ -549,11 +557,21 @@ final class LyricCell: UITableViewCell {
         let pad = LyricCell.blurPad
         blurView.frame = CGRect(x: -pad, y: -pad, width: w + pad * 2, height: h + pad * 2)
         buildWordsIfNeeded(width: w)
+        if translation.isEmpty {
+            subLabel.isHidden = true
+        } else {
+            subLabel.isHidden = false
+            let th = LyricCell.measure(translation, width: w, font: LyricCell.translationFont)
+            subLabel.frame = CGRect(x: LyricCell.sideInset, y: LyricCell.vPad + h * scaleNow + 2, width: w, height: th)
+        }
     }
 
-    func configure(line: LyricLine?, text: String, row: Int, plainFont: UIFont? = nil) {
+    func configure(line: LyricLine?, text: String, row: Int, plainFont: UIFont? = nil, translation: String = "") {
         self.row = row
         self.text = text
+        self.translation = translation
+        subLabel.attributedText = translation.isEmpty ? nil : NSAttributedString(string: translation, attributes: LyricCell.attributes(font: LyricCell.translationFont, color: .white))
+        subLabel.alpha = 0
         textFont = plainFont ?? LyricCell.font
         words = line?.words ?? []
         wordRanges = []
@@ -610,10 +628,12 @@ final class LyricCell: UITableViewCell {
     func setActive(_ active: Bool) {
         let s = active || row < 0 ? 1 : LyricCell.inactiveScale
         holder.transform = CGAffineTransform(scaleX: s, y: s)
+        if scaleNow != s { scaleNow = s; setNeedsLayout() }
     }
 
     func showDim(image: UIImage?, alpha: CGFloat) {
         shownActive = false
+        subLabel.alpha = min(0.8, alpha * 0.85)
         label.alpha = 0
         wordsHost.alpha = 0
         blurView.image = image
@@ -625,6 +645,7 @@ final class LyricCell: UITableViewCell {
         let karaoke = canKaraoke
         if !shownActive {
             shownActive = true
+            subLabel.alpha = 0.85
             blurView.alpha = 0
             label.alpha = karaoke ? 0 : 1
             wordsHost.alpha = karaoke ? 1 : 0
@@ -708,6 +729,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private var userScrolledAt = Date.distantPast
     private var blurCache: [String: UIImage] = [:]
     private var heightCache: [String: CGFloat] = [:]
+    private var transCache: [String: CGFloat] = [:]
+    private var translations: [String] = []
     private var lastWidth: CGFloat = 0
     private static var plainFont: UIFont { return RoundedFont.font(22, index: AppSettings.lyricWeight - 1) }
     private var link: CADisplayLink?
@@ -790,6 +813,22 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         update(time: PlayerEngine.shared.livePosition)
     }
 
+    var lineTexts: [String] { return lines.map { $0.text } }
+
+    /// Đặt (hoặc xoá, nếu nil) bản dịch cho từng dòng.
+    func setTranslations(_ t: [String]?) {
+        let new = (t != nil && t!.count == lines.count) ? t! : []
+        if new == translations { return }
+        translations = new
+        heightCache.removeAll(); transCache.removeAll()
+        blurCache.removeAll()
+        UIView.performWithoutAnimation {
+            self.table.reloadData()
+            self.table.layoutIfNeeded()
+        }
+        if current >= 0 { scrollToCurrent(animated: false) }
+    }
+
     func showLoading() { set(lines: [], plain: nil, message: "Đang tìm lời…") }
 
     func show(_ result: LyricsResult?) {
@@ -800,9 +839,10 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private func set(lines: [LyricLine], plain: String?, message: String?) {
         self.lines = lines
         self.plain = plain
+        translations = []
         current = -1
         blurCache.removeAll()
-        heightCache.removeAll()
+        heightCache.removeAll(); transCache.removeAll()
         statusLabel.text = message
         statusLabel.isHidden = message == nil
         dotsShown = false
@@ -822,7 +862,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         super.layoutSubviews()
         if abs(table.bounds.width - lastWidth) > 0.5 && table.bounds.width > 0 {
             lastWidth = table.bounds.width
-            heightCache.removeAll()
+            heightCache.removeAll(); transCache.removeAll()
             blurCache.removeAll()
             table.reloadData()
         }
@@ -896,7 +936,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 
     /// Đổi độ đậm/font: tính lại chiều cao, ảnh mờ và dựng lại các dòng.
     func reloadStyle() {
-        heightCache.removeAll()
+        heightCache.removeAll(); transCache.removeAll()
         blurCache.removeAll()
         table.reloadData()
         table.layoutIfNeeded()
@@ -953,7 +993,17 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             heightCache[key] = base
         }
         let scale = indexPath.row == current ? 1 : LyricCell.inactiveScale
-        return LyricCell.vPad * 2 + base * scale
+        var extra: CGFloat = 0
+        if indexPath.row < translations.count, !translations[indexPath.row].isEmpty {
+            let tk = "\(indexPath.row)-\(Int(w))"
+            if let hit = transCache[tk] {
+                extra = hit
+            } else {
+                extra = LyricCell.measure(translations[indexPath.row], width: w, font: LyricCell.translationFont) + 6
+                transCache[tk] = extra
+            }
+        }
+        return LyricCell.vPad * 2 + base * scale + extra
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -967,7 +1017,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             cell.blurView.alpha = 0
         } else {
             let text = lines[indexPath.row].text
-            cell.configure(line: lines[indexPath.row], text: text.isEmpty ? "♪" : text, row: indexPath.row)
+            let tr = indexPath.row < translations.count ? translations[indexPath.row] : ""
+            cell.configure(line: lines[indexPath.row], text: text.isEmpty ? "♪" : text, row: indexPath.row, translation: tr)
             style(cell, time: PlayerEngine.shared.livePosition)
         }
         return cell

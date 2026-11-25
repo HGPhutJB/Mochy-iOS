@@ -50,7 +50,7 @@ final class MochyCloud {
 
     // MARK: - Mạng
 
-    private func request(_ path: String, method: String, body: [String: Any]?, auth: Bool,
+    fileprivate func request(_ path: String, method: String, body: [String: Any]?, auth: Bool,
                          completion: @escaping (Int, [String: Any]?) -> Void) {
         guard isConfigured, let url = URL(string: CloudConfig.baseURL + path) else {
             completion(0, ["error": "Máy chủ tài khoản chưa được cấu hình."])
@@ -351,6 +351,17 @@ final class MochyCloud {
         if pending {
             pending = false
             syncNow()
+        }
+    }
+}
+
+extension MochyCloud {
+    /// Dịch qua máy chủ Mochy (cần đăng nhập). Trả nil nếu lỗi.
+    func translate(lines: [String], from: String, to: String, completion: @escaping ([String]?) -> Void) {
+        guard isLoggedIn else { completion(nil); return }
+        request("/translate", method: "POST", body: ["lines": lines, "from": from, "to": to], auth: true) { status, json in
+            guard status == 200, let out = json?["lines"] as? [String], out.count == lines.count else { completion(nil); return }
+            completion(out)
         }
     }
 }

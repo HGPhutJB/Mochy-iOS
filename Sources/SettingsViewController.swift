@@ -6,6 +6,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case theme
         case quality
         case reverb
+        case translateLang
         case videoBackdrop
         case downloadsInfo
         case clearDownloads
@@ -98,7 +99,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             Section(title: "Giao diện", footer: "\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối.",
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp.",
-                    rows: [.quality, .reverb, .videoBackdrop]),
+                    rows: [.quality, .reverb, .translateLang, .videoBackdrop]),
             Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
@@ -180,6 +181,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = "Reverb (độ vang)"
             cell.detailTextLabel?.text = ReverbSettings.enabled ? "Bật · \(Int(round(ReverbSettings.amount * 100)))%" : "Tắt"
+            cell.accessoryType = .disclosureIndicator
+
+        case .translateLang:
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = "Dịch lời sang"
+            cell.detailTextLabel?.text = TranslateSettings.targetName
             cell.accessoryType = .disclosureIndicator
 
         case .downloadsInfo:
@@ -331,6 +338,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             navigationController?.pushViewController(MochyAccountViewController(), animated: true)
         case .reverb:
             ReverbPanelViewController.present(from: self)
+        case .translateLang:
+            chooseTranslateLanguage()
         case .recap:
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:
@@ -367,6 +376,20 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         guard let mode = ThemeMode(rawValue: sender.selectedSegmentIndex) else { return }
         Theme.mode = mode
         NotificationCenter.default.post(name: .themeChanged, object: nil)
+    }
+
+    private func chooseTranslateLanguage() {
+        let sheet = UIAlertController(title: "Dịch lời sang", message: "Nút dịch nằm cạnh tên bài trong màn hình lời.", preferredStyle: .actionSheet)
+        for lang in TranslateSettings.languages {
+            let title = (lang.code == TranslateSettings.target ? "✓ " : "") + lang.name
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                TranslateSettings.target = lang.code
+                self?.tableView.reloadData()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        if let pop = sheet.popoverPresentationController { pop.sourceView = view; pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1); pop.permittedArrowDirections = [] }
+        present(sheet, animated: true, completion: nil)
     }
 
     @objc private func qualityChanged(_ sender: M3Segmented) {

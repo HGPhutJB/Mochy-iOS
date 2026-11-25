@@ -15,6 +15,10 @@ const JSON_HEADERS = {
 const BADGES = {
   pucpucpuc: ['verified', 'owner'],
 };
+const LANG_NAMES = {
+  vi: 'vietnamese', en: 'english', ja: 'japanese', ko: 'korean', 'zh-CN': 'chinese', th: 'thai',
+  fr: 'french', es: 'spanish', id: 'indonesian', ru: 'russian'
+};
 const MAX_BLOB = 2 * 1024 * 1024;
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365;
 const ITERATIONS = 100000;
@@ -244,6 +248,28 @@ export class MochyDO extends DurableObject {
     if (path === '/avatar' && request.method === 'DELETE') {
       this.run('DELETE FROM avatars WHERE name = ?', who.name);
       return reply({ ok: true });
+    }
+
+    // Dịch lời bằng Workers AI (m2m100). Cần đăng nhập, có giới hạn tốc độ.
+    if (path === '/translate' && request.method === 'POST') {
+      if (!this.env.AI) return fail(501, 'Máy chủ chưa bật dịch');
+      const body = await readJSON(request);
+      const lines = body && Array.isArray(body.lines) ? body.lines : null;
+      if (!lines || lines.length === 0 || lines.length > 40) return fail(400, 'Dữ liệu không hợp lệ');
+      if (!this.allow(`tr:${who.name}`, 400, 3600)) return fail(429, 'Dịch quá nhiều, thử lại sau');
+      const target = LANG_NAMES[String(body.to || '')];
+      if (!target) return fail(400, 'Ngôn ngữ không hỗ trợ');
+      const source = LANG_NAMES[String(body.from || '')] || 'english';
+      const out = await Promise.all(lines.map(async (line) => {
+        const text = String(line || '').slice(0, 300);
+        if (!text.trim()) return '';
+        try {
+          const r = await this.env.AI.run('@cf/meta/m2m100-1.2b', { text, source_lang: source, target_lang: target });
+          return String((r && r.translated_text) || '');
+        } catch (e) { return ''; }
+      }));
+      if (out.every((t) => !t)) return fail(502, 'Không dịch được');
+      return reply({ lines: out });
     }
 
     if (path === '/data' && request.method === 'GET') {
