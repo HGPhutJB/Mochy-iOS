@@ -1,3 +1,8 @@
+Mochy iOS 0.9.1 — sửa không bật được reverb
+
+- Sửa công tắc Reverb không bấm được (vùng chạm đóng bảng đang nuốt cú chạm vào công tắc).
+- Bảng Reverb hiện trạng thái thật: đang hoạt động / lý do không áp dụng được cho bài đang phát.
+
 Mochy iOS 0.9.0 — reverb, ảnh bìa playlist, nút ⋯ gộp
 
 - Reverb (độ vang): bật/tắt, thanh chỉnh 0–100% và 3 kiểu phòng (Phòng nhỏ, Hội trường, Nhà thờ). Mở từ menu ⋯ ở màn hình đang phát hoặc Cài đặt ▸ Âm thanh ▸ Reverb. Tắt reverb thì phát nguyên bản.

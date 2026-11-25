@@ -66,6 +66,9 @@ final class ReverbParams {
     var wet: Float = 0.35
     var room: Float = 0.75
     var damping: Float = 0.4
+    /// Trạng thái hiển thị cho người dùng (để biết reverb có đang chạy trên bài này không).
+    var status: String = "Chưa gắn vào bài nào"
+    var frames: Int = 0
 }
 
 /// Reverb kiểu Freeverb (Schroeder/Moorer): 8 bộ lọc lược song song + 4 bộ lọc thông-tất qua mỗi kênh.
@@ -119,7 +122,11 @@ final class ReverbDSP {
     func prepare(_ asbd: AudioStreamBasicDescription) {
         freeAll()
         let isFloat = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0 && asbd.mBitsPerChannel == 32
-        guard isFloat, asbd.mSampleRate > 8000 else { ready = false; return }
+        guard isFloat, asbd.mSampleRate > 8000 else {
+            ready = false
+            ReverbParams.shared.status = "Không áp dụng được: định dạng âm thanh \(asbd.mBitsPerChannel)-bit không hỗ trợ"
+            return
+        }
         let scale = asbd.mSampleRate / 44100.0
         combsL = makeBank(combTunings, extra: 0, scale: scale)
         combsR = makeBank(combTunings, extra: stereoSpread, scale: scale)
@@ -128,6 +135,7 @@ final class ReverbDSP {
         interleaved = (asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved) == 0
         channels = Int(asbd.mChannelsPerFrame)
         ready = channels >= 1 && channels <= 2
+        ReverbParams.shared.status = ready ? "Đang hoạt động (\(Int(asbd.mSampleRate)) Hz, \(channels) kênh)" : "Không áp dụng được: \(channels) kênh"
     }
 
     @inline(__always)
@@ -156,6 +164,7 @@ final class ReverbDSP {
     func process(_ list: UnsafeMutablePointer<AudioBufferList>, frames: Int) {
         guard ready, frames > 0, let cL = combsL, let cR = combsR, let aL = allpassL, let aR = allpassR else { return }
         let params = ReverbParams.shared
+        params.frames += frames
         let wet = params.wet
         if wet < 0.005 { return }
         let feedback = params.room * 0.28 + 0.7
@@ -238,8 +247,11 @@ enum ReverbTap {
         let status = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PostEffects, &tapRef)
         guard status == noErr, let tap = tapRef else {
             Unmanaged.passUnretained(dsp).release()
+            ReverbParams.shared.status = "Không tạo được bộ lọc (mã \(status))"
             return nil
         }
+        ReverbParams.shared.status = "Đã gắn, đang chờ âm thanh…"
+        ReverbParams.shared.frames = 0
         let params = AVMutableAudioMixInputParameters(track: track)
         params.audioTapProcessor = tap
         let mix = AVMutableAudioMix()
@@ -251,7 +263,9 @@ enum ReverbTap {
 // MARK: - Bảng chỉnh reverb
 
 /// Thẻ nổi ở đáy màn hình: công tắc, thanh độ vang và kiểu phòng.
-final class ReverbPanelViewController: UIViewController {
+final class ReverbPanelViewController: UIViewController, UIGestureRecognizerDelegate {
+    private let statusLabel = UILabel()
+    private var statusTimer: Timer?
     private let card = UIView()
     private let toggle = M3Switch()
     private let slider = UISlider()
@@ -268,12 +282,13 @@ final class ReverbPanelViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor.black.withAlphaComponent(0.4)
-        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(close)))
+        let dismissTap = UITapGestureRecognizer(target: self, action: #selector(close))
+        dismissTap.delegate = self
+        view.addGestureRecognizer(dismissTap)
 
         card.backgroundColor = Theme.isDark ? UIColor(white: 0.14, alpha: 1) : UIColor(white: 0.97, alpha: 1)
         card.layer.cornerRadius = 28
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.addGestureRecognizer(UITapGestureRecognizer(target: nil, action: nil))
         view.addSubview(card)
 
         let title = UILabel()
@@ -321,7 +336,10 @@ final class ReverbPanelViewController: UIViewController {
         note.textColor = Theme.secondaryText
         note.numberOfLines = 0
 
-        let stack = UIStackView(arrangedSubviews: [titleRow, amountRow, slider, roomTitle, presetHolder, note])
+        statusLabel.font = Theme.regular(12)
+        statusLabel.textColor = Theme.secondaryText
+        statusLabel.numberOfLines = 0
+        let stack = UIStackView(arrangedSubviews: [titleRow, amountRow, slider, roomTitle, presetHolder, statusLabel, note])
         stack.axis = .vertical
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -337,6 +355,21 @@ final class ReverbPanelViewController: UIViewController {
         ])
         updateValueLabel()
         updateEnabledLook()
+        updateStatus()
+        statusTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.updateStatus() }
+    }
+
+    deinit { statusTimer?.invalidate() }
+
+    /// Chỉ chạm ra ngoài thẻ mới đóng; chạm trong thẻ để các điều khiển tự xử lý.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        return !card.frame.contains(touch.location(in: view))
+    }
+
+    private func updateStatus() {
+        if !ReverbSettings.enabled { statusLabel.text = "Đang tắt"; return }
+        let p = ReverbParams.shared
+        statusLabel.text = p.status + (p.frames > 0 ? " · đã xử lý \(p.frames / 1000)k mẫu" : "")
     }
 
     private func updateValueLabel() { valueLabel.text = "\(Int(round(slider.value * 100)))%" }
@@ -352,6 +385,7 @@ final class ReverbPanelViewController: UIViewController {
     @objc private func toggled() {
         ReverbSettings.enabled = toggle.isOn
         updateEnabledLook()
+        updateStatus()
     }
 
     @objc private func sliderMoved() {

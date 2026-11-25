@@ -446,14 +446,18 @@ final class PlayerEngine: NSObject {
             reverbItem = nil
             return
         }
+        ReverbParams.shared.status = "Đang gắn vào bài…"
         if reverbItem === item { return }
         let asset = item.asset
         asset.loadValuesAsynchronously(forKeys: ["tracks"]) { [weak self] in
             DispatchQueue.main.async {
                 guard let self = self, item === self.player?.currentItem, ReverbSettings.enabled, self.reverbItem !== item else { return }
                 guard asset.statusOfValue(forKey: "tracks", error: nil) == .loaded,
-                      let track = asset.tracks(withMediaType: .audio).first,
-                      let mix = ReverbTap.makeMix(for: track) else { return }
+                      let track = asset.tracks(withMediaType: .audio).first else {
+                    ReverbParams.shared.status = "Không áp dụng được: không đọc được rãnh âm thanh của bài"
+                    return
+                }
+                guard let mix = ReverbTap.makeMix(for: track) else { return }
                 item.audioMix = mix
                 self.reverbItem = item
             }
