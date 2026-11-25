@@ -2,6 +2,16 @@ name = "mochy-cloud"
 main = "worker.mjs"
 compatibility_date = "2024-11-01"
 
+# Kho dữ liệu chính: SQLite trong Durable Object (gói miễn phí dùng được).
+[[durable_objects.bindings]]
+name = "MOCHY_DO"
+class_name = "MochyDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MochyDO"]
+
+# KV cũ: chỉ đọc để chuyển dữ liệu sang SQLite.
 [[kv_namespaces]]
 binding = "MOCHY_KV"
 id = "REPLACE_WITH_KV_ID"

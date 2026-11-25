@@ -60,9 +60,6 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
 
         NotificationCenter.default.addObserver(self, selector: #selector(stateChanged), name: .cloudStateChanged, object: nil)
         rebuild()
-        if MochyCloud.shared.isLoggedIn {
-            MochyCloud.shared.loadFollows { [weak self] _, _, _ in if self?.busy == false { self?.rebuild() } }
-        }
     }
 
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -142,12 +139,9 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         avatar.heightAnchor.constraint(equalToConstant: big).isActive = true
         avatar.addTarget(self, action: #selector(pickAvatar), for: .touchUpInside)
 
-        let following = UserDefaults.standard.integer(forKey: "cloud.followingCount")
-        let followers = UserDefaults.standard.integer(forKey: "cloud.followersCount")
         let stats = UIStackView(arrangedSubviews: [
-            statButton(number: following, caption: "Đang theo dõi", action: #selector(followingTapped)),
-            statButton(number: followers, caption: "Người theo dõi", action: #selector(followersTapped)),
-            statButton(number: Library.shared.liked.count, caption: "Yêu thích", action: nil)
+            statButton(number: Library.shared.liked.count, caption: "Yêu thích", action: nil),
+            statButton(number: Library.shared.playlists.count, caption: "Playlist", action: nil)
         ])
         stats.axis = .horizontal
         stats.spacing = 16
@@ -174,8 +168,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         stack.addArrangedSubview(label(status, font: Theme.regular(13), color: cloud.lastError == nil ? Theme.secondaryText : M3.danger))
 
         let actions = UIStackView(arrangedSubviews: [
-            pill("Tìm người", #selector(searchUsersTapped), prominent: true),
-            pill("Đổi ảnh", #selector(pickAvatar), prominent: false),
+            pill("Đổi ảnh", #selector(pickAvatar), prominent: true),
             pill("Đồng bộ", #selector(syncTapped), prominent: false),
             pill("⋯", #selector(moreTapped), prominent: false, compact: true)
         ])
@@ -362,9 +355,6 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         }
     }
 
-    @objc private func searchUsersTapped() { navigationController?.pushViewController(UserListViewController(mode: .search), animated: true) }
-    @objc private func followingTapped() { navigationController?.pushViewController(UserListViewController(mode: .following), animated: true) }
-    @objc private func followersTapped() { navigationController?.pushViewController(UserListViewController(mode: .followers), animated: true) }
 
     @objc private func logoutTapped() {
         MochyCloud.shared.logout()

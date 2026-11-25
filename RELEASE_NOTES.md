@@ -1,5 +1,10 @@
 Mochy iOS 0.10.1 — trang cá nhân kiểu mạng xã hội, sửa lỗi đồng bộ
 
+- Màn hình tài khoản đổi sang dạng trang cá nhân: ảnh tròn bên trái, tên + tick + OWNER, số liệu (Yêu thích / Playlist) và hàng nút Đổi ảnh · Đồng bộ · ⋯.
+- Bỏ tính năng follow / tìm người dùng.
+- Máy chủ chuyển sang lưu bằng SQLite (Durable Object): không còn giới hạn 1.000 lượt ghi mỗi ngày của KV, đủ cho hàng trăm tài khoản; tài khoản và dữ liệu cũ tự chuyển sang khi đăng nhập.
+- App: đồng bộ tự động gom lại, tối đa mỗi ~20 giây; lỗi hiện kèm mã.
+
 - Màn hình tài khoản đổi sang dạng trang cá nhân: ảnh tròn bên trái, tên + tick + OWNER, số liệu (Đang theo dõi / Người theo dõi / Yêu thích) và hàng nút Tìm người · Đổi ảnh · Đồng bộ · ⋯.
 - Máy chủ: bỏ ghi KV cho giới hạn tốc độ của đồng bộ/tìm kiếm (gói miễn phí chỉ 1000 lượt ghi mỗi ngày, vượt là lỗi "Không đồng bộ được"); trả lỗi rõ ràng hơn.
 - App: đồng bộ tự động gom lại, tối đa mỗi ~20 giây; lỗi hiện kèm mã.

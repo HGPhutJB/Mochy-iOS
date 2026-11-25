@@ -1,5 +1,9 @@
-// Mochy Cloud — máy chủ tài khoản + đồng bộ thư viện (Cloudflare Workers + KV).
+// Mochy Cloud — máy chủ tài khoản + đồng bộ thư viện (Cloudflare Workers + Durable Object SQLite).
 // Mật khẩu chỉ lưu dạng băm PBKDF2 (có salt); không bao giờ lưu mật khẩu thật.
+// Dữ liệu nằm trong SQLite của một Durable Object (gói miễn phí: 100.000 dòng ghi/ngày, thay cho KV chỉ có 1.000 lượt ghi/ngày).
+// KV cũ (MOCHY_KV) chỉ còn dùng để đọc và tự chuyển dữ liệu/phiên đăng nhập cũ sang SQLite.
+
+import { DurableObject } from "cloudflare:workers";
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -12,7 +16,7 @@ const BADGES = {
   pucpucpuc: ['verified', 'owner'],
 };
 const MAX_BLOB = 2 * 1024 * 1024;
-const SESSION_TTL = 60 * 60 * 24 * 365;
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365;
 const ITERATIONS = 100000;
 
 const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: JSON_HEADERS });
@@ -21,9 +25,9 @@ const fail = (status, message) => reply({ error: message }, status);
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 const fromHex = (s) => new Uint8Array(s.match(/../g).map((h) => parseInt(h, 16)));
 
-async function hashPassword(password, saltHex) {
+async function hashPassword(password, saltHex, iterations = ITERATIONS) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: fromHex(saltHex), iterations: ITERATIONS }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: fromHex(saltHex), iterations }, key, 256);
   return hex(bits);
 }
 
@@ -34,60 +38,8 @@ function sameString(a, b) {
   return diff === 0;
 }
 
-function validName(name) {
-  return typeof name === 'string' && /^[a-z0-9_.-]{3,24}$/.test(name);
-}
-
-function validPassword(pw) {
-  return typeof pw === 'string' && pw.length >= 6 && pw.length <= 128;
-}
-
-// Giới hạn số lần theo khoá (IP...) trong một khoảng thời gian.
-// Đếm bằng KV chỉ cho thao tác nhạy cảm (đăng ký/đăng nhập); các thao tác khác đếm trong bộ nhớ của Worker
-// để không tốn lượt ghi KV (gói miễn phí chỉ có 1000 lượt ghi mỗi ngày).
-const memoryHits = new Map();
-function throttleMemory(key, limit, seconds) {
-  const now = Date.now();
-  const entry = memoryHits.get(key);
-  if (!entry || now > entry.reset) {
-    memoryHits.set(key, { n: 1, reset: now + seconds * 1000 });
-    if (memoryHits.size > 5000) memoryHits.clear();
-    return true;
-  }
-  entry.n += 1;
-  return entry.n <= limit;
-}
-
-async function throttle(env, key, limit, seconds) {
-  if (!key.startsWith('reg:') && !key.startsWith('login:')) return throttleMemory(key, limit, seconds);
-  const k = `rl:${key}`;
-  const n = parseInt((await env.MOCHY_KV.get(k)) || '0', 10);
-  if (n >= limit) return false;
-  await env.MOCHY_KV.put(k, String(n + 1), { expirationTtl: Math.max(60, seconds) });
-  return true;
-}
-
-// Danh sách tên ở cuối các khoá có cùng tiền tố (cạnh theo dõi), tối đa 1000.
-async function edgeSet(env, prefix) {
-  const out = new Set();
-  const list = await env.MOCHY_KV.list({ prefix, limit: 1000 });
-  for (const k of list.keys) out.add(k.name.slice(prefix.length));
-  return out;
-}
-
-async function newSession(env, name) {
-  const token = hex(crypto.getRandomValues(new Uint8Array(32)));
-  await env.MOCHY_KV.put(`sess:${token}`, name, { expirationTtl: SESSION_TTL });
-  return token;
-}
-
-async function authed(request, env) {
-  const header = request.headers.get('authorization') || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-  if (!/^[0-9a-f]{64}$/.test(token)) return null;
-  const name = await env.MOCHY_KV.get(`sess:${token}`);
-  return name ? { name, token } : null;
-}
+const validName = (name) => typeof name === 'string' && /^[a-z0-9_.-]{3,24}$/.test(name);
+const validPassword = (pw) => typeof pw === 'string' && pw.length >= 6 && pw.length <= 128;
 
 async function readJSON(request) {
   try { return await request.json(); } catch (e) { return null; }
@@ -96,20 +48,107 @@ async function readJSON(request) {
 export default {
   async fetch(request, env) {
     try {
-      return await handle(request, env);
+      const stub = env.MOCHY_DO.get(env.MOCHY_DO.idFromName('main'));
+      return await stub.fetch(request);
     } catch (e) {
       return fail(500, 'Lỗi máy chủ: ' + String((e && e.message) || e).slice(0, 160));
     }
   },
 };
 
-async function handle(request, env) {
+export class MochyDO extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.env = env;
+    this.sql = ctx.storage.sql;
+    this.hits = new Map();
+    const s = this.sql;
+    s.exec('CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, salt TEXT NOT NULL, hash TEXT NOT NULL, iterations INTEGER NOT NULL, created INTEGER NOT NULL)');
+    s.exec('CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, name TEXT NOT NULL, expires INTEGER NOT NULL)');
+    s.exec('CREATE TABLE IF NOT EXISTS data (name TEXT PRIMARY KEY, version INTEGER NOT NULL, updated INTEGER NOT NULL, blob TEXT NOT NULL)');
+    s.exec('CREATE TABLE IF NOT EXISTS avatars (name TEXT PRIMARY KEY, image TEXT NOT NULL)');
+  }
+
+  rows(query, ...params) { return this.sql.exec(query, ...params).toArray(); }
+  one(query, ...params) { return this.rows(query, ...params)[0] || null; }
+  run(query, ...params) { this.sql.exec(query, ...params); }
+
+  // Giới hạn số lần theo khoá trong bộ nhớ (chỉ có một Durable Object nên đủ dùng, không tốn lượt ghi).
+  allow(key, limit, seconds) {
+    const now = Date.now();
+    const e = this.hits.get(key);
+    if (!e || now > e.reset) {
+      this.hits.set(key, { n: 1, reset: now + seconds * 1000 });
+      if (this.hits.size > 5000) this.hits.clear();
+      return true;
+    }
+    e.n += 1;
+    return e.n <= limit;
+  }
+
+  // --- Dữ liệu KV cũ: đọc và chuyển sang SQLite khi gặp ---
+  async legacyUser(name) {
+    try {
+      const raw = await this.env.MOCHY_KV.get(`user:${name}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  async getUser(name) {
+    const row = this.one('SELECT * FROM users WHERE name = ?', name);
+    if (row) return row;
+    const old = await this.legacyUser(name);
+    if (!old) return null;
+    this.run('INSERT OR IGNORE INTO users (name, salt, hash, iterations, created) VALUES (?, ?, ?, ?, ?)',
+      name, old.salt, old.hash, old.iterations || ITERATIONS, old.created || Date.now());
+    return this.one('SELECT * FROM users WHERE name = ?', name);
+  }
+
+  newSession(name) {
+    const token = hex(crypto.getRandomValues(new Uint8Array(32)));
+    this.run('INSERT INTO sessions (token, name, expires) VALUES (?, ?, ?)', token, name, Date.now() + SESSION_TTL_MS);
+    return token;
+  }
+
+  async authed(request) {
+    const header = request.headers.get('authorization') || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!/^[0-9a-f]{64}$/.test(token)) return null;
+    const row = this.one('SELECT name, expires FROM sessions WHERE token = ?', token);
+    if (row) return row.expires > Date.now() ? { name: row.name, token } : null;
+    try {
+      const name = await this.env.MOCHY_KV.get(`sess:${token}`);
+      if (name) {
+        this.run('INSERT OR IGNORE INTO sessions (token, name, expires) VALUES (?, ?, ?)', token, name, Date.now() + SESSION_TTL_MS);
+        return { name, token };
+      }
+    } catch (e) { /* bỏ qua */ }
+    return null;
+  }
+
+  async userExists(name) {
+    return !!(await this.getUser(name));
+  }
+
+  edgeNames(query, name) {
+    return this.rows(query, name).map((r) => r.n);
+  }
+
+  async fetch(request) {
+    try {
+      return await this.handle(request);
+    } catch (e) {
+      return fail(500, 'Lỗi máy chủ: ' + String((e && e.message) || e).slice(0, 160));
+    }
+  }
+
+  async handle(request) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: JSON_HEADERS });
     const url = new URL(request.url);
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
-    if (path === '/' && request.method === 'GET') return reply({ ok: true, service: 'mochy-cloud' });
+    if (path === '/' && request.method === 'GET') return reply({ ok: true, service: 'mochy-cloud', storage: 'sqlite' });
 
     if (path === '/register' && request.method === 'POST') {
       const body = await readJSON(request);
@@ -117,12 +156,12 @@ async function handle(request, env) {
       const name = String(body.username || '').trim().toLowerCase();
       if (!validName(name)) return fail(400, 'Tên đăng nhập 3–24 ký tự: chữ thường, số, _ . -');
       if (!validPassword(body.password)) return fail(400, 'Mật khẩu từ 6 đến 128 ký tự');
-      if (!(await throttle(env, `reg:${ip}`, 8, 3600))) return fail(429, 'Tạo tài khoản quá nhiều lần, thử lại sau');
-      if (await env.MOCHY_KV.get(`user:${name}`)) return fail(409, 'Tên đăng nhập đã có người dùng');
+      if (!this.allow(`reg:${ip}`, 8, 3600)) return fail(429, 'Tạo tài khoản quá nhiều lần, thử lại sau');
+      if (await this.userExists(name)) return fail(409, 'Tên đăng nhập đã có người dùng');
       const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
       const hash = await hashPassword(body.password, salt);
-      await env.MOCHY_KV.put(`user:${name}`, JSON.stringify({ salt, hash, iterations: ITERATIONS, created: Date.now() }));
-      return reply({ token: await newSession(env, name), username: name });
+      this.run('INSERT INTO users (name, salt, hash, iterations, created) VALUES (?, ?, ?, ?, ?)', name, salt, hash, ITERATIONS, Date.now());
+      return reply({ token: this.newSession(name), username: name });
     }
 
     if (path === '/login' && request.method === 'POST') {
@@ -130,50 +169,43 @@ async function handle(request, env) {
       if (!body) return fail(400, 'Dữ liệu không hợp lệ');
       const name = String(body.username || '').trim().toLowerCase();
       if (!validName(name) || typeof body.password !== 'string') return fail(401, 'Sai tên đăng nhập hoặc mật khẩu');
-      if (!(await throttle(env, `login:${name}:${ip}`, 10, 900))) return fail(429, 'Thử sai quá nhiều lần, đợi 15 phút');
-      const raw = await env.MOCHY_KV.get(`user:${name}`);
-      if (!raw) return fail(401, 'Sai tên đăng nhập hoặc mật khẩu');
-      const user = JSON.parse(raw);
-      const hash = await hashPassword(body.password, user.salt);
+      if (!this.allow(`login:${name}:${ip}`, 10, 900)) return fail(429, 'Thử sai quá nhiều lần, đợi 15 phút');
+      const user = await this.getUser(name);
+      if (!user) return fail(401, 'Sai tên đăng nhập hoặc mật khẩu');
+      const hash = await hashPassword(body.password, user.salt, user.iterations);
       if (!sameString(hash, user.hash)) return fail(401, 'Sai tên đăng nhập hoặc mật khẩu');
-      return reply({ token: await newSession(env, name), username: name });
+      return reply({ token: this.newSession(name), username: name });
     }
 
-    const who = await authed(request, env);
+    const who = await this.authed(request);
     if (!who) return fail(401, 'Phiên đăng nhập hết hạn');
 
     if (path === '/logout' && request.method === 'POST') {
-      await env.MOCHY_KV.delete(`sess:${who.token}`);
+      this.run('DELETE FROM sessions WHERE token = ?', who.token);
       return reply({ ok: true });
     }
 
     if (path === '/password' && request.method === 'POST') {
       const body = await readJSON(request);
       if (!body || !validPassword(body.newPassword)) return fail(400, 'Mật khẩu mới từ 6 đến 128 ký tự');
-      const raw = await env.MOCHY_KV.get(`user:${who.name}`);
-      if (!raw) return fail(404, 'Không tìm thấy tài khoản');
-      const user = JSON.parse(raw);
-      if (!sameString(await hashPassword(String(body.oldPassword || ''), user.salt), user.hash)) return fail(401, 'Mật khẩu cũ không đúng');
+      const user = await this.getUser(who.name);
+      if (!user) return fail(404, 'Không tìm thấy tài khoản');
+      if (!sameString(await hashPassword(String(body.oldPassword || ''), user.salt, user.iterations), user.hash)) return fail(401, 'Mật khẩu cũ không đúng');
       const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
-      user.salt = salt;
-      user.hash = await hashPassword(body.newPassword, salt);
-      await env.MOCHY_KV.put(`user:${who.name}`, JSON.stringify(user));
+      this.run('UPDATE users SET salt = ?, hash = ?, iterations = ? WHERE name = ?', salt, await hashPassword(body.newPassword, salt), ITERATIONS, who.name);
       return reply({ ok: true });
     }
 
     if (path === '/account' && request.method === 'DELETE') {
-      for (const other of await edgeSet(env, `f:${who.name}:`)) {
-        await env.MOCHY_KV.delete(`f:${who.name}:${other}`);
-        await env.MOCHY_KV.delete(`r:${other}:${who.name}`);
-      }
-      for (const other of await edgeSet(env, `r:${who.name}:`)) {
-        await env.MOCHY_KV.delete(`r:${who.name}:${other}`);
-        await env.MOCHY_KV.delete(`f:${other}:${who.name}`);
-      }
-      await env.MOCHY_KV.delete(`user:${who.name}`);
-      await env.MOCHY_KV.delete(`data:${who.name}`);
-      await env.MOCHY_KV.delete(`avatar:${who.name}`);
-      await env.MOCHY_KV.delete(`sess:${who.token}`);
+      this.run('DELETE FROM data WHERE name = ?', who.name);
+      this.run('DELETE FROM avatars WHERE name = ?', who.name);
+      this.run('DELETE FROM sessions WHERE name = ?', who.name);
+      this.run('DELETE FROM users WHERE name = ?', who.name);
+      try {
+        await this.env.MOCHY_KV.delete(`user:${who.name}`);
+        await this.env.MOCHY_KV.delete(`data:${who.name}`);
+        await this.env.MOCHY_KV.delete(`avatar:${who.name}`);
+      } catch (e) { /* KV hết lượt ghi thì bỏ qua */ }
       return reply({ ok: true });
     }
 
@@ -184,53 +216,17 @@ async function handle(request, env) {
     if (path === '/avatar' && request.method === 'GET') {
       const target = (url.searchParams.get('user') || who.name).toLowerCase();
       if (!validName(target)) return fail(400, 'Tên không hợp lệ');
-      const image = await env.MOCHY_KV.get(`avatar:${target}`);
-      return reply({ image: image || null });
-    }
-
-    // Tìm người dùng theo tiền tố tên. Tài khoản có huy hiệu (chủ app...) khớp tiền tố luôn được ghim lên đầu.
-    if (path === '/users/search' && request.method === 'GET') {
-      const q = (url.searchParams.get('q') || '').trim().toLowerCase();
-      if (!/^[a-z0-9_.-]{1,24}$/.test(q)) return reply({ users: [] });
-      if (!(await throttle(env, `search:${who.name}`, 600, 3600))) return fail(429, 'Tìm quá nhiều, thử lại sau');
-      const mine = await edgeSet(env, `f:${who.name}:`);
-      const names = [];
-      for (const featured of Object.keys(BADGES)) {
-        if (featured.startsWith(q) && featured !== who.name && (await env.MOCHY_KV.get(`user:${featured}`))) names.push(featured);
+      let row = this.one('SELECT image FROM avatars WHERE name = ?', target);
+      if (!row) {
+        try {
+          const old = await this.env.MOCHY_KV.get(`avatar:${target}`);
+          if (old) {
+            this.run('INSERT OR IGNORE INTO avatars (name, image) VALUES (?, ?)', target, old);
+            row = { image: old };
+          }
+        } catch (e) { /* bỏ qua */ }
       }
-      const found = await env.MOCHY_KV.list({ prefix: `user:${q}`, limit: 20 });
-      for (const k of found.keys) {
-        const name = k.name.slice(5);
-        if (name !== who.name && !names.includes(name)) names.push(name);
-      }
-      return reply({ users: names.slice(0, 20).map((n) => ({ username: n, badges: BADGES[n] || [], following: mine.has(n) })) });
-    }
-
-    if (path === '/follow' && request.method === 'POST') {
-      const body = await readJSON(request);
-      const target = String((body && body.username) || '').trim().toLowerCase();
-      if (!validName(target) || target === who.name) return fail(400, 'Không thể theo dõi tài khoản này');
-      if (!(await env.MOCHY_KV.get(`user:${target}`))) return fail(404, 'Không tìm thấy người dùng');
-      if (!(await throttle(env, `follow:${who.name}`, 200, 3600))) return fail(429, 'Thao tác quá nhiều, thử lại sau');
-      await env.MOCHY_KV.put(`f:${who.name}:${target}`, String(Date.now()));
-      await env.MOCHY_KV.put(`r:${target}:${who.name}`, String(Date.now()));
-      return reply({ ok: true });
-    }
-
-    if (path === '/follow' && request.method === 'DELETE') {
-      const target = (url.searchParams.get('username') || '').trim().toLowerCase();
-      if (!validName(target)) return fail(400, 'Tên không hợp lệ');
-      await env.MOCHY_KV.delete(`f:${who.name}:${target}`);
-      await env.MOCHY_KV.delete(`r:${target}:${who.name}`);
-      return reply({ ok: true });
-    }
-
-    if (path === '/follows' && request.method === 'GET') {
-      const following = [...(await edgeSet(env, `f:${who.name}:`))];
-      const followers = [...(await edgeSet(env, `r:${who.name}:`))];
-      const mine = new Set(following);
-      const info = (n) => ({ username: n, badges: BADGES[n] || [], following: mine.has(n) });
-      return reply({ following: following.map(info), followers: followers.map(info) });
+      return reply({ image: row ? row.image : null });
     }
 
     if (path === '/avatar' && request.method === 'PUT') {
@@ -240,20 +236,30 @@ async function handle(request, env) {
       if (typeof image !== 'string' || image.length > 150000 || !image.startsWith('/9j/') || !/^[A-Za-z0-9+/=]+$/.test(image)) {
         return fail(400, 'Ảnh không hợp lệ hoặc quá lớn');
       }
-      if (!(await throttle(env, `avatar:${who.name}`, 20, 3600))) return fail(429, 'Đổi ảnh quá nhiều lần, thử lại sau');
-      await env.MOCHY_KV.put(`avatar:${who.name}`, image);
+      if (!this.allow(`avatar:${who.name}`, 20, 3600)) return fail(429, 'Đổi ảnh quá nhiều lần, thử lại sau');
+      this.run('INSERT OR REPLACE INTO avatars (name, image) VALUES (?, ?)', who.name, image);
       return reply({ ok: true });
     }
 
     if (path === '/avatar' && request.method === 'DELETE') {
-      await env.MOCHY_KV.delete(`avatar:${who.name}`);
+      this.run('DELETE FROM avatars WHERE name = ?', who.name);
       return reply({ ok: true });
     }
 
     if (path === '/data' && request.method === 'GET') {
-      const raw = await env.MOCHY_KV.get(`data:${who.name}`);
-      if (!raw) return reply({ version: 0, blob: null });
-      return new Response(raw, { status: 200, headers: JSON_HEADERS });
+      let row = this.one('SELECT version, updated, blob FROM data WHERE name = ?', who.name);
+      if (!row) {
+        try {
+          const raw = await this.env.MOCHY_KV.get(`data:${who.name}`);
+          if (raw) {
+            const old = JSON.parse(raw);
+            this.run('INSERT OR IGNORE INTO data (name, version, updated, blob) VALUES (?, ?, ?, ?)', who.name, old.version || 1, old.updatedAt || Date.now(), old.blob || '');
+            row = this.one('SELECT version, updated, blob FROM data WHERE name = ?', who.name);
+          }
+        } catch (e) { /* bỏ qua */ }
+      }
+      if (!row) return reply({ version: 0, blob: null });
+      return reply({ version: row.version, updatedAt: row.updated, blob: row.blob });
     }
 
     if (path === '/data' && request.method === 'PUT') {
@@ -262,16 +268,22 @@ async function handle(request, env) {
       let body;
       try { body = JSON.parse(text); } catch (e) { return fail(400, 'Dữ liệu không hợp lệ'); }
       if (typeof body.blob !== 'string' || body.blob.length > MAX_BLOB) return fail(413, 'Dữ liệu quá lớn');
-      if (!(await throttle(env, `put:${who.name}`, 240, 3600))) return fail(429, 'Đồng bộ quá nhiều lần, thử lại sau');
-      const raw = await env.MOCHY_KV.get(`data:${who.name}`);
-      const current = raw ? JSON.parse(raw) : { version: 0, blob: null };
-      if (Number(body.baseVersion) !== current.version) {
-        return reply({ conflict: true, version: current.version, blob: current.blob }, 409);
+      if (!this.allow(`put:${who.name}`, 240, 3600)) return fail(429, 'Đồng bộ quá nhiều lần, thử lại sau');
+      let current = this.one('SELECT version, blob FROM data WHERE name = ?', who.name);
+      if (!current) {
+        try {
+          const raw = await this.env.MOCHY_KV.get(`data:${who.name}`);
+          if (raw) { const old = JSON.parse(raw); current = { version: old.version || 0, blob: old.blob || null }; }
+        } catch (e) { /* bỏ qua */ }
       }
-      const next = { version: current.version + 1, updatedAt: Date.now(), blob: body.blob };
-      await env.MOCHY_KV.put(`data:${who.name}`, JSON.stringify(next));
-      return reply({ version: next.version });
+      const version = current ? current.version : 0;
+      if (Number(body.baseVersion) !== version) {
+        return reply({ conflict: true, version, blob: current ? current.blob : null }, 409);
+      }
+      this.run('INSERT OR REPLACE INTO data (name, version, updated, blob) VALUES (?, ?, ?, ?)', who.name, version + 1, Date.now(), body.blob);
+      return reply({ version: version + 1 });
     }
 
     return fail(404, 'Không tìm thấy');
+  }
 }
