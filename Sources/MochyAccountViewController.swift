@@ -13,6 +13,11 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
     private let spinner = UIActivityIndicatorView(style: Theme.spinnerStyle())
     private var busy = false
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if MochyCloud.shared.isLoggedIn && !busy { rebuild() }
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Tài khoản Mochy"
@@ -55,6 +60,9 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
 
         NotificationCenter.default.addObserver(self, selector: #selector(stateChanged), name: .cloudStateChanged, object: nil)
         rebuild()
+        if MochyCloud.shared.isLoggedIn {
+            MochyCloud.shared.loadFollows { [weak self] _, _, _ in if self?.busy == false { self?.rebuild() } }
+        }
     }
 
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -146,7 +154,12 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         stack.addArrangedSubview(label(status, font: Theme.regular(15), color: cloud.lastError == nil ? Theme.secondaryText : M3.danger))
         stack.addArrangedSubview(label("Yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải được lưu vào tài khoản và tự đồng bộ khi có thay đổi.",
                                        font: Theme.regular(14), color: Theme.secondaryText))
-        stack.addArrangedSubview(makeButton("Đồng bộ ngay", filled: true, action: #selector(syncTapped)))
+        let following = UserDefaults.standard.integer(forKey: "cloud.followingCount")
+        let followers = UserDefaults.standard.integer(forKey: "cloud.followersCount")
+        stack.addArrangedSubview(makeButton("Tìm người dùng để theo dõi", filled: true, action: #selector(searchUsersTapped)))
+        stack.addArrangedSubview(makeButton("Đang theo dõi (\(following))", filled: false, action: #selector(followingTapped)))
+        stack.addArrangedSubview(makeButton("Người theo dõi (\(followers))", filled: false, action: #selector(followersTapped)))
+        stack.addArrangedSubview(makeButton("Đồng bộ ngay", filled: false, action: #selector(syncTapped)))
         stack.addArrangedSubview(makeButton("Đổi ảnh đại diện", filled: false, action: #selector(pickAvatar)))
         if cloud.avatarImage != nil {
             stack.addArrangedSubview(makeButton("Xoá ảnh đại diện", filled: false, action: #selector(removeAvatarTapped)))
@@ -289,6 +302,10 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
             self?.rebuild()
         }
     }
+
+    @objc private func searchUsersTapped() { navigationController?.pushViewController(UserListViewController(mode: .search), animated: true) }
+    @objc private func followingTapped() { navigationController?.pushViewController(UserListViewController(mode: .following), animated: true) }
+    @objc private func followersTapped() { navigationController?.pushViewController(UserListViewController(mode: .followers), animated: true) }
 
     @objc private func logoutTapped() {
         MochyCloud.shared.logout()

@@ -353,3 +353,72 @@ final class MochyCloud {
         }
     }
 }
+
+// MARK: - Theo dõi (follow / follower)
+
+struct CloudUser {
+    let username: String
+    let badges: [String]
+    var following: Bool
+    var isVerified: Bool { return badges.contains("verified") }
+    var isOwner: Bool { return badges.contains("owner") }
+
+    init?(_ json: [String: Any]) {
+        guard let name = json["username"] as? String else { return nil }
+        username = name
+        badges = (json["badges"] as? [String]) ?? []
+        following = (json["following"] as? Bool) ?? false
+    }
+}
+
+extension MochyCloud {
+    private static var avatarCache: [String: UIImage] = [:]
+
+    /// Tìm người dùng theo tiền tố tên (máy chủ ghim tài khoản chủ app lên đầu, ví dụ gõ "puc" thì gợi ý pucpucpuc).
+    func searchUsers(_ query: String, completion: @escaping ([CloudUser]?, String?) -> Void) {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { completion([], nil); return }
+        request("/users/search?q=" + encoded, method: "GET", body: nil, auth: true) { status, json in
+            guard status == 200 else { completion(nil, (json?["error"] as? String) ?? "Không tìm được."); return }
+            let list = ((json?["users"] as? [[String: Any]]) ?? []).compactMap { CloudUser($0) }
+            completion(list, nil)
+        }
+    }
+
+    func setFollowing(_ username: String, follow: Bool, completion: @escaping (String?) -> Void) {
+        let done: (Int, [String: Any]?) -> Void = { status, json in
+            completion(status == 200 ? nil : ((json?["error"] as? String) ?? "Không thực hiện được."))
+        }
+        if follow {
+            request("/follow", method: "POST", body: ["username": username], auth: true, completion: done)
+        } else {
+            let encoded = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? username
+            request("/follow?username=" + encoded, method: "DELETE", body: nil, auth: true, completion: done)
+        }
+    }
+
+    func loadFollows(completion: @escaping ([CloudUser], [CloudUser], String?) -> Void) {
+        request("/follows", method: "GET", body: nil, auth: true) { status, json in
+            guard status == 200 else { completion([], [], (json?["error"] as? String) ?? "Không tải được danh sách."); return }
+            let following = ((json?["following"] as? [[String: Any]]) ?? []).compactMap { CloudUser($0) }
+            let followers = ((json?["followers"] as? [[String: Any]]) ?? []).compactMap { CloudUser($0) }
+            UserDefaults.standard.set(following.count, forKey: "cloud.followingCount")
+            UserDefaults.standard.set(followers.count, forKey: "cloud.followersCount")
+            completion(following, followers, nil)
+        }
+    }
+
+    /// Ảnh đại diện của người khác (nhớ trong bộ nhớ).
+    func avatar(of username: String, completion: @escaping (UIImage?) -> Void) {
+        if let hit = MochyCloud.avatarCache[username] { completion(hit); return }
+        let encoded = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? username
+        request("/avatar?user=" + encoded, method: "GET", body: nil, auth: true) { status, json in
+            guard status == 200, let text = json?["image"] as? String, let data = Data(base64Encoded: text), let image = UIImage(data: data) else {
+                completion(nil)
+                return
+            }
+            MochyCloud.avatarCache[username] = image
+            completion(image)
+        }
+    }
+}

@@ -51,6 +51,14 @@ async function throttle(env, key, limit, seconds) {
   return true;
 }
 
+// Danh sách tên ở cuối các khoá có cùng tiền tố (cạnh theo dõi), tối đa 1000.
+async function edgeSet(env, prefix) {
+  const out = new Set();
+  const list = await env.MOCHY_KV.list({ prefix, limit: 1000 });
+  for (const k of list.keys) out.add(k.name.slice(prefix.length));
+  return out;
+}
+
 async function newSession(env, name) {
   const token = hex(crypto.getRandomValues(new Uint8Array(32)));
   await env.MOCHY_KV.put(`sess:${token}`, name, { expirationTtl: SESSION_TTL });
@@ -129,6 +137,14 @@ export default {
     }
 
     if (path === '/account' && request.method === 'DELETE') {
+      for (const other of await edgeSet(env, `f:${who.name}:`)) {
+        await env.MOCHY_KV.delete(`f:${who.name}:${other}`);
+        await env.MOCHY_KV.delete(`r:${other}:${who.name}`);
+      }
+      for (const other of await edgeSet(env, `r:${who.name}:`)) {
+        await env.MOCHY_KV.delete(`r:${who.name}:${other}`);
+        await env.MOCHY_KV.delete(`f:${other}:${who.name}`);
+      }
       await env.MOCHY_KV.delete(`user:${who.name}`);
       await env.MOCHY_KV.delete(`data:${who.name}`);
       await env.MOCHY_KV.delete(`avatar:${who.name}`);
@@ -141,8 +157,55 @@ export default {
     }
 
     if (path === '/avatar' && request.method === 'GET') {
-      const image = await env.MOCHY_KV.get(`avatar:${who.name}`);
+      const target = (url.searchParams.get('user') || who.name).toLowerCase();
+      if (!validName(target)) return fail(400, 'Tên không hợp lệ');
+      const image = await env.MOCHY_KV.get(`avatar:${target}`);
       return reply({ image: image || null });
+    }
+
+    // Tìm người dùng theo tiền tố tên. Tài khoản có huy hiệu (chủ app...) khớp tiền tố luôn được ghim lên đầu.
+    if (path === '/users/search' && request.method === 'GET') {
+      const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+      if (!/^[a-z0-9_.-]{1,24}$/.test(q)) return reply({ users: [] });
+      if (!(await throttle(env, `search:${who.name}`, 600, 3600))) return fail(429, 'Tìm quá nhiều, thử lại sau');
+      const mine = await edgeSet(env, `f:${who.name}:`);
+      const names = [];
+      for (const featured of Object.keys(BADGES)) {
+        if (featured.startsWith(q) && featured !== who.name && (await env.MOCHY_KV.get(`user:${featured}`))) names.push(featured);
+      }
+      const found = await env.MOCHY_KV.list({ prefix: `user:${q}`, limit: 20 });
+      for (const k of found.keys) {
+        const name = k.name.slice(5);
+        if (name !== who.name && !names.includes(name)) names.push(name);
+      }
+      return reply({ users: names.slice(0, 20).map((n) => ({ username: n, badges: BADGES[n] || [], following: mine.has(n) })) });
+    }
+
+    if (path === '/follow' && request.method === 'POST') {
+      const body = await readJSON(request);
+      const target = String((body && body.username) || '').trim().toLowerCase();
+      if (!validName(target) || target === who.name) return fail(400, 'Không thể theo dõi tài khoản này');
+      if (!(await env.MOCHY_KV.get(`user:${target}`))) return fail(404, 'Không tìm thấy người dùng');
+      if (!(await throttle(env, `follow:${who.name}`, 200, 3600))) return fail(429, 'Thao tác quá nhiều, thử lại sau');
+      await env.MOCHY_KV.put(`f:${who.name}:${target}`, String(Date.now()));
+      await env.MOCHY_KV.put(`r:${target}:${who.name}`, String(Date.now()));
+      return reply({ ok: true });
+    }
+
+    if (path === '/follow' && request.method === 'DELETE') {
+      const target = (url.searchParams.get('username') || '').trim().toLowerCase();
+      if (!validName(target)) return fail(400, 'Tên không hợp lệ');
+      await env.MOCHY_KV.delete(`f:${who.name}:${target}`);
+      await env.MOCHY_KV.delete(`r:${target}:${who.name}`);
+      return reply({ ok: true });
+    }
+
+    if (path === '/follows' && request.method === 'GET') {
+      const following = [...(await edgeSet(env, `f:${who.name}:`))];
+      const followers = [...(await edgeSet(env, `r:${who.name}:`))];
+      const mine = new Set(following);
+      const info = (n) => ({ username: n, badges: BADGES[n] || [], following: mine.has(n) });
+      return reply({ following: following.map(info), followers: followers.map(info) });
     }
 
     if (path === '/avatar' && request.method === 'PUT') {

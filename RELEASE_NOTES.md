@@ -1,3 +1,9 @@
+Mochy iOS 0.10.0 — theo dõi bạn bè
+
+- Trong màn hình tài khoản Mochy: "Tìm người dùng để theo dõi", "Đang theo dõi", "Người theo dõi".
+- Tìm người dùng theo tiền tố tên, gợi ý ngay khi gõ; gõ "puc" sẽ gợi ý tài khoản chủ app (pucpucpuc) lên đầu.
+- Hàng người dùng hiện ảnh đại diện, tên, huy hiệu và nút Theo dõi/Đang theo dõi.
+
 Mochy iOS 0.9.2 — nút reverb thay nút máy tính
 
 - Nút hình máy tính ở giữa hàng dưới màn hình đang phát thành nút Reverb (icon tối giản: chấm với hai vòng sóng); chạm để mở bảng chỉnh reverb, gạch xanh bên dưới khi đang bật.
