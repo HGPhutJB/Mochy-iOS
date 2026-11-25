@@ -1,3 +1,8 @@
+Mochy iOS 0.7.7 — ba chấm chờ lời mượt hơn, nền gradient chuyển động mạnh hơn
+
+- Ba chấm: to hơn, sáng lần lượt theo thời gian tới dòng đầu, phồng nhẹ theo nhịp, co lại rồi tan khi lời bắt đầu (không còn bị nhấp nháy/giật).
+- Nền gradient: các đốm màu quay nhanh và rộng hơn, thêm một màu thứ năm, màu bám sát bìa hơn (sáng và đậm hơn).
+
 Mochy iOS 0.7.6 — sửa lịch sử nghe
 
 - Lịch sử nghe không còn lặp một bài nhiều lần (bài nghe lại được đưa lên đầu).

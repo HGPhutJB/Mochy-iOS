@@ -651,13 +651,14 @@ private extension UIColor {
 /// Ba chấm báo "chưa tới lời": sáng dần theo thời gian tới dòng đầu, nhấp nhô nhẹ.
 final class LyricDotsView: UIView {
     private let dots: [UIView] = (0..<3).map { _ in UIView() }
+    private(set) var hidden = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         for d in dots {
             d.backgroundColor = UIColor.white
-            d.layer.cornerRadius = 7
+            d.layer.cornerRadius = 8
             addSubview(d)
         }
     }
@@ -667,18 +668,34 @@ final class LyricDotsView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         for (i, d) in dots.enumerated() {
-            d.bounds = CGRect(x: 0, y: 0, width: 14, height: 14)
-            d.center = CGPoint(x: 28 + 7 + CGFloat(i) * 26, y: bounds.midY)
+            let t = d.transform
+            d.transform = .identity
+            d.bounds = CGRect(x: 0, y: 0, width: 16, height: 16)
+            d.center = CGPoint(x: 28 + 8 + CGFloat(i) * 28, y: bounds.maxY - 14)
+            d.transform = t
         }
     }
 
+    /// progress 0...1: ba chấm sáng lần lượt; cả cụm phồng nhẹ theo nhịp thở.
     func update(progress: Double, time: Double) {
+        if hidden { hidden = false; alpha = 1 }
+        let breath = 1 + 0.08 * CGFloat(sin(time * 2.6))
         for (i, d) in dots.enumerated() {
             let fill = CGFloat(min(1, max(0, progress * 3 - Double(i))))
             d.alpha = 0.3 + 0.7 * fill
-            let pulse = 1 + 0.12 * CGFloat(sin(time * 3.2 - Double(i) * 0.8)) * (0.4 + 0.6 * fill)
-            d.transform = CGAffineTransform(scaleX: pulse, y: pulse)
+            let k = breath * (0.85 + 0.15 * fill)
+            d.transform = CGAffineTransform(scaleX: k, y: k)
         }
+    }
+
+    /// Hết đoạn chờ: ba chấm co lại rồi tan đi.
+    func dismiss() {
+        guard !hidden else { return }
+        hidden = true
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn, .beginFromCurrentState], animations: {
+            self.alpha = 0
+            for d in self.dots { d.transform = CGAffineTransform(scaleX: 0.2, y: 0.2) }
+        }, completion: nil)
     }
 }
 
@@ -835,8 +852,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             if idx < 0 {
                 dotsView.alpha = 1
                 dotsView.update(progress: time / max(0.5, lines[0].time), time: time)
-            } else if dotsView.alpha > 0 && !(time < lines[0].time) {
-                UIView.animate(withDuration: 0.35) { self.dotsView.alpha = 0 }
+            } else {
+                dotsView.dismiss()
             }
         }
         if current >= 0, let cell = table.cellForRow(at: IndexPath(row: current, section: 0)) as? LyricCell {
@@ -1060,8 +1077,8 @@ final class FluidBackgroundView: UIView {
     // vị trí tương đối và biên độ trôi của từng đốm màu
     // (tâm quỹ đạo, bán kính quỹ đạo theo tỉ lệ màn hình, thời gian một vòng, quay ngược?)
     private let spots: [(x: CGFloat, y: CGFloat, rx: CGFloat, ry: CGFloat, seconds: Double, reverse: Bool)] = [
-        (0.20, 0.18, 0.26, 0.14, 13, false), (0.84, 0.30, 0.24, 0.16, 16, true), (0.22, 0.78, 0.28, 0.13, 15, true),
-        (0.80, 0.84, 0.26, 0.15, 18, false), (0.52, 0.48, 0.30, 0.20, 21, false), (0.50, 0.10, 0.34, 0.10, 19, true)
+        (0.22, 0.20, 0.36, 0.20, 7.5, false), (0.80, 0.30, 0.34, 0.22, 9, true), (0.24, 0.76, 0.38, 0.20, 8.5, true),
+        (0.78, 0.82, 0.36, 0.20, 10, false), (0.52, 0.48, 0.40, 0.28, 12, false), (0.50, 0.12, 0.44, 0.14, 11, true)
     ]
 
     override init(frame: CGRect) {
@@ -1077,7 +1094,7 @@ final class FluidBackgroundView: UIView {
             layer.addSublayer(g)
             blobs.append(g)
         }
-        shade.colors = [UIColor(white: 0, alpha: 0.18).cgColor, UIColor(white: 0, alpha: 0.05).cgColor, UIColor(white: 0, alpha: 0.5).cgColor]
+        shade.colors = [UIColor(white: 0, alpha: 0.1).cgColor, UIColor(white: 0, alpha: 0.0).cgColor, UIColor(white: 0, alpha: 0.42).cgColor]
         shade.locations = [0, 0.4, 1]
         layer.addSublayer(shade)
         reveal.startPoint = CGPoint(x: 0.5, y: 0)
@@ -1200,9 +1217,9 @@ final class FluidBackgroundView: UIView {
             orbit.timeOffset = s.seconds * Double(i) / Double(spots.count)
             g.add(orbit, forKey: "drift")
             let pulse = CABasicAnimation(keyPath: "transform.scale")
-            pulse.fromValue = 0.8
-            pulse.toValue = 1.3
-            pulse.duration = s.seconds * 0.55
+            pulse.fromValue = 0.7
+            pulse.toValue = 1.45
+            pulse.duration = s.seconds * 0.5
             pulse.autoreverses = true
             pulse.repeatCount = .infinity
             pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
@@ -1228,7 +1245,7 @@ final class FluidBackgroundView: UIView {
 
     /// Lấy bốn màu nổi bật, khác nhau của bìa rồi chỉnh sao cho đậm màu nhưng đủ tối để chữ trắng đọc rõ.
     private static func makePalette(_ image: UIImage) -> [UIColor] {
-        let n = 8
+        let n = 12
         var pixels = [UInt8](repeating: 0, count: n * n * 4)
         let space = CGColorSpaceCreateDeviceRGB()
         let info = CGImageAlphaInfo.premultipliedLast.rawValue
@@ -1255,13 +1272,13 @@ final class FluidBackgroundView: UIView {
                 return min(d, 1 - d) > 0.06 || abs(p.b - c.b) > 0.3
             }
             if far { picked.append(c) }
-            if picked.count == 4 { break }
+            if picked.count == 5 { break }
         }
         var i = 0
-        while picked.count < 4 { picked.append(ranked[i % ranked.count]); i += 1 }
+        while picked.count < 5 { picked.append(ranked[i % ranked.count]); i += 1 }
         // Giữ gần màu thật của bìa: chỉ hạ độ sáng vừa đủ cho chữ trắng đọc rõ.
         return picked.map { c in
-            UIColor(hue: c.h, saturation: min(1, max(0.28, c.s * 1.08)), brightness: min(0.80, max(0.34, c.b * 0.92)), alpha: 1)
+            UIColor(hue: c.h, saturation: min(1, max(0.32, c.s * 1.15)), brightness: min(0.9, max(0.4, c.b * 1.0)), alpha: 1)
         }
     }
 
@@ -1277,7 +1294,7 @@ final class FluidBackgroundView: UIView {
         format.scale = 1
         format.opaque = false
         let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { ctx in
-            let colors = [color.withAlphaComponent(0.95).cgColor, color.withAlphaComponent(0.5).cgColor, color.withAlphaComponent(0).cgColor] as CFArray
+            let colors = [color.withAlphaComponent(1).cgColor, color.withAlphaComponent(0.62).cgColor, color.withAlphaComponent(0).cgColor] as CFArray
             guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.5, 1]) else { return }
             let c = CGPoint(x: side / 2, y: side / 2)
             ctx.cgContext.drawRadialGradient(gradient, startCenter: c, startRadius: 0, endCenter: c, endRadius: side / 2, options: [])
@@ -1294,7 +1311,7 @@ final class FluidBackgroundView: UIView {
         CATransaction.begin()
         CATransaction.setAnimationDuration(1.4)
         UIView.animate(withDuration: 1.4) {
-            self.backgroundColor = UIColor(hue: h, saturation: min(1, s * 0.95), brightness: max(0.16, min(0.34, b * 0.45)), alpha: 1)
+            self.backgroundColor = UIColor(hue: h, saturation: min(1, s * 0.95), brightness: max(0.2, min(0.42, b * 0.55)), alpha: 1)
         }
         for (i, g) in blobs.enumerated() {
             g.contents = FluidBackgroundView.blobImage(colors[i % colors.count])
