@@ -234,14 +234,14 @@ enum ReverbTap {
             prepare: reverbTapPrepare,
             unprepare: reverbTapUnprepare,
             process: reverbTapProcess)
-        var tapRef: Unmanaged<MTAudioProcessingTap>?
+        var tapRef: MTAudioProcessingTap?
         let status = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PostEffects, &tapRef)
         guard status == noErr, let tap = tapRef else {
             Unmanaged.passUnretained(dsp).release()
             return nil
         }
         let params = AVMutableAudioMixInputParameters(track: track)
-        params.audioTapProcessor = tap.takeRetainedValue()
+        params.audioTapProcessor = tap
         let mix = AVMutableAudioMix()
         mix.inputParameters = [params]
         return mix
