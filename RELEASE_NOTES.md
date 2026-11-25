@@ -1,3 +1,9 @@
+Mochy iOS 0.10.1 — trang cá nhân kiểu mạng xã hội, sửa lỗi đồng bộ
+
+- Màn hình tài khoản đổi sang dạng trang cá nhân: ảnh tròn bên trái, tên + tick + OWNER, số liệu (Đang theo dõi / Người theo dõi / Yêu thích) và hàng nút Tìm người · Đổi ảnh · Đồng bộ · ⋯.
+- Máy chủ: bỏ ghi KV cho giới hạn tốc độ của đồng bộ/tìm kiếm (gói miễn phí chỉ 1000 lượt ghi mỗi ngày, vượt là lỗi "Không đồng bộ được"); trả lỗi rõ ràng hơn.
+- App: đồng bộ tự động gom lại, tối đa mỗi ~20 giây; lỗi hiện kèm mã.
+
 Mochy iOS 0.10.0 — theo dõi bạn bè
 
 - Trong màn hình tài khoản Mochy: "Tìm người dùng để theo dõi", "Đang theo dõi", "Người theo dõi".

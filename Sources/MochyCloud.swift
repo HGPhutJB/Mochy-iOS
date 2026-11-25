@@ -69,6 +69,7 @@ final class MochyCloud {
             var json: [String: Any]?
             if let data = data { json = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] }
             if status == 0 && json == nil { json = ["error": error?.localizedDescription ?? "Không kết nối được máy chủ."] }
+            if status != 0 && status != 200 && json == nil { json = ["error": "Máy chủ báo lỗi (mã \(status))."] }
             DispatchQueue.main.async { completion(status, json) }
         }.resume()
     }
@@ -276,7 +277,7 @@ final class MochyCloud {
         pushWork?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.syncNow() }
         pushWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20, execute: work)
     }
 
     /// Kéo dữ liệu mới từ máy chủ (nếu có) rồi đẩy thay đổi của máy này lên.

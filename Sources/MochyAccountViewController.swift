@@ -133,17 +133,37 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         applyMode()
     }
 
+    /// Trang cá nhân kiểu mạng xã hội: ảnh tròn bên trái, tên + huy hiệu, số liệu, hàng nút.
     private func buildLoggedIn(_ cloud: MochyCloud) {
-        let big: CGFloat = 96
+        let big: CGFloat = 92
         let avatar = UIButton(type: .custom)
         avatar.setImage(AccountAvatarButton.render(letter: String((cloud.username ?? "?").prefix(1)).uppercased(), photo: cloud.avatarImage, side: big), for: .normal)
         avatar.widthAnchor.constraint(equalToConstant: big).isActive = true
         avatar.heightAnchor.constraint(equalToConstant: big).isActive = true
         avatar.addTarget(self, action: #selector(pickAvatar), for: .touchUpInside)
-        let avatarRow = UIStackView(arrangedSubviews: [avatar, UIView()])
-        avatarRow.axis = .horizontal
-        stack.addArrangedSubview(avatarRow)
-        stack.addArrangedSubview(nameRow(cloud))
+
+        let following = UserDefaults.standard.integer(forKey: "cloud.followingCount")
+        let followers = UserDefaults.standard.integer(forKey: "cloud.followersCount")
+        let stats = UIStackView(arrangedSubviews: [
+            statButton(number: following, caption: "Đang theo dõi", action: #selector(followingTapped)),
+            statButton(number: followers, caption: "Người theo dõi", action: #selector(followersTapped)),
+            statButton(number: Library.shared.liked.count, caption: "Yêu thích", action: nil)
+        ])
+        stats.axis = .horizontal
+        stats.spacing = 16
+        stats.alignment = .leading
+
+        let info = UIStackView(arrangedSubviews: [nameRow(cloud), stats])
+        info.axis = .vertical
+        info.spacing = 8
+        info.alignment = .leading
+
+        let head = UIStackView(arrangedSubviews: [avatar, info])
+        head.axis = .horizontal
+        head.spacing = 16
+        head.alignment = .center
+        stack.addArrangedSubview(head)
+
         var status = "Chưa đồng bộ"
         if let t = cloud.lastSync {
             let f = DateFormatter()
@@ -151,28 +171,67 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
             status = "Đồng bộ lần cuối lúc " + f.string(from: t)
         }
         if let e = cloud.lastError { status += "\n" + e }
-        stack.addArrangedSubview(label(status, font: Theme.regular(15), color: cloud.lastError == nil ? Theme.secondaryText : M3.danger))
-        stack.addArrangedSubview(label("Yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải được lưu vào tài khoản và tự đồng bộ khi có thay đổi.",
-                                       font: Theme.regular(14), color: Theme.secondaryText))
-        let following = UserDefaults.standard.integer(forKey: "cloud.followingCount")
-        let followers = UserDefaults.standard.integer(forKey: "cloud.followersCount")
-        stack.addArrangedSubview(makeButton("Tìm người dùng để theo dõi", filled: true, action: #selector(searchUsersTapped)))
-        stack.addArrangedSubview(makeButton("Đang theo dõi (\(following))", filled: false, action: #selector(followingTapped)))
-        stack.addArrangedSubview(makeButton("Người theo dõi (\(followers))", filled: false, action: #selector(followersTapped)))
-        stack.addArrangedSubview(makeButton("Đồng bộ ngay", filled: false, action: #selector(syncTapped)))
-        stack.addArrangedSubview(makeButton("Đổi ảnh đại diện", filled: false, action: #selector(pickAvatar)))
-        if cloud.avatarImage != nil {
-            stack.addArrangedSubview(makeButton("Xoá ảnh đại diện", filled: false, action: #selector(removeAvatarTapped)))
-        }
-        stack.addArrangedSubview(makeButton("Đổi mật khẩu", filled: false, action: #selector(changePasswordTapped)))
-        stack.addArrangedSubview(makeButton("Đăng xuất", filled: false, action: #selector(logoutTapped)))
-        stack.addArrangedSubview(makeButton("Xoá tài khoản", filled: false, action: #selector(deleteTapped), danger: true))
+        stack.addArrangedSubview(label(status, font: Theme.regular(13), color: cloud.lastError == nil ? Theme.secondaryText : M3.danger))
+
+        let actions = UIStackView(arrangedSubviews: [
+            pill("Tìm người", #selector(searchUsersTapped), prominent: true),
+            pill("Đổi ảnh", #selector(pickAvatar), prominent: false),
+            pill("Đồng bộ", #selector(syncTapped), prominent: false),
+            pill("⋯", #selector(moreTapped), prominent: false, compact: true)
+        ])
+        actions.axis = .horizontal
+        actions.spacing = 8
+        actions.distribution = .fill
+        stack.addArrangedSubview(actions)
         stack.addArrangedSubview(spinner)
+    }
+
+    private func statButton(number: Int, caption: String, action: Selector?) -> UIView {
+        let b = UIButton(type: .custom)
+        let text = NSMutableAttributedString(string: "\(number) ", attributes: [.font: Theme.heavy(16), .foregroundColor: Theme.primaryText])
+        text.append(NSAttributedString(string: caption, attributes: [.font: Theme.regular(14), .foregroundColor: Theme.secondaryText]))
+        b.setAttributedTitle(text, for: .normal)
+        if let action = action { b.addTarget(self, action: action, for: .touchUpInside) }
+        b.isUserInteractionEnabled = action != nil
+        b.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return b
+    }
+
+    private func pill(_ title: String, _ action: Selector, prominent: Bool, compact: Bool = false) -> UIButton {
+        let b = UIButton(type: .custom)
+        b.setTitle(title, for: .normal)
+        b.titleLabel?.font = Theme.bold(15)
+        b.layer.cornerRadius = 12
+        b.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        if compact { b.widthAnchor.constraint(equalToConstant: 48).isActive = true }
+        else { b.setContentHuggingPriority(.defaultLow, for: .horizontal) }
+        b.backgroundColor = prominent ? Theme.accent : Theme.card
+        b.setTitleColor(prominent ? .white : Theme.primaryText, for: .normal)
+        b.addTarget(self, action: action, for: .touchUpInside)
+        return b
+    }
+
+    /// Menu "⋯": các thao tác ít dùng.
+    @objc private func moreTapped() {
+        let cloud = MochyCloud.shared
+        let sheet = UIAlertController(title: "@" + (cloud.username ?? ""), message: nil, preferredStyle: .actionSheet)
+        if cloud.avatarImage != nil {
+            sheet.addAction(UIAlertAction(title: "Xoá ảnh đại diện", style: .default) { [weak self] _ in self?.removeAvatarTapped() })
+        }
+        sheet.addAction(UIAlertAction(title: "Đổi mật khẩu", style: .default) { [weak self] _ in self?.changePasswordTapped() })
+        sheet.addAction(UIAlertAction(title: "Đăng xuất", style: .default) { [weak self] _ in self?.logoutTapped() })
+        sheet.addAction(UIAlertAction(title: "Xoá tài khoản", style: .destructive) { [weak self] _ in self?.deleteTapped() })
+        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+        }
+        present(sheet, animated: true)
     }
 
     /// Tên tài khoản kèm huy hiệu: tick đen (đã xác minh) và nhãn Owner.
     private func nameRow(_ cloud: MochyCloud) -> UIView {
-        let name = label("@" + (cloud.username ?? ""), font: Theme.heavy(30), color: Theme.primaryText)
+        let name = label(cloud.username ?? "", font: Theme.heavy(24), color: Theme.primaryText)
         name.numberOfLines = 1
         name.adjustsFontSizeToFitWidth = true
         name.minimumScaleFactor = 0.6

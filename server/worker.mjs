@@ -43,7 +43,23 @@ function validPassword(pw) {
 }
 
 // Giới hạn số lần theo khoá (IP...) trong một khoảng thời gian.
+// Đếm bằng KV chỉ cho thao tác nhạy cảm (đăng ký/đăng nhập); các thao tác khác đếm trong bộ nhớ của Worker
+// để không tốn lượt ghi KV (gói miễn phí chỉ có 1000 lượt ghi mỗi ngày).
+const memoryHits = new Map();
+function throttleMemory(key, limit, seconds) {
+  const now = Date.now();
+  const entry = memoryHits.get(key);
+  if (!entry || now > entry.reset) {
+    memoryHits.set(key, { n: 1, reset: now + seconds * 1000 });
+    if (memoryHits.size > 5000) memoryHits.clear();
+    return true;
+  }
+  entry.n += 1;
+  return entry.n <= limit;
+}
+
 async function throttle(env, key, limit, seconds) {
+  if (!key.startsWith('reg:') && !key.startsWith('login:')) return throttleMemory(key, limit, seconds);
   const k = `rl:${key}`;
   const n = parseInt((await env.MOCHY_KV.get(k)) || '0', 10);
   if (n >= limit) return false;
@@ -79,6 +95,15 @@ async function readJSON(request) {
 
 export default {
   async fetch(request, env) {
+    try {
+      return await handle(request, env);
+    } catch (e) {
+      return fail(500, 'Lỗi máy chủ: ' + String((e && e.message) || e).slice(0, 160));
+    }
+  },
+};
+
+async function handle(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: JSON_HEADERS });
     const url = new URL(request.url);
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
@@ -249,5 +274,4 @@ export default {
     }
 
     return fail(404, 'Không tìm thấy');
-  },
-};
+}
