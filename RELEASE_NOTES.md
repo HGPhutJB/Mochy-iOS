@@ -1,3 +1,7 @@
+Mochy iOS 0.8.3 — nút tài khoản ở trang chủ
+
+- Thêm nút tài khoản ở góc phải trang chủ (như App Store): chưa đăng nhập hiện hình người kiểu iOS 16, đã đăng nhập hiện chữ cái đầu tên; chạm để mở màn hình tài khoản.
+
 Mochy iOS 0.8.2 — bật tài khoản Mochy
 
 - Mục "Tài khoản Mochy" trong Cài đặt đã hoạt động: đăng ký / đăng nhập và tự đồng bộ yêu thích, playlist, lịch sử nghe, cài đặt, danh sách bài đã tải giữa các máy.
