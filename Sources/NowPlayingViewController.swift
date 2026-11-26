@@ -590,7 +590,9 @@ final class NowPlayingViewController: UIViewController {
             lyricsView.anchorFraction = 0.33
             lyricsView.immersive = false
             updateLyricsFrame()
+            view.layoutIfNeeded()
             lyricsView.reloadStyle()
+            DispatchQueue.main.async { [weak self] in self?.lyricsView.reloadStyle() }
             landscapeOverride()
             syncStage()
             UIView.animate(withDuration: 0.3) { self.stage.alpha = 1 }
@@ -598,8 +600,10 @@ final class NowPlayingViewController: UIViewController {
             stage.alpha = 0
             stage.isHidden = true
             updateLyricsFrame()
+            view.layoutIfNeeded()
             apply(mode: modeBeforeLandscape, animated: false)
             lyricsView.reloadStyle()
+            DispatchQueue.main.async { [weak self] in self?.lyricsView.reloadStyle() }
             for v in chromeTop + chromeBottom { v.isUserInteractionEnabled = true }
         }
         refreshHidesPast()

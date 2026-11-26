@@ -493,7 +493,7 @@ final class LyricCell: UITableViewCell {
     static var landscape = false
     static var font: UIFont { return RoundedFont.font(landscape ? 23 : 30, index: AppSettings.lyricWeight) }
     static var inactiveScale: CGFloat { return landscape ? 0.94 : 0.78 }
-    static var sideInset: CGFloat { return landscape ? 8 : 26 }
+    static var sideInset: CGFloat { return landscape ? 20 : 26 }
     static let vPad: CGFloat = 11
     static let blurPad: CGFloat = 44   // đủ rộng để vầng mờ lan hết, không bị cắt
 

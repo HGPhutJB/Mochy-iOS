@@ -1,3 +1,7 @@
+Mochy iOS 0.13.1 — sửa giao diện xoay ngang
+
+- Xoay ngang: bìa to hơn trên màn hình thấp (iPhone SE), tên bài chạy chữ thay vì bị cắt "Simp...", lời không còn bị cắt ở mép phải và được đo lại ngay khi xoay.
+
 Mochy iOS 0.13.0 — xoay ngang, nền gradient mới, VPN
 
 - Xoay ngang màn hình đang phát: bìa, tên bài, tiến trình và điều khiển bên trái, lời bên phải (chữ cân lại cho vừa). Các nút tự ẩn sau 5 giây, chạm để hiện lại.

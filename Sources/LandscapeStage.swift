@@ -3,7 +3,7 @@ import UIKit
 /// Bố cục xoay ngang của màn hình đang phát: bên trái bìa + tên bài + tiến trình + điều khiển, bên phải là lời (do NowPlaying đặt).
 final class LandscapeStage: UIView {
     let cover = UIImageView()
-    private let titleLabel = UILabel()
+    private let titleLabel = MarqueeLabel()
     private let artistLabel = UILabel()
     let progress = ProgressBar()
     private let elapsed = UILabel()
@@ -29,8 +29,8 @@ final class LandscapeStage: UIView {
         cover.layer.cornerRadius = 14
         cover.backgroundColor = UIColor(white: 0.15, alpha: 1)
         cover.layer.shadowColor = UIColor.black.cgColor
-        titleLabel.font = RoundedFont.font(21, index: 6)
-        titleLabel.textColor = .white
+        titleLabel.label.font = RoundedFont.font(21, index: 6)
+        titleLabel.label.textColor = .white
         artistLabel.font = RoundedFont.font(16, index: 4)
         artistLabel.textColor = UIColor(white: 1, alpha: 0.65)
         for l in [elapsed, remaining] {
@@ -69,33 +69,33 @@ final class LandscapeStage: UIView {
         let safe = safeAreaInsets
         let w = bounds.width, h = bounds.height
         let panel = w * 0.47
-        let pad = max(safe.left, 20) + 20
-        let inner = max(120, panel - pad - 24)
-        // Chiều cao khối: bìa + 18 + tên/nghệ sĩ 50 + 12 + tiến trình 30 + thời gian 16 + 8 + điều khiển 60
-        let rest: CGFloat = 18 + 50 + 12 + 30 + 16 + 8 + 60
-        let s = max(90, min(inner, h - rest - safe.top - safe.bottom - 70))
-        let total = s + rest
-        var y = max(safe.top + 40, (h - total) / 2)
-        let x = pad + (inner - s) / 2
+        let pad = max(safe.left, 16) + 20
+        let inner = max(140, panel - pad - 16)
+        // Khối dưới bìa gọn lại để màn thấp (iPhone SE, 375pt) vẫn có bìa to: tên 44 + tiến trình 22 + giờ 14 + điều khiển 50 + khoảng cách
+        let rest: CGFloat = 12 + 44 + 6 + 22 + 14 + 6 + 50
+        let top = max(safe.top, 8) + 8
+        let s = max(90, min(inner, h - rest - top - max(safe.bottom, 10) - 24))
+        var y = max(top + 44, (h - (s + rest)) / 2 + 22)
+        let x = pad
         cover.frame = CGRect(x: x, y: y, width: s, height: s)
         cover.layer.shadowOpacity = 0.4
         cover.layer.shadowRadius = 22
         cover.layer.shadowOffset = CGSize(width: 0, height: 10)
         cover.layer.masksToBounds = false
-        cover.clipsToBounds = true
-        y += s + 18
-        titleLabel.frame = CGRect(x: x, y: y, width: s, height: 26)
-        artistLabel.frame = CGRect(x: x, y: y + 26, width: s, height: 22)
-        y += 62
-        progress.frame = CGRect(x: x, y: y, width: s, height: 30)
-        y += 30
-        elapsed.frame = CGRect(x: x, y: y, width: s / 2, height: 16)
-        remaining.frame = CGRect(x: x + s / 2, y: y, width: s / 2, height: 16)
-        y += 24
-        let cy = y + 30
-        playBtn.frame = CGRect(x: 0, y: 0, width: 64, height: 64); playBtn.center = CGPoint(x: x + s / 2, y: cy)
-        prevBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); prevBtn.center = CGPoint(x: x + s / 2 - 84, y: cy)
-        nextBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); nextBtn.center = CGPoint(x: x + s / 2 + 84, y: cy)
+        y += s + 12
+        let tw = max(s, min(inner, 320))
+        titleLabel.frame = CGRect(x: x, y: y, width: tw, height: 26)
+        artistLabel.frame = CGRect(x: x, y: y + 24, width: tw, height: 20)
+        y += 50
+        progress.frame = CGRect(x: x, y: y, width: tw, height: 22)
+        y += 22
+        elapsed.frame = CGRect(x: x, y: y, width: tw / 2, height: 14)
+        remaining.frame = CGRect(x: x + tw / 2, y: y, width: tw / 2, height: 14)
+        y += 20
+        let cy = y + 25
+        playBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); playBtn.center = CGPoint(x: x + tw / 2, y: cy)
+        prevBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); prevBtn.center = CGPoint(x: x + tw / 2 - 80, y: cy)
+        nextBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); nextBtn.center = CGPoint(x: x + tw / 2 + 80, y: cy)
 
         close.frame = CGRect(x: max(safe.left, 12) + 8, y: max(safe.top, 8) + 8, width: 44, height: 44)
         var rx = w - max(safe.right, 12) - 8
