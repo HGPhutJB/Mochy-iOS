@@ -1,3 +1,11 @@
+Mochy iOS 0.12.0 — tiếng Anh, chuyển bài mượt, dịch lời tốt hơn
+
+- Thêm tiếng Anh cho toàn bộ giao diện. App tự theo ngôn ngữ hệ thống (hệ thống tiếng Việt thì dùng tiếng Việt, còn lại dùng English); có thể chọn tay ở Cài đặt ▸ Giao diện ▸ Ngôn ngữ (áp dụng đầy đủ sau khi mở lại app).
+- Chuyển bài mượt: tải sẵn bài kế tiếp từ ~45 giây cuối rồi hoà vào nhau, không còn im lặng giữa hai bài. Chọn Tắt / Liền mạch / 2–12 giây ở Cài đặt ▸ Âm thanh ▸ Chuyển bài mượt. Bấm "bài kế" cũng chuyển ngay vì đã tải sẵn.
+- Nút Reverb được tô màu xanh khi bật (bỏ gạch dưới).
+- Dòng dịch giờ mờ theo cùng mức với lời gốc, rõ lên khi tới dòng đang hát.
+- Dịch lời đủ mọi dòng hơn: Google lệch dòng thì dịch từng dòng; dòng nào còn thiếu sẽ được dịch bù bằng nguồn khác và không lưu bản dịch dở.
+
 Mochy iOS 0.11.0 — dịch lời bài hát
 
 - Nút "文A" cạnh tên bài trong màn hình lời: bật để hiện dòng dịch nhỏ dưới mỗi dòng lời.
