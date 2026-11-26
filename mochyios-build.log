@@ -1,21 +1,78 @@
-Version 0.13.0, package version 0.13.0.110, build 110, channel dev, commit 9408058
+Version 0.13.0, package version 0.13.0.111, build 111, channel dev, commit ab3f0ae
 SDK: /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk
 swift-driver version: 1.148.6 <unknown>:0: warning: using sysroot for 'iPhoneOS' but targeting 'MacOSX'
 Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
 Target: arm64-apple-macosx26.0
 ==> Compiling Swift (arm64, iOS 12.2+)
-Sources/LandscapeStage.swift:13:9: error: cannot override with a stored property 'next'
- 11 |     let prev = UIButton(type: .custom)
- 12 |     let play = UIButton(type: .custom)
- 13 |     let next = UIButton(type: .custom)
-    |         `- error: cannot override with a stored property 'next'
- 14 |     let close = UIButton(type: .custom)
- 15 |     let translate = UIButton(type: .custom)
-
-/Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk/System/Library/Frameworks/UIKit.framework/Headers/UIResponder.h:84:55: note: attempt to override property here
- 82 | @interface UIResponder : NSObject <UIResponderStandardEditActions>
- 83 | 
- 84 | @property(nonatomic, readonly, nullable) UIResponder *nextResponder;
-    |                                                       `- note: attempt to override property here
- 85 | 
- 86 | @property(nonatomic, readonly) BOOL canBecomeFirstResponder;    // default is NO
+==> Binary info
+build/pkg/Applications/MochyiOS.app/MochyiOS: Mach-O 64-bit executable arm64
+build/pkg/Applications/MochyiOS.app/MochyiOS:
+Load command 9
+      cmd LC_BUILD_VERSION
+  cmdsize 32
+ platform IOS
+    minos 12.2
+      sdk 26.5
+   ntools 1
+     tool LD
+  version 1267.0
+build/pkg/Applications/MochyiOS.app/MochyiOS:
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/System/Library/Frameworks/AVFoundation.framework/AVFoundation (compatibility version 1.0.0, current version 2.0.0)
+	/System/Library/Frameworks/AVKit.framework/AVKit (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/CFNetwork.framework/CFNetwork (compatibility version 1.0.0, current version 3860.255.12)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 5026.5.4)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1965.5.1)
+	/System/Library/Frameworks/CoreImage.framework/CoreImage (compatibility version 1.0.0, current version 7.0.0)
+	/System/Library/Frameworks/CoreMedia.framework/CoreMedia (compatibility version 1.0.0, current version 3320.8.1)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 5026.5.4)
+	/System/Library/Frameworks/MediaPlayer.framework/MediaPlayer (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/MediaToolbox.framework/MediaToolbox (compatibility version 1.0.0, current version 3320.8.1)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1195.14.4)
+	/System/Library/Frameworks/Security.framework/Security (compatibility version 1.0.0, current version 61901.120.67)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 9126.5.5)
+	/System/Library/Frameworks/WebKit.framework/WebKit (compatibility version 1.0.0, current version 624.2.5)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/swift/libswiftAVFoundation.dylib (compatibility version 1.0.0, current version 2420.7.1, weak)
+	/usr/lib/swift/libswiftCore.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/swift/libswiftCoreAudio.dylib (compatibility version 1.0.0, current version 411.255.0)
+	/usr/lib/swift/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0)
+	/usr/lib/swift/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 2.2.0, weak)
+	/usr/lib/swift/libswiftCoreMIDI.dylib (compatibility version 1.0.0, current version 6.0.0, weak)
+	/usr/lib/swift/libswiftCoreMedia.dylib (compatibility version 1.0.0, current version 3320.8.1)
+	/usr/lib/swift/libswiftDarwin.dylib (compatibility version 1.0.0, current version 377.120.8, weak)
+	/usr/lib/swift/libswiftDispatch.dylib (compatibility version 1.0.0, current version 1542.100.32)
+	/usr/lib/swift/libswiftMetal.dylib (compatibility version 1.0.0, current version 373.2.0, weak)
+	/usr/lib/swift/libswiftOSLog.dylib (compatibility version 1.0.0, current version 10.0.0, weak)
+	/usr/lib/swift/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 951.7.0)
+          cmd LC_RPATH
+      cmdsize 32
+         path /usr/lib/swift (offset 12)
+==> Assembling bundle
+==> Compiling launch screen
+LaunchScreen.storyboardc OK
+==> Preparing the .ipa payload (before the jailbreak entitlements are applied)
+==> Pseudo-signing the .deb binary with ldid (jailbreak entitlements)
+==> Packaging .deb
+dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.13.0.111_iphoneos-arm.deb'.
+==> Packaging .ipa
+==> Done
+total 6256
+-rw-r--r--  1 runner  staff  1591010 Nov 26 10:51 com.puc.mochyios_0.13.0.111_iphoneos-arm.deb
+-rw-r--r--  1 runner  staff  1606969 Nov 26 10:51 MochyiOS_0.13.0.111.ipa
+ new Debian package, version 2.0.
+ size 1591010 bytes: control archive=608 bytes.
+     448 bytes,    10 lines      control
+     183 bytes,     5 lines   *  postinst             #!/bin/sh
+      86 bytes,     5 lines   *  postrm               #!/bin/sh
+ Package: com.puc.mochyios
+ Name: Mochy iOS
+ Version: 0.13.0.111
+ Architecture: iphoneos-arm
+ Description: Music player for iOS 12+ (rootful), a Swift port of Mochy Music. Search and stream from YouTube Music, background playback and lock screen controls.
+ Depends: firmware (>= 12.2)
+ Section: Utilities
+ Maintainer: puc <puc@users.noreply.github.com>
+ Author: puc <puc@users.noreply.github.com>
+ Icon: file:///Applications/MochyiOS.app/AppIcon60x60@2x.png
