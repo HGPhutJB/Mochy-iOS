@@ -44,19 +44,19 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
 
     private var listTitle: String {
         switch source {
-        case .liked: return "Yêu thích"
-        case .downloads: return "Đã tải xuống"
-        case .history: return "Lịch sử nghe"
+        case .liked: return L("Yêu thích")
+        case .downloads: return L("Đã tải xuống")
+        case .history: return L("Lịch sử nghe")
         case .playlist(let id): return Library.shared.playlist(id: id)?.name ?? "Playlist"
         }
     }
 
     private var emptyText: String {
         switch source {
-        case .liked: return "Chưa có bài yêu thích.\nBấm biểu tượng trái tim ở màn hình đang phát."
-        case .downloads: return "Chưa tải bài nào.\nChọn \"Tải xuống\" trong menu \"…\" của một bài."
-        case .history: return "Lịch sử trống.\nCác bài bạn nghe sẽ hiện ở đây."
-        case .playlist: return "Playlist trống.\nChọn \"Thêm vào playlist…\" trong menu \"…\" của một bài."
+        case .liked: return L("Chưa có bài yêu thích.\nBấm biểu tượng trái tim ở màn hình đang phát.")
+        case .downloads: return L("Chưa tải bài nào.\nChọn \"Tải xuống\" trong menu \"…\" của một bài.")
+        case .history: return L("Lịch sử trống.\nCác bài bạn nghe sẽ hiện ở đây.")
+        case .playlist: return L("Playlist trống.\nChọn \"Thêm vào playlist…\" trong menu \"…\" của một bài.")
         }
     }
 
@@ -104,9 +104,9 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
         header.addSubview(nameLabel)
         header.addSubview(countLabel)
 
-        playButton.setTitle("  Phát", for: .normal)
+        playButton.setTitle(L("  Phát"), for: .normal)
         playButton.setImage(Icons.play(15), for: .normal)
-        shuffleButton.setTitle(" Ngẫu nhiên", for: .normal)
+        shuffleButton.setTitle(L(" Ngẫu nhiên"), for: .normal)
         shuffleButton.setImage(Icons.shuffle(17), for: .normal)
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         downloadButton.isHidden = true
@@ -134,9 +134,9 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
         case .playlist:
             items.append(moreItem())
         case .history:
-            items.append(UIBarButtonItem(title: "Xoá hết", style: .plain, target: self, action: #selector(clearHistory)))
+            items.append(UIBarButtonItem(title: L("Xoá hết"), style: .plain, target: self, action: #selector(clearHistory)))
         case .downloads:
-            items.append(UIBarButtonItem(title: "Xoá hết", style: .plain, target: self, action: #selector(clearDownloads)))
+            items.append(UIBarButtonItem(title: L("Xoá hết"), style: .plain, target: self, action: #selector(clearDownloads)))
         case .liked:
             break
         }
@@ -204,7 +204,7 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
         }
         lastSignature = sig
         nameLabel.text = listTitle
-        var count = "\(list.count) bài"
+        var count = Lf("%@ bài", list.count)
         if case .downloads = source {
             count += " · " + ByteCountFormatter.string(fromByteCount: Library.shared.totalDownloadBytes(), countStyle: .file)
         }
@@ -264,16 +264,16 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
         let manager = DownloadManager.shared
         switch downloadButton.phase {
         case .done:
-            Toast.show("Tất cả bài trong danh sách đã được tải")
+            Toast.show(L("Tất cả bài trong danh sách đã được tải"))
         case .active:
             manager.cancelQueue()
             for s in list where manager.isActive(s.videoId) { manager.cancel(s.videoId) }
-            Toast.show("Đã dừng tải")
+            Toast.show(L("Đã dừng tải"))
         case .idle:
             let todo = list.filter { !Library.shared.isDownloaded($0) && !manager.isActive($0.videoId) }
             downloadBase = Double(list.count - todo.count)
             let added = manager.enqueue(todo)
-            Toast.show("Đang tải \(added) bài (2 bài cùng lúc)…")
+            Toast.show(Lf("Đang tải %@ bài (2 bài cùng lúc)…", added))
         }
         updateDownloadButton()
     }
@@ -314,7 +314,7 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
     private func setEditingMode(_ editing: Bool) {
         tableView.setEditing(editing, animated: true)
         navigationItem.rightBarButtonItems = editing
-            ? [UIBarButtonItem(title: "Xong", style: .done, target: self, action: #selector(finishEditing))]
+            ? [UIBarButtonItem(title: L("Xong"), style: .done, target: self, action: #selector(finishEditing))]
             : [moreItem()]
         if !editing { refresh() }
     }
@@ -325,24 +325,24 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
     @objc private func playlistOptions() {
         guard case .playlist(let id) = source, let list = Library.shared.playlist(id: id) else { return }
         let sheet = UIAlertController(title: list.name, message: nil, preferredStyle: .actionSheet)
-        sheet.addAction(UIAlertAction(title: "Sắp xếp bài hát", style: .default) { [weak self] _ in self?.setEditingMode(true) })
-        sheet.addAction(UIAlertAction(title: "Đổi tên", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: L("Sắp xếp bài hát"), style: .default) { [weak self] _ in self?.setEditingMode(true) })
+        sheet.addAction(UIAlertAction(title: L("Đổi tên"), style: .default) { [weak self] _ in
             guard let self = self else { return }
-            SongActions.promptNewPlaylist(from: self, initial: list.name, title: "Đổi tên playlist", confirm: "Lưu") { name in
+            SongActions.promptNewPlaylist(from: self, initial: list.name, title: L("Đổi tên playlist"), confirm: L("Lưu")) { name in
                 Library.shared.renamePlaylist(id: id, name: name)
             }
         })
-        sheet.addAction(UIAlertAction(title: "Đặt ảnh bìa…", style: .default) { [weak self] _ in self?.coverOptions() })
-        sheet.addAction(UIAlertAction(title: "Tải tất cả bài", style: .default) { [weak self] _ in self?.downloadTapped() })
-        sheet.addAction(UIAlertAction(title: "Xoá playlist", style: .destructive) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: L("Đặt ảnh bìa…"), style: .default) { [weak self] _ in self?.coverOptions() })
+        sheet.addAction(UIAlertAction(title: L("Tải tất cả bài"), style: .default) { [weak self] _ in self?.downloadTapped() })
+        sheet.addAction(UIAlertAction(title: L("Xoá playlist"), style: .destructive) { [weak self] _ in
             guard let self = self else { return }
-            DeleteDialogViewController.present(from: self, title: "Xoá playlist này?",
+            DeleteDialogViewController.present(from: self, title: L("Xoá playlist này?"),
                                                message: LibraryViewController.deleteMessage(for: list)) {
                 Library.shared.deletePlaylist(id: id)
                 self.navigationController?.popViewController(animated: true)
             }
         })
-        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.barButtonItem = navigationItem.rightBarButtonItems?.first
         }
@@ -353,8 +353,8 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
 
     private func coverOptions() {
         guard case .playlist(let id) = source, let list = Library.shared.playlist(id: id) else { return }
-        let sheet = UIAlertController(title: "Ảnh bìa playlist", message: nil, preferredStyle: .actionSheet)
-        sheet.addAction(UIAlertAction(title: "Chọn từ thư viện ảnh", style: .default) { [weak self] _ in
+        let sheet = UIAlertController(title: L("Ảnh bìa playlist"), message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: L("Chọn từ thư viện ảnh"), style: .default) { [weak self] _ in
             guard let self = self, UIImagePickerController.isSourceTypeAvailable(.photoLibrary) else { return }
             let picker = UIImagePickerController()
             picker.sourceType = .photoLibrary
@@ -363,16 +363,16 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
             self.present(picker, animated: true)
         })
         if !list.songs.isEmpty {
-            sheet.addAction(UIAlertAction(title: "Dùng ảnh bìa của một bài hát", style: .default) { [weak self] _ in self?.songCoverPicker() })
+            sheet.addAction(UIAlertAction(title: L("Dùng ảnh bìa của một bài hát"), style: .default) { [weak self] _ in self?.songCoverPicker() })
         }
         if list.customCover != nil {
-            sheet.addAction(UIAlertAction(title: "Xoá ảnh bìa (về tự động)", style: .destructive) { [weak self] _ in
+            sheet.addAction(UIAlertAction(title: L("Xoá ảnh bìa (về tự động)"), style: .destructive) { [weak self] _ in
                 Library.shared.clearCustomCover(id: id)
                 self?.lastSignature = ""
                 self?.refresh()
             })
         }
-        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.barButtonItem = navigationItem.rightBarButtonItems?.first
         }
@@ -381,19 +381,19 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
 
     private func songCoverPicker() {
         guard case .playlist(let id) = source, let list = Library.shared.playlist(id: id) else { return }
-        let sheet = UIAlertController(title: "Chọn bài để lấy ảnh bìa", message: nil, preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: L("Chọn bài để lấy ảnh bìa"), message: nil, preferredStyle: .actionSheet)
         for song in list.songs.prefix(12) {
             sheet.addAction(UIAlertAction(title: song.title, style: .default) { _ in
                 guard let url = song.largeThumbnailURL else { return }
                 ImageLoader.shared.load(url) { [weak self] image in
-                    guard let image = image else { Toast.show("Không tải được ảnh bìa"); return }
+                    guard let image = image else { Toast.show(L("Không tải được ảnh bìa")); return }
                     Library.shared.setCustomCover(id: id, image: image)
                     self?.lastSignature = ""
                     self?.refresh()
                 }
             })
         }
-        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.barButtonItem = navigationItem.rightBarButtonItems?.first
         }
@@ -414,16 +414,16 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
     }
 
     @objc private func clearHistory() {
-        confirm("Xoá toàn bộ lịch sử nghe?", button: "Xoá hết") { Library.shared.clearHistory() }
+        confirm(L("Xoá toàn bộ lịch sử nghe?"), button: L("Xoá hết")) { Library.shared.clearHistory() }
     }
 
     @objc private func clearDownloads() {
-        confirm("Xoá tất cả bài đã tải xuống?", button: "Xoá hết") { Library.shared.removeAllDownloads() }
+        confirm(L("Xoá tất cả bài đã tải xuống?"), button: L("Xoá hết")) { Library.shared.removeAllDownloads() }
     }
 
     private func confirm(_ message: String, button: String, _ action: @escaping () -> Void) {
         let alert = UIAlertController(title: message, message: nil, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
         alert.addAction(UIAlertAction(title: button, style: .destructive) { _ in action() })
         present(alert, animated: true, completion: nil)
     }
@@ -454,7 +454,7 @@ final class SongListViewController: UIViewController, UIImagePickerControllerDel
         let row = indexPath.row
         cell.onMore = { [weak self, weak cell] in
             guard let self = self else { return }
-            SongActions.present(for: song, from: self, sourceView: cell, removeTitle: "Xoá khỏi danh sách") {
+            SongActions.present(for: song, from: self, sourceView: cell, removeTitle: L("Xoá khỏi danh sách")) {
                 self.removeSong(at: row)
             }
         }

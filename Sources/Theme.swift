@@ -8,9 +8,9 @@ enum ThemeMode: Int {
 
     var title: String {
         switch self {
-        case .system: return "Tự động"
-        case .light: return "Sáng"
-        case .dark: return "Tối"
+        case .system: return L("Tự động")
+        case .light: return L("Sáng")
+        case .dark: return L("Tối")
         }
     }
 }

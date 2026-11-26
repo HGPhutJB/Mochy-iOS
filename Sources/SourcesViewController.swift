@@ -8,10 +8,10 @@ final class SourcesViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Nguồn nâng cao"
+        title = L("Nguồn nâng cao")
         view.backgroundColor = Theme.background
         navigationItem.largeTitleDisplayMode = .never
-        for (f, p) in [(spdc, "Cookie sp_dc của Spotify"), (spicy, "API key Spicy Lyrics (sl_sk_… / sl_pk_…)")] {
+        for (f, p) in [(spdc, L("Cookie sp_dc của Spotify")), (spicy, "API key Spicy Lyrics (sl_sk_… / sl_pk_…)")] {
             f.placeholder = p
             f.font = Theme.regular(15)
             f.textColor = Theme.primaryText
@@ -29,13 +29,9 @@ final class SourcesViewController: UIViewController {
         note.numberOfLines = 0
         note.font = Theme.regular(13)
         note.textColor = Theme.secondaryText
-        note.text = """
-        • sp_dc: đăng nhập open.spotify.com trên trình duyệt, mở công cụ nhà phát triển ▸ Cookies, sao chép giá trị sp_dc. Dùng để lấy video Canvas của bài hát; bài không có Canvas thì app dùng MV YouTube, không có nữa thì hiện ảnh bìa. Đây là API không chính thức của Spotify, có thể ngừng hoạt động hoặc vi phạm điều khoản của họ, hãy cân nhắc. Cookie chỉ lưu trên máy này.
-        • Spicy Lyrics: tạo ứng dụng tại developers.spicylyrics.org rồi dán key vào đây; bật "Allow requests with no Origin header" nếu dùng key client.
-        • Các nguồn còn lại (BiniLyrics, Musixmatch, Unison, NetEase, LRCLIB, QQ Music, KuGou, Genius, YouLy+, SimpMusic) không cần khoá.
-        """
+        note.text = L("• sp_dc: đăng nhập open.spotify.com trên trình duyệt, mở công cụ nhà phát triển ▸ Cookies, sao chép giá trị sp_dc. Dùng để lấy video Canvas của bài hát; bài không có Canvas thì app dùng MV YouTube, không có nữa thì hiện ảnh bìa. Đây là API không chính thức của Spotify, có thể ngừng hoạt động hoặc vi phạm điều khoản của họ, hãy cân nhắc. Cookie chỉ lưu trên máy này.\n• Spicy Lyrics: tạo ứng dụng tại developers.spicylyrics.org rồi dán key vào đây; bật \"Allow requests with no Origin header\" nếu dùng key client.\n• Các nguồn còn lại (BiniLyrics, Musixmatch, Unison, NetEase, LRCLIB, QQ Music, KuGou, Genius, YouLy+, SimpMusic) không cần khoá.")
         let save = UIButton(type: .system)
-        save.setTitle("Lưu", for: .normal)
+        save.setTitle(L("Lưu"), for: .normal)
         save.titleLabel?.font = Theme.bold(17)
         save.setTitleColor(.white, for: .normal)
         save.backgroundColor = Theme.accent
@@ -59,6 +55,6 @@ final class SourcesViewController: UIViewController {
         view.endEditing(true)
         SpotifyCanvas.cookie = spdc.text ?? ""
         UserDefaults.standard.set((spicy.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines), forKey: "spicy.key")
-        Toast.show("Đã lưu")
+        Toast.show(L("Đã lưu"))
     }
 }

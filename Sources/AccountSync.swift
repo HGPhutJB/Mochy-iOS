@@ -180,7 +180,7 @@ final class AccountSync {
     // MARK: Hộp nhập
 
     static func prompt(from presenter: UIViewController, title: String, message: String, placeholder: String,
-                       text: String? = nil, action: String = "Tiếp tục", completion: @escaping (String?) -> Void) {
+                       text: String? = nil, action: String = L("Tiếp tục"), completion: @escaping (String?) -> Void) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addTextField { f in
             f.placeholder = placeholder
@@ -189,7 +189,7 @@ final class AccountSync {
             f.autocorrectionType = .no
             f.clearButtonMode = .whileEditing
         }
-        alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel) { _ in completion(nil) })
+        alert.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel) { _ in completion(nil) })
         alert.addAction(UIAlertAction(title: action, style: .default) { _ in
             let v = (alert.textFields?.first?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             completion(v.isEmpty ? nil : v)
@@ -199,7 +199,7 @@ final class AccountSync {
         top.present(alert, animated: true, completion: nil)
     }
 
-    private static func cancelled() -> UpdateError { return UpdateError("Đã huỷ", cancelled: true) }
+    private static func cancelled() -> UpdateError { return UpdateError(L("Đã huỷ"), cancelled: true) }
 
     // MARK: Liên kết (đăng nhập thật bằng trang web của dịch vụ)
 
@@ -240,10 +240,10 @@ final class AccountSync {
     }
 
     private func finishSpotify(_ jar: [String: String], _ finish: (Result<String, UpdateError>) -> Void) {
-        guard let dc = jar["sp_dc"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập Spotify."))); return }
+        guard let dc = jar["sp_dc"] else { finish(.failure(UpdateError(L("Không thấy cookie đăng nhập Spotify.")))); return }
         SpotifyCanvas.cookie = dc
         guard let me = spotifyGET("/me") else {
-            finish(.failure(UpdateError("Đăng nhập được nhưng không lấy được token Spotify (Spotify có thể đã đổi cách bảo vệ).")))
+            finish(.failure(UpdateError(L("Đăng nhập được nhưng không lấy được token Spotify (Spotify có thể đã đổi cách bảo vệ)."))))
             return
         }
         let name = (me["display_name"] as? String) ?? (me["id"] as? String) ?? "Spotify"
@@ -252,11 +252,11 @@ final class AccountSync {
     }
 
     private func finishDeezer(_ jar: [String: String], _ finish: (Result<String, UpdateError>) -> Void) {
-        guard let arl = jar["arl"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập Deezer."))); return }
+        guard let arl = jar["arl"] else { finish(.failure(UpdateError(L("Không thấy cookie đăng nhập Deezer.")))); return }
         Keychain.set(arl, for: "deezer.arl")
         guard let data = dzGW("deezer.getUserData", token: "", body: [:]), let user = data["USER"] as? [String: Any],
               let uid = user["USER_ID"] else {
-            finish(.failure(UpdateError("Không đọc được tài khoản Deezer.")))
+            finish(.failure(UpdateError(L("Không đọc được tài khoản Deezer."))))
             return
         }
         let name = (user["BLOG_NAME"] as? String) ?? "Deezer"
@@ -265,14 +265,14 @@ final class AccountSync {
     }
 
     private func finishSoundCloud(_ jar: [String: String], _ finish: (Result<String, UpdateError>) -> Void) {
-        guard let token = jar["oauth_token"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập SoundCloud."))); return }
+        guard let token = jar["oauth_token"] else { finish(.failure(UpdateError(L("Không thấy cookie đăng nhập SoundCloud.")))); return }
         Keychain.set(token, for: "soundcloud.token")
         guard let page = Web.string(URL(string: "https://soundcloud.com")!),
               let cid = PlaylistImporter.shared.soundCloudClientId(html: page.text),
               let url = URL(string: "https://api-v2.soundcloud.com/me?client_id=\(cid)"),
               let me = Web.json(url, headers: ["Authorization": "OAuth \(token)"]) as? [String: Any],
               let id = me["id"] as? Int else {
-            finish(.failure(UpdateError("Không đọc được tài khoản SoundCloud.")))
+            finish(.failure(UpdateError(L("Không đọc được tài khoản SoundCloud."))))
             return
         }
         defaults.set(cid, forKey: "acct.soundCloud.client.cid")
@@ -282,23 +282,23 @@ final class AccountSync {
     }
 
     private func finishApple(_ jar: [String: String], _ header: String, _ finish: (Result<String, UpdateError>) -> Void) {
-        guard let mut = jar["media-user-token"] else { finish(.failure(UpdateError("Không thấy cookie đăng nhập Apple Music."))); return }
+        guard let mut = jar["media-user-token"] else { finish(.failure(UpdateError(L("Không thấy cookie đăng nhập Apple Music.")))); return }
         Keychain.set(mut, for: "apple.mut")
         guard appleGET("/me/library/songs?limit=1") != nil else {
-            finish(.failure(UpdateError("Không đọc được thư viện Apple Music (cần gói đăng ký còn hiệu lực).")))
+            finish(.failure(UpdateError(L("Không đọc được thư viện Apple Music (cần gói đăng ký còn hiệu lực)."))))
             return
         }
-        setAccount(.appleMusic, name: "Đã đăng nhập")
+        setAccount(.appleMusic, name: L("Đã đăng nhập"))
         finish(.success("Apple Music"))
     }
 
     private func finishYouTube(_ header: String, _ finish: (Result<String, UpdateError>) -> Void) {
         Keychain.set(header, for: "youtube.cookie")
         guard ytBrowse("FEmusic_liked_playlists") != nil else {
-            finish(.failure(UpdateError("Không đọc được thư viện YouTube Music.")))
+            finish(.failure(UpdateError(L("Không đọc được thư viện YouTube Music."))))
             return
         }
-        setAccount(.youtubeMusic, name: "Đã đăng nhập")
+        setAccount(.youtubeMusic, name: L("Đã đăng nhập"))
         finish(.success("YouTube Music"))
     }
 
@@ -400,7 +400,7 @@ final class AccountSync {
 
     private func fetchBlocking(_ url: URL) -> Result<ImportedCollection, UpdateError> {
         let sem = DispatchSemaphore(value: 0)
-        var result: Result<ImportedCollection, UpdateError> = .failure(UpdateError("Không đọc được link."))
+        var result: Result<ImportedCollection, UpdateError> = .failure(UpdateError(L("Không đọc được link.")))
         DispatchQueue.main.async {
             PlaylistImporter.shared.fetch(url) { r in
                 result = r
@@ -428,7 +428,7 @@ final class AccountSync {
             if items.count < 50 { break }
             offset += 50
         }
-        lists.append(SyncList(key: "acct:spotify:liked", name: "Bài hát đã thích (Spotify)", tracks: liked))
+        lists.append(SyncList(key: "acct:spotify:liked", name: L("Bài hát đã thích (Spotify)"), tracks: liked))
         var owned: [(String, String)] = []
         offset = 0
         while offset < 200 {
@@ -489,7 +489,7 @@ final class AccountSync {
         var lists: [SyncList] = []
         if let r = dzGW("deezer.pageProfile", token: token, body: ["user_id": uid, "tab": "loved", "nb": 300]),
            let tab = r["TAB"] as? [String: Any], let loved = tab["loved"] as? [String: Any], let data = loved["data"] as? [[String: Any]] {
-            lists.append(SyncList(key: "acct:deezer:liked", name: "Bài hát đã thích (Deezer)", tracks: data.compactMap { dzSong($0) }))
+            lists.append(SyncList(key: "acct:deezer:liked", name: L("Bài hát đã thích (Deezer)"), tracks: data.compactMap { dzSong($0) }))
         }
         if let r = dzGW("deezer.pageProfile", token: token, body: ["user_id": uid, "tab": "playlists", "nb": 100]),
            let tab = r["TAB"] as? [String: Any], let pl = tab["playlists"] as? [String: Any], let data = pl["data"] as? [[String: Any]] {
@@ -510,7 +510,7 @@ final class AccountSync {
         let priv = deezerPrivateLists(uid: uid)
         if !priv.isEmpty { return priv }
         var lists: [SyncList] = []
-        lists.append(SyncList(key: "acct:deezer:liked", name: "Bài hát đã thích (Deezer)", tracks: deezerTracks("/user/\(uid)/tracks", cap: 300)))
+        lists.append(SyncList(key: "acct:deezer:liked", name: L("Bài hát đã thích (Deezer)"), tracks: deezerTracks("/user/\(uid)/tracks", cap: 300)))
         if let url = URL(string: "https://api.deezer.com/user/\(uid)/playlists?limit=100"),
            let j = Web.json(url) as? [String: Any], let data = j["data"] as? [[String: Any]] {
             for p in data.prefix(40) {
@@ -562,7 +562,7 @@ final class AccountSync {
             if let n = j["next_href"] as? String { next = n + "&client_id=\(cid)" } else { next = nil }
             pages += 1
         }
-        lists.append(SyncList(key: "acct:soundCloud:liked", name: "Bài hát đã thích (SoundCloud)", tracks: liked))
+        lists.append(SyncList(key: "acct:soundCloud:liked", name: L("Bài hát đã thích (SoundCloud)"), tracks: liked))
         if let url = URL(string: "https://api-v2.soundcloud.com/users/\(uid)/playlists_without_albums?limit=50&client_id=\(cid)"),
            let j = Web.json(url, headers: auth) as? [String: Any], let cols = j["collection"] as? [[String: Any]] {
             for p in cols.prefix(40) {
@@ -603,7 +603,7 @@ final class AccountSync {
             if data.count < 100 { break }
             offset += 100
         }
-        lists.append(SyncList(key: "acct:appleMusic:library", name: "Thư viện (Apple Music)", tracks: songs))
+        lists.append(SyncList(key: "acct:appleMusic:library", name: L("Thư viện (Apple Music)"), tracks: songs))
         if let j = appleGET("/me/library/playlists?limit=100"), let data = j["data"] as? [[String: Any]] {
             for p in data.prefix(40) {
                 guard let id = p["id"] as? String, let a = p["attributes"] as? [String: Any], let name = a["name"] as? String else { continue }
@@ -625,7 +625,7 @@ final class AccountSync {
         var lists: [SyncList] = []
         if let j = ytBrowse("VLLM") {
             let songs = InnerTube.parseSongs(j)
-            if !songs.isEmpty { lists.append(SyncList(key: "acct:youtubeMusic:liked", name: "Bài hát đã thích (YouTube Music)", tracks: [], directSongs: songs)) }
+            if !songs.isEmpty { lists.append(SyncList(key: "acct:youtubeMusic:liked", name: L("Bài hát đã thích (YouTube Music)"), tracks: [], directSongs: songs)) }
         }
         var found: [(String, String)] = []
         func walk(_ node: Any) {
@@ -670,7 +670,7 @@ final class AccountSync {
         DispatchQueue.main.async {
             if self.syncing { return }
             self.syncing = true
-            Toast.show("Đang đồng bộ \(s.title)…")
+            Toast.show(Lf("Đang đồng bộ %@…", s.title))
             DispatchQueue.global(qos: .utility).async {
                 self.syncOne(s)
                 DispatchQueue.main.async { self.syncing = false }
@@ -684,7 +684,7 @@ final class AccountSync {
             let services = self.linkedServices
             if services.isEmpty || self.syncing { return }
             self.syncing = true
-            if manual { Toast.show("Đang đồng bộ tài khoản nhạc…") }
+            if manual { Toast.show(L("Đang đồng bộ tài khoản nhạc…")) }
             DispatchQueue.global(qos: .utility).async {
                 for s in services { self.syncOne(s) }
                 self.defaults.set(Date().timeIntervalSince1970, forKey: "acct.lastSync")
@@ -749,7 +749,7 @@ final class AccountSync {
         let skip = dismissed
         let lists = all.filter { !skip.contains($0.key) }
         if lists.isEmpty {
-            Toast.show("\(s.title): chưa đọc được playlist nào (kiểm tra quyền công khai/mạng).")
+            Toast.show(Lf("%@: chưa đọc được playlist nào (kiểm tra quyền công khai/mạng).", s.title))
             return
         }
         publish(lists, s)
@@ -785,7 +785,7 @@ final class AccountSync {
                     gate.signal()
                     if n % 60 == 0 {
                         self.saveCache()
-                        Toast.show("\(s.title): đã ghép \(n)/\(total) bài…")
+                        Toast.show(Lf("%@: đã ghép %@/%@ bài…", s.title, n, total))
                     }
                     group.leave()
                 }
@@ -801,8 +801,8 @@ final class AccountSync {
             for t in l.tracks where cacheFile.songs[t.key] != nil { songCount += 1 }
         }
         lock.unlock()
-        var message = "Đồng bộ \(s.title) xong: \(lists.count) playlist, \(songCount) bài."
-        if remaining > 0 { message += " Còn \(remaining) bài sẽ ghép ở lần đồng bộ sau." }
+        var message = Lf("Đồng bộ %@ xong: %@ playlist, %@ bài.", s.title, lists.count, songCount)
+        if remaining > 0 { message += Lf(" Còn %@ bài sẽ ghép ở lần đồng bộ sau.", remaining) }
         Toast.show(message)
     }
 }

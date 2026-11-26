@@ -73,11 +73,11 @@ enum BackupManager {
     static func restore(from url: URL) -> Result<Int, UpdateError> {
         let accessed = url.startAccessingSecurityScopedResource()
         defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { return .failure(UpdateError("Không đọc được tệp.")) }
+        guard let data = try? Data(contentsOf: url) else { return .failure(UpdateError(L("Không đọc được tệp."))) }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         guard let envelope = try? decoder.decode(Envelope.self, from: data), envelope.app == UpdateConfig.appId else {
-            return .failure(UpdateError("Đây không phải tệp sao lưu của Mochy iOS."))
+            return .failure(UpdateError(L("Đây không phải tệp sao lưu của Mochy iOS.")))
         }
         let added = Library.shared.merge(envelope.library)
         if let plays = envelope.plays { PlayLog.shared.merge(plays) }

@@ -90,7 +90,7 @@ final class InnerTube {
                           body: [String: Any],
                           completion: @escaping (Result<[String: Any], Error>) -> Void) {
         guard let url = URL(string: urlString) else {
-            completion(.failure(MochyError.badResponse("URL sai")))
+            completion(.failure(MochyError.badResponse(L("URL sai"))))
             return
         }
         var request = URLRequest(url: url)
@@ -113,7 +113,7 @@ final class InnerTube {
             }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data = data else {
-                completion(.failure(MochyError.badResponse("không có dữ liệu")))
+                completion(.failure(MochyError.badResponse(L("không có dữ liệu"))))
                 return
             }
             if code < 200 || code >= 300 {
@@ -126,7 +126,7 @@ final class InnerTube {
                 if let dict = object as? [String: Any] {
                     completion(.success(dict))
                 } else {
-                    completion(.failure(MochyError.badResponse("không phải JSON object")))
+                    completion(.failure(MochyError.badResponse(L("không phải JSON object"))))
                 }
             } catch {
                 completion(.failure(error))
@@ -226,7 +226,7 @@ final class InnerTube {
                 DispatchQueue.main.async { completion(.success(fb)) }
                 return
             }
-            let message = "Không lấy được link nhạc:\n" + notes.joined(separator: "\n")
+            let message = L("Không lấy được link nhạc:\n") + notes.joined(separator: "\n")
             DispatchQueue.main.async { completion(.failure(MochyError.noStream(message))) }
             return
         }
@@ -296,7 +296,7 @@ final class InnerTube {
                         DispatchQueue.main.async { completion(.success(info)) }
                         return
                     }
-                    next.append("• \(client.name): link bị cắt giữa chừng")
+                    next.append(Lf("• %@: link bị cắt giữa chừng", client.name))
                     self.attempt(videoId: videoId, clients: clients, index: index + 1, notes: next,
                                  fallback: fallback ?? info, completion: completion)
                     return
@@ -585,9 +585,9 @@ final class InnerTube {
         let status = (dig(json, ["playabilityStatus", "status"]) as? String) ?? "?"
         let reason = (dig(json, ["playabilityStatus", "reason"]) as? String) ?? ""
         if json["streamingData"] == nil {
-            return reason.isEmpty ? "trạng thái \(status), không có luồng" : "\(status): \(reason)"
+            return reason.isEmpty ? Lf("trạng thái %@, không có luồng", status) : "\(status): \(reason)"
         }
-        return "có luồng nhưng không có link trực tiếp (cần giải mã chữ ký)"
+        return L("có luồng nhưng không có link trực tiếp (cần giải mã chữ ký)")
     }
 }
 
@@ -718,7 +718,7 @@ extension InnerTube {
                 if let header = InnerTube.headerDict(json) { name = InnerTube.runsText(header["title"]) }
                 if name.isEmpty { name = "Playlist YouTube" }
                 var songs = InnerTube.parseSongs(json)
-                if songs.isEmpty { completion(.failure(MochyError.badResponse("Playlist trống hoặc ở chế độ riêng tư"))); return }
+                if songs.isEmpty { completion(.failure(MochyError.badResponse(L("Playlist trống hoặc ở chế độ riêng tư")))); return }
                 self.continuePlaylist(token: InnerTube.findToken(json), songs: songs, pages: 0) { all in
                     songs = all
                     completion(.success((name, songs)))
@@ -815,7 +815,7 @@ extension InnerTube {
                     }
                 }
                 if page.name.isEmpty && page.songs.isEmpty && page.sections.isEmpty {
-                    completion(.failure(MochyError.badResponse("Không đọc được trang nghệ sĩ")))
+                    completion(.failure(MochyError.badResponse(L("Không đọc được trang nghệ sĩ"))))
                 } else {
                     completion(.success(page))
                 }
@@ -850,9 +850,9 @@ extension InnerTube {
                 var title = ""
                 if let header = InnerTube.findHeader(json) { title = InnerTube.runsText(header["title"]) }
                 if cards.isEmpty {
-                    completion(.failure(MochyError.badResponse("Không có mục nào để hiện")))
+                    completion(.failure(MochyError.badResponse(L("Không có mục nào để hiện"))))
                 } else {
-                    completion(.success((title.isEmpty ? "Tất cả" : title, cards)))
+                    completion(.success((title.isEmpty ? L("Tất cả") : title, cards)))
                 }
             }
         }
@@ -884,7 +884,7 @@ extension InnerTube {
                          duration: s.duration, thumbnailURL: s.thumbnailURL ?? thumb)
                 }
                 if songs.isEmpty {
-                    completion(.failure(MochyError.badResponse("Không đọc được album")))
+                    completion(.failure(MochyError.badResponse(L("Không đọc được album"))))
                 } else {
                     completion(.success(AlbumPage(title: title, artist: artist, thumbnail: thumb, songs: songs)))
                 }

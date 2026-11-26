@@ -75,8 +75,8 @@ final class AccountButton: UIControl {
             l.textColor = fg
             statusHost.addSubview(l)
         }
-        busyLabel.text = "Đang kết nối…"
-        okLabel.text = "Đã kết nối"
+        busyLabel.text = L("Đang kết nối…")
+        okLabel.text = L("Đã kết nối")
         okLabel.alpha = 0
         okLabel.transform = CGAffineTransform(translationX: 0, y: 8)
 
@@ -93,7 +93,7 @@ final class AccountButton: UIControl {
         if AccountSync.shared.isLinked(service), let name = AccountSync.shared.accountName(service) {
             titleLabel.text = "\(service.title) · \(name)"
         } else {
-            titleLabel.text = "Liên kết \(service.title)"
+            titleLabel.text = Lf("Liên kết %@", service.title)
         }
         accessibilityLabel = titleLabel.text
     }
@@ -252,11 +252,11 @@ final class AccountsSheetViewController: UIViewController {
         card.alpha = 0
         view.addSubview(card)
 
-        titleLabel.text = "Liên kết tài khoản nhạc"
+        titleLabel.text = L("Liên kết tài khoản nhạc")
         titleLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
         titleLabel.textColor = Theme.primaryText
         card.addSubview(titleLabel)
-        noteLabel.text = "Đăng nhập thật bằng trang của từng dịch vụ để Mochy truy cập tài khoản, tự tạo playlist \"Bài hát đã thích\" và các playlist của bạn, ảnh bìa là biểu tượng dịch vụ. Tự đồng bộ mỗi khi mở app."
+        noteLabel.text = L("Đăng nhập thật bằng trang của từng dịch vụ để Mochy truy cập tài khoản, tự tạo playlist \"Bài hát đã thích\" và các playlist của bạn, ảnh bìa là biểu tượng dịch vụ. Tự đồng bộ mỗi khi mở app.")
         noteLabel.font = UIFont.systemFont(ofSize: 13)
         noteLabel.textColor = Theme.secondaryText
         noteLabel.numberOfLines = 0
@@ -272,7 +272,7 @@ final class AccountsSheetViewController: UIViewController {
             stack.addSubview(b)
             buttons.append(b)
         }
-        for (b, title) in [(syncButton, "Đồng bộ ngay"), (removeButton, "Ngắt kết nối"), (closeButton, "Xong")] {
+        for (b, title) in [(syncButton, L("Đồng bộ ngay")), (removeButton, L("Ngắt kết nối")), (closeButton, L("Xong"))] {
             b.setTitle(title, for: .normal)
             b.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
             b.setTitleColor(M3.primary, for: .normal)
@@ -367,15 +367,15 @@ final class AccountsSheetViewController: UIViewController {
     @objc private func removeTapped() {
         let linked = AccountSync.shared.linkedServices
         guard !linked.isEmpty else { return }
-        let sheet = UIAlertController(title: "Ngắt kết nối", message: "Các playlist đã tạo vẫn được giữ lại trong thư viện.", preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: L("Ngắt kết nối"), message: L("Các playlist đã tạo vẫn được giữ lại trong thư viện."), preferredStyle: .actionSheet)
         for s in linked {
             sheet.addAction(UIAlertAction(title: s.title, style: .destructive) { [weak self] _ in
                 AccountSync.shared.disconnect(s)
-                Toast.show("Đã ngắt kết nối \(s.title)")
+                Toast.show(Lf("Đã ngắt kết nối %@", s.title))
                 self?.updateFooter()
             })
         }
-        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         if let pop = sheet.popoverPresentationController {
             pop.sourceView = removeButton
             pop.sourceRect = removeButton.bounds
@@ -388,14 +388,14 @@ final class AccountsSheetViewController: UIViewController {
         let s = sender.service
         if AccountSync.shared.isLinked(s) {
             let sheet = UIAlertController(title: s.title, message: AccountSync.shared.accountName(s), preferredStyle: .actionSheet)
-            sheet.addAction(UIAlertAction(title: "Đồng bộ ngay", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: L("Đồng bộ ngay"), style: .default) { _ in
                 AccountSync.shared.syncSoon(s)
             })
-            let relabel = "Đăng nhập lại"
+            let relabel = L("Đăng nhập lại")
             sheet.addAction(UIAlertAction(title: relabel, style: .default) { [weak self] _ in
                 self?.pick(sender)
             })
-            sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+            sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
             if let pop = sheet.popoverPresentationController {
                 pop.sourceView = sender
                 pop.sourceRect = sender.bounds

@@ -4,7 +4,7 @@ import UIKit
 final class MochyAccountViewController: UIViewController, UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     private let scroll = UIScrollView()
     private let stack = UIStackView()
-    private let mode = M3Segmented(items: ["Đăng nhập", "Đăng ký"], selected: 0)
+    private let mode = M3Segmented(items: [L("Đăng nhập"), L("Đăng ký")], selected: 0)
     private let userField = UITextField()
     private let passField = UITextField()
     private let confirmField = UITextField()
@@ -20,7 +20,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Tài khoản Mochy"
+        title = L("Tài khoản Mochy")
         view.backgroundColor = Theme.background
         if #available(iOS 11.0, *) { navigationItem.largeTitleDisplayMode = .never }
 
@@ -44,9 +44,9 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         ])
 
         mode.addTarget(self, action: #selector(modeChanged), for: .valueChanged)
-        configure(userField, placeholder: "Tên đăng nhập", secure: false)
-        configure(passField, placeholder: "Mật khẩu", secure: true)
-        configure(confirmField, placeholder: "Nhập lại mật khẩu", secure: true)
+        configure(userField, placeholder: L("Tên đăng nhập"), secure: false)
+        configure(passField, placeholder: L("Mật khẩu"), secure: true)
+        configure(confirmField, placeholder: L("Nhập lại mật khẩu"), secure: true)
         actionButton.backgroundColor = Theme.accent
         actionButton.layer.cornerRadius = 26
         actionButton.titleLabel?.font = Theme.bold(17)
@@ -97,16 +97,16 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
         let cloud = MochyCloud.shared
         if !cloud.isConfigured {
-            stack.addArrangedSubview(label("Tài khoản Mochy", font: Theme.heavy(30), color: Theme.primaryText))
-            stack.addArrangedSubview(label("Máy chủ tài khoản chưa được cấu hình trong bản này.", font: Theme.regular(16), color: Theme.secondaryText))
+            stack.addArrangedSubview(label(L("Tài khoản Mochy"), font: Theme.heavy(30), color: Theme.primaryText))
+            stack.addArrangedSubview(label(L("Máy chủ tài khoản chưa được cấu hình trong bản này."), font: Theme.regular(16), color: Theme.secondaryText))
             return
         }
         if cloud.isLoggedIn { buildLoggedIn(cloud) } else { buildLoggedOut() }
     }
 
     private func buildLoggedOut() {
-        stack.addArrangedSubview(label("Tài khoản Mochy", font: Theme.heavy(30), color: Theme.primaryText))
-        stack.addArrangedSubview(label("Đăng nhập để lưu yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải, rồi dùng trên mọi máy.",
+        stack.addArrangedSubview(label(L("Tài khoản Mochy"), font: Theme.heavy(30), color: Theme.primaryText))
+        stack.addArrangedSubview(label(L("Đăng nhập để lưu yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải, rồi dùng trên mọi máy."),
                                        font: Theme.regular(15), color: Theme.secondaryText))
         let holder = UIView()
         mode.translatesAutoresizingMaskIntoConstraints = false
@@ -125,7 +125,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         stack.addArrangedSubview(actionButton)
         stack.addArrangedSubview(spinner)
         stack.addArrangedSubview(messageLabel)
-        stack.addArrangedSubview(label("Mật khẩu được băm trên máy chủ, không ai (kể cả nhà phát triển) đọc được.",
+        stack.addArrangedSubview(label(L("Mật khẩu được băm trên máy chủ, không ai (kể cả nhà phát triển) đọc được."),
                                        font: Theme.regular(12), color: Theme.secondaryText, align: .center))
         applyMode()
     }
@@ -140,7 +140,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         avatar.addTarget(self, action: #selector(pickAvatar), for: .touchUpInside)
 
         let stats = UIStackView(arrangedSubviews: [
-            statButton(number: Library.shared.liked.count, caption: "Yêu thích", action: nil),
+            statButton(number: Library.shared.liked.count, caption: L("Yêu thích"), action: nil),
             statButton(number: Library.shared.playlists.count, caption: "Playlist", action: nil)
         ])
         stats.axis = .horizontal
@@ -158,18 +158,18 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         head.alignment = .center
         stack.addArrangedSubview(head)
 
-        var status = "Chưa đồng bộ"
+        var status = L("Chưa đồng bộ")
         if let t = cloud.lastSync {
             let f = DateFormatter()
             f.dateFormat = "HH:mm dd/MM"
-            status = "Đồng bộ lần cuối lúc " + f.string(from: t)
+            status = L("Đồng bộ lần cuối lúc ") + f.string(from: t)
         }
         if let e = cloud.lastError { status += "\n" + e }
         stack.addArrangedSubview(label(status, font: Theme.regular(13), color: cloud.lastError == nil ? Theme.secondaryText : M3.danger))
 
         let actions = UIStackView(arrangedSubviews: [
-            pill("Đổi ảnh", #selector(pickAvatar), prominent: true),
-            pill("Đồng bộ", #selector(syncTapped), prominent: false),
+            pill(L("Đổi ảnh"), #selector(pickAvatar), prominent: true),
+            pill(L("Đồng bộ"), #selector(syncTapped), prominent: false),
             pill("⋯", #selector(moreTapped), prominent: false, compact: true)
         ])
         actions.axis = .horizontal
@@ -209,12 +209,12 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         let cloud = MochyCloud.shared
         let sheet = UIAlertController(title: "@" + (cloud.username ?? ""), message: nil, preferredStyle: .actionSheet)
         if cloud.avatarImage != nil {
-            sheet.addAction(UIAlertAction(title: "Xoá ảnh đại diện", style: .default) { [weak self] _ in self?.removeAvatarTapped() })
+            sheet.addAction(UIAlertAction(title: L("Xoá ảnh đại diện"), style: .default) { [weak self] _ in self?.removeAvatarTapped() })
         }
-        sheet.addAction(UIAlertAction(title: "Đổi mật khẩu", style: .default) { [weak self] _ in self?.changePasswordTapped() })
-        sheet.addAction(UIAlertAction(title: "Đăng xuất", style: .default) { [weak self] _ in self?.logoutTapped() })
-        sheet.addAction(UIAlertAction(title: "Xoá tài khoản", style: .destructive) { [weak self] _ in self?.deleteTapped() })
-        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Đổi mật khẩu"), style: .default) { [weak self] _ in self?.changePasswordTapped() })
+        sheet.addAction(UIAlertAction(title: L("Đăng xuất"), style: .default) { [weak self] _ in self?.logoutTapped() })
+        sheet.addAction(UIAlertAction(title: L("Xoá tài khoản"), style: .destructive) { [weak self] _ in self?.deleteTapped() })
+        sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = view
             popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
@@ -276,7 +276,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         let register = mode.selectedSegmentIndex == 1
         confirmField.isHidden = !register
         passField.returnKeyType = register ? .next : .go
-        actionButton.setTitle(register ? "Tạo tài khoản" : "Đăng nhập", for: .normal)
+        actionButton.setTitle(register ? L("Tạo tài khoản") : L("Đăng nhập"), for: .normal)
         messageLabel.text = nil
     }
 
@@ -301,8 +301,8 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         let register = mode.selectedSegmentIndex == 1
         let name = (userField.text ?? "").trimmingCharacters(in: .whitespaces).lowercased()
         let pass = passField.text ?? ""
-        if name.isEmpty || pass.isEmpty { show("Nhập tên đăng nhập và mật khẩu."); return }
-        if register && pass != (confirmField.text ?? "") { show("Hai lần nhập mật khẩu không khớp."); return }
+        if name.isEmpty || pass.isEmpty { show(L("Nhập tên đăng nhập và mật khẩu.")); return }
+        if register && pass != (confirmField.text ?? "") { show(L("Hai lần nhập mật khẩu không khớp.")); return }
         setBusy(true)
         show(nil)
         MochyCloud.shared.authenticate(register: register, username: name, password: pass) { [weak self] error in
@@ -322,7 +322,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
     }
 
     @objc private func pickAvatar() {
-        guard UIImagePickerController.isSourceTypeAvailable(.photoLibrary) else { info("Không mở được thư viện ảnh."); return }
+        guard UIImagePickerController.isSourceTypeAvailable(.photoLibrary) else { info(L("Không mở được thư viện ảnh.")); return }
         let picker = UIImagePickerController()
         picker.sourceType = .photoLibrary
         picker.allowsEditing = true   // cắt vuông ngay trong bộ chọn
@@ -362,24 +362,24 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
     }
 
     @objc private func changePasswordTapped() {
-        let alert = UIAlertController(title: "Đổi mật khẩu", message: nil, preferredStyle: .alert)
-        alert.addTextField { $0.placeholder = "Mật khẩu hiện tại"; $0.isSecureTextEntry = true }
-        alert.addTextField { $0.placeholder = "Mật khẩu mới (từ 6 ký tự)"; $0.isSecureTextEntry = true }
-        alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Đổi", style: .default) { [weak self, weak alert] _ in
+        let alert = UIAlertController(title: L("Đổi mật khẩu"), message: nil, preferredStyle: .alert)
+        alert.addTextField { $0.placeholder = L("Mật khẩu hiện tại"); $0.isSecureTextEntry = true }
+        alert.addTextField { $0.placeholder = L("Mật khẩu mới (từ 6 ký tự)"); $0.isSecureTextEntry = true }
+        alert.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel))
+        alert.addAction(UIAlertAction(title: L("Đổi"), style: .default) { [weak self, weak alert] _ in
             guard let self = self, let f = alert?.textFields else { return }
             self.setBusy(true)
             MochyCloud.shared.changePassword(old: f[0].text ?? "", new: f[1].text ?? "") { error in
                 self.setBusy(false)
-                self.info(error ?? "Đã đổi mật khẩu.")
+                self.info(error ?? L("Đã đổi mật khẩu."))
             }
         })
         present(alert, animated: true)
     }
 
     @objc private func deleteTapped() {
-        DeleteDialogViewController.present(from: self, title: "Xoá tài khoản Mochy?",
-                                           message: "Dữ liệu trên máy chủ sẽ bị xoá vĩnh viễn. Dữ liệu trên máy này vẫn còn.",
+        DeleteDialogViewController.present(from: self, title: L("Xoá tài khoản Mochy?"),
+                                           message: L("Dữ liệu trên máy chủ sẽ bị xoá vĩnh viễn. Dữ liệu trên máy này vẫn còn."),
                                            onConfirm: { [weak self] in
             self?.setBusy(true)
             MochyCloud.shared.deleteAccount { error in

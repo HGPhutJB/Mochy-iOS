@@ -78,13 +78,13 @@ final class WeightPanel: UIView {
         blur.frame = bounds
         blur.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(blur)
-        titleLabel.text = "Độ đậm lời"
+        titleLabel.text = L("Độ đậm lời")
         titleLabel.font = RoundedFont.font(16, index: 5)
         titleLabel.textColor = .white
         valueLabel.text = RoundedFont.titles[index]
         valueLabel.font = RoundedFont.font(13, index: 3)
         valueLabel.textColor = UIColor(white: 1, alpha: 0.6)
-        done.setTitle("Xong", for: .normal)
+        done.setTitle(L("Xong"), for: .normal)
         done.titleLabel?.font = RoundedFont.font(16, index: 5)
         done.setTitleColor(Theme.accent, for: .normal)
         done.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)

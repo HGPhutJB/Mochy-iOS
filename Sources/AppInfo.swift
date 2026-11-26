@@ -21,7 +21,7 @@ enum UpdateChannel: String {
     case dev
 
     var title: String {
-        return self == .stable ? "Ổn định" : "Nhà phát triển"
+        return self == .stable ? L("Ổn định") : L("Nhà phát triển")
     }
 }
 
@@ -35,9 +35,9 @@ enum PlayerBlur: Int {
     case auto = 0, light, dark
     var title: String {
         switch self {
-        case .auto: return "Tự động theo ảnh bìa"
-        case .light: return "Sáng"
-        case .dark: return "Tối"
+        case .auto: return L("Tự động theo ảnh bìa")
+        case .light: return L("Sáng")
+        case .dark: return L("Tối")
         }
     }
 }

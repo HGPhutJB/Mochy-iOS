@@ -114,7 +114,7 @@ final class PlaylistImporter {
 
     private func fetchSync(_ original: URL) -> Result<ImportedCollection, UpdateError> {
         guard let source = PlaylistImporter.source(of: original.absoluteString) else {
-            return .failure(UpdateError("Link này chưa được hỗ trợ. Hỗ trợ: Spotify, Apple Music, Deezer, SoundCloud, YouTube Music."))
+            return .failure(UpdateError(L("Link này chưa được hỗ trợ. Hỗ trợ: Spotify, Apple Music, Deezer, SoundCloud, YouTube Music.")))
         }
         switch source {
         case .spotify: return spotify(original)
@@ -135,20 +135,20 @@ final class PlaylistImporter {
         let parts = url.pathComponents.filter { $0 != "/" }
         // bỏ tiền tố ngôn ngữ như "intl-vi"
         guard let index = parts.firstIndex(where: { ["playlist", "album", "track", "artist"].contains($0) }), index + 1 < parts.count else {
-            return .failure(UpdateError("Không nhận ra link Spotify (cần link playlist, album hoặc bài hát)."))
+            return .failure(UpdateError(L("Không nhận ra link Spotify (cần link playlist, album hoặc bài hát).")))
         }
         let kind = parts[index], id = parts[index + 1]
-        if kind == "artist" { return .failure(UpdateError("Chưa hỗ trợ link nghệ sĩ Spotify. Hãy dùng link playlist, album hoặc bài hát.")) }
+        if kind == "artist" { return .failure(UpdateError(L("Chưa hỗ trợ link nghệ sĩ Spotify. Hãy dùng link playlist, album hoặc bài hát."))) }
         guard let embed = URL(string: "https://open.spotify.com/embed/\(kind)/\(id)"),
               let page = Web.string(embed) else {
-            return .failure(UpdateError("Không mở được trang Spotify. Kiểm tra mạng, hoặc playlist đang ở chế độ riêng tư."))
+            return .failure(UpdateError(L("Không mở được trang Spotify. Kiểm tra mạng, hoặc playlist đang ở chế độ riêng tư.")))
         }
         var json: [String: Any]?
         for block in Web.scripts(page.text) where block.attrs.contains("__NEXT_DATA__") {
             json = (try? JSONSerialization.jsonObject(with: Data(block.body.utf8), options: [])) as? [String: Any]
         }
         guard let entity = InnerTube.dig(json, ["props", "pageProps", "state", "data", "entity"]) as? [String: Any] else {
-            return .failure(UpdateError("Spotify đã đổi cấu trúc trang nhúng nên chưa đọc được. Hãy báo để cập nhật."))
+            return .failure(UpdateError(L("Spotify đã đổi cấu trúc trang nhúng nên chưa đọc được. Hãy báo để cập nhật.")))
         }
         let name = (entity["name"] as? String) ?? (entity["title"] as? String) ?? "Spotify"
         var tracks: [ImportedTrack] = []
@@ -164,7 +164,7 @@ final class PlaylistImporter {
             let ms = (entity["duration"] as? Double) ?? Double((entity["duration"] as? Int) ?? 0)
             tracks.append(ImportedTrack(title: name, artist: artists, duration: ms > 0 ? ms / 1000 : nil))
         }
-        if tracks.isEmpty { return .failure(UpdateError("Không thấy bài nào trong link Spotify (playlist riêng tư hoặc trống).")) }
+        if tracks.isEmpty { return .failure(UpdateError(L("Không thấy bài nào trong link Spotify (playlist riêng tư hoặc trống)."))) }
         var collection = ImportedCollection(name: name, tracks: tracks, source: ImportSource.spotify.rawValue)
         collection.truncated = kind == "playlist" && tracks.count >= 100
         return .success(collection)
@@ -183,7 +183,7 @@ final class PlaylistImporter {
 
     private func appleMusic(_ url: URL) -> Result<ImportedCollection, UpdateError> {
         guard let page = Web.string(url) else {
-            return .failure(UpdateError("Không mở được trang Apple Music. Kiểm tra mạng hoặc link."))
+            return .failure(UpdateError(L("Không mở được trang Apple Music. Kiểm tra mạng hoặc link.")))
         }
         func names(_ value: Any?) -> String {
             if let list = value as? [[String: Any]] { return list.compactMap { $0["name"] as? String }.joined(separator: ", ") }
@@ -208,7 +208,7 @@ final class PlaylistImporter {
             }
             if !tracks.isEmpty { return .success(ImportedCollection(name: name, tracks: tracks, source: ImportSource.appleMusic.rawValue)) }
         }
-        return .failure(UpdateError("Không đọc được danh sách bài từ Apple Music (cần link playlist/album/bài công khai)."))
+        return .failure(UpdateError(L("Không đọc được danh sách bài từ Apple Music (cần link playlist/album/bài công khai).")))
     }
 
     // MARK: Deezer (API công khai)
@@ -218,7 +218,7 @@ final class PlaylistImporter {
         if let r = Web.get(url) { url = r.finalURL }
         let parts = url.pathComponents.filter { $0 != "/" }
         guard let index = parts.firstIndex(where: { ["playlist", "album", "track"].contains($0) }), index + 1 < parts.count else {
-            return .failure(UpdateError("Không nhận ra link Deezer (cần link playlist, album hoặc bài hát)."))
+            return .failure(UpdateError(L("Không nhận ra link Deezer (cần link playlist, album hoặc bài hát).")))
         }
         let kind = parts[index], id = parts[index + 1].components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
         func track(_ t: [String: Any], fallbackArtist: String = "") -> ImportedTrack? {
@@ -229,7 +229,7 @@ final class PlaylistImporter {
         }
         guard let infoURL = URL(string: "https://api.deezer.com/\(kind)/\(id)"),
               let info = Web.json(infoURL) as? [String: Any], info["error"] == nil else {
-            return .failure(UpdateError("Không lấy được dữ liệu Deezer (playlist riêng tư hoặc link sai)."))
+            return .failure(UpdateError(L("Không lấy được dữ liệu Deezer (playlist riêng tư hoặc link sai).")))
         }
         let name = (info["title"] as? String) ?? "Deezer"
         var tracks: [ImportedTrack] = []
@@ -247,7 +247,7 @@ final class PlaylistImporter {
                 index += 100
             }
         }
-        if tracks.isEmpty { return .failure(UpdateError("Link Deezer không có bài nào.")) }
+        if tracks.isEmpty { return .failure(UpdateError(L("Link Deezer không có bài nào."))) }
         return .success(ImportedCollection(name: name, tracks: tracks, source: ImportSource.deezer.rawValue))
     }
 
@@ -255,7 +255,7 @@ final class PlaylistImporter {
 
     private func soundCloud(_ input: URL) -> Result<ImportedCollection, UpdateError> {
         guard let page = Web.string(input) else {
-            return .failure(UpdateError("Không mở được trang SoundCloud. Kiểm tra mạng hoặc link."))
+            return .failure(UpdateError(L("Không mở được trang SoundCloud. Kiểm tra mạng hoặc link.")))
         }
         var hydration: [[String: Any]] = []
         for block in Web.scripts(page.text) where block.body.contains("__sc_hydration") {
@@ -296,7 +296,7 @@ final class PlaylistImporter {
                 index += 30
             }
         }
-        if tracks.isEmpty { return .failure(UpdateError("Không đọc được bài nào từ SoundCloud (cần link công khai).")) }
+        if tracks.isEmpty { return .failure(UpdateError(L("Không đọc được bài nào từ SoundCloud (cần link công khai)."))) }
         var collection = ImportedCollection(name: name, tracks: tracks, source: ImportSource.soundCloud.rawValue)
         collection.truncated = !missingIds.isEmpty && tracks.count < missingIds.count
         return .success(collection)
@@ -320,7 +320,7 @@ final class PlaylistImporter {
         let items = comps?.queryItems ?? []
         let sem = DispatchSemaphore(value: 0)
         if let list = items.first(where: { $0.name == "list" })?.value, !list.isEmpty {
-            var result: Result<ImportedCollection, UpdateError> = .failure(UpdateError("Không đọc được playlist YouTube."))
+            var result: Result<ImportedCollection, UpdateError> = .failure(UpdateError(L("Không đọc được playlist YouTube.")))
             DispatchQueue.main.async {
                 InnerTube.shared.playlistSongs(listId: list) { r in
                     switch r {
@@ -339,11 +339,11 @@ final class PlaylistImporter {
         }
         var videoId = items.first(where: { $0.name == "v" })?.value
         if videoId == nil, (url.host ?? "").contains("youtu.be") { videoId = url.pathComponents.last }
-        guard let id = videoId, id.count >= 6 else { return .failure(UpdateError("Link YouTube không có playlist hoặc bài hát.")) }
+        guard let id = videoId, id.count >= 6 else { return .failure(UpdateError(L("Link YouTube không có playlist hoặc bài hát."))) }
         // oEmbed cho tên bài và kênh.
         guard let oembed = URL(string: "https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v=\(id)"),
               let json = Web.json(oembed) as? [String: Any], let title = json["title"] as? String else {
-            return .failure(UpdateError("Không đọc được thông tin video YouTube."))
+            return .failure(UpdateError(L("Không đọc được thông tin video YouTube.")))
         }
         let author = ((json["author_name"] as? String) ?? "").replacingOccurrences(of: " - Topic", with: "")
         let thumb = (json["thumbnail_url"] as? String).flatMap { URL(string: $0) }

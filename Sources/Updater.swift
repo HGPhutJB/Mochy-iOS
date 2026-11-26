@@ -130,7 +130,7 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
         let channel = AppSettings.channel
         let manifestString = (channel == .stable) ? UpdateConfig.stableManifest : UpdateConfig.devManifest
         guard let manifestURL = URL(string: manifestString) else {
-            finish(.failed("Địa chỉ cập nhật không hợp lệ"), completion)
+            finish(.failed(L("Địa chỉ cập nhật không hợp lệ")), completion)
             return
         }
         let signatureURL = manifestURL.appendingPathExtension("sig")
@@ -140,7 +140,7 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
             switch manifestResult {
             case .failure(let error):
                 if error.notFound {
-                    let text = channel == .stable ? "Chưa có bản ổn định nào trên GitHub" : "Chưa có bản thử nghiệm nào trên GitHub"
+                    let text = channel == .stable ? L("Chưa có bản ổn định nào trên GitHub") : L("Chưa có bản thử nghiệm nào trên GitHub")
                     self.finish(.failed(text), completion)
                 } else {
                     self.finish(.failed(error.message), completion)
@@ -152,13 +152,13 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
                         if UpdateVerifier.verifySignature(data: manifestData, signature: signatureData) {
                             self.finish(self.evaluate(manifestData, signed: true), completion)
                         } else {
-                            self.finish(.failed("Chữ ký của bản cập nhật KHÔNG hợp lệ. Đã bỏ qua vì lý do an toàn."), completion)
+                            self.finish(.failed(L("Chữ ký của bản cập nhật KHÔNG hợp lệ. Đã bỏ qua vì lý do an toàn.")), completion)
                         }
                     case .failure(let error):
                         if error.notFound {
                             self.finish(self.evaluate(manifestData, signed: false), completion)
                         } else {
-                            self.finish(.failed("Không tải được chữ ký: \(error.message)"), completion)
+                            self.finish(.failed(Lf("Không tải được chữ ký: %@", error.message)), completion)
                         }
                     }
                 }
@@ -182,11 +182,11 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
                     return
                 }
                 guard code == 200, let data = data else {
-                    completion(.failure(UpdateError("Máy chủ trả về HTTP \(code)")))
+                    completion(.failure(UpdateError(Lf("Máy chủ trả về HTTP %@", code))))
                     return
                 }
                 if data.count > UpdateConfig.maxManifestBytes {
-                    completion(.failure(UpdateError("Tệp cập nhật quá lớn")))
+                    completion(.failure(UpdateError(L("Tệp cập nhật quá lớn"))))
                     return
                 }
                 completion(.success(data))
@@ -198,14 +198,14 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
     private func evaluate(_ data: Data, signed: Bool) -> UpdateResult {
         guard let object = try? JSONSerialization.jsonObject(with: data, options: []),
               let json = object as? [String: Any] else {
-            return .failed("update.json không đọc được")
+            return .failed(L("update.json không đọc được"))
         }
         guard (json["app"] as? String) == UpdateConfig.appId else {
-            return .failed("Bản cập nhật không dành cho ứng dụng này")
+            return .failed(L("Bản cập nhật không dành cho ứng dụng này"))
         }
         guard let version = json["version"] as? String,
               let build = (json["build"] as? NSNumber)?.intValue else {
-            return .failed("update.json thiếu version hoặc build")
+            return .failed(L("update.json thiếu version hoặc build"))
         }
         let files = json["files"] as? [String: Any] ?? [:]
 
@@ -236,10 +236,10 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
         // Chỉ chấp nhận build cao hơn bản đang chạy (chống hạ cấp / phát lại bản cũ).
         if info.build <= AppInfo.build { return .upToDate }
         if !versionAtLeast(AppInfo.osVersion, info.minOS) {
-            return .failed("Bản mới cần iOS \(info.minOS) trở lên")
+            return .failed(Lf("Bản mới cần iOS %@ trở lên", info.minOS))
         }
         if info.deb == nil && info.ipa == nil {
-            return .failed("Bản mới không có tệp cài đặt hợp lệ")
+            return .failed(L("Bản mới không có tệp cài đặt hợp lệ"))
         }
         return .available(info)
     }
@@ -252,12 +252,12 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
         switch result {
         case .available(let info):
             available = info
-            lastMessage = "Có bản mới \(info.version) (build \(info.build))"
+            lastMessage = Lf("Có bản mới %@ (build %@)", info.version, info.build)
         case .upToDate:
             available = nil
-            lastMessage = "Bạn đang dùng bản mới nhất"
+            lastMessage = L("Bạn đang dùng bản mới nhất")
         case .failed(let message):
-            lastMessage = "Không kiểm tra được: \(message)"
+            lastMessage = Lf("Không kiểm tra được: %@", message)
         }
         postState()
         completion?(result)
@@ -277,11 +277,11 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
                   progress: @escaping (Double) -> Void,
                   completion: @escaping (Result<URL, UpdateError>) -> Void) {
         guard downloadTask == nil else {
-            completion(.failure(UpdateError("Đang có một lần tải khác")))
+            completion(.failure(UpdateError(L("Đang có một lần tải khác"))))
             return
         }
         guard UpdateVerifier.isTrustedDownload(url: file.url, name: file.name, size: file.size, sha256: file.sha256) else {
-            completion(.failure(UpdateError("Liên kết tải không nằm trong repo cập nhật chính thức")))
+            completion(.failure(UpdateError(L("Liên kết tải không nằm trong repo cập nhật chính thức"))))
             return
         }
         activeFile = file
@@ -330,7 +330,7 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
                     totalBytesExpectedToWrite: Int64) {
         guard let file = activeFile else { return }
         if totalBytesWritten > file.size + 4096 || totalBytesWritten > UpdateConfig.maxDownloadBytes {
-            abortReason = "Tệp tải về lớn hơn khai báo, đã dừng"
+            abortReason = L("Tệp tải về lớn hơn khai báo, đã dừng")
             downloadTask.cancel()
             return
         }
@@ -345,7 +345,7 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
                     didFinishDownloadingTo location: URL) {
         guard let file = activeFile else { return }
         if let http = downloadTask.response as? HTTPURLResponse, http.statusCode != 200 {
-            finishDownload(.failure(UpdateError("Máy chủ trả về HTTP \(http.statusCode)")))
+            finishDownload(.failure(UpdateError(Lf("Máy chủ trả về HTTP %@", http.statusCode))))
             return
         }
         if let problem = UpdateVerifier.verifyFile(at: location, expectedSize: file.size, expectedSHA256: file.sha256) {
@@ -361,7 +361,7 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
             try manager.moveItem(at: location, to: destination)
             finishDownload(.success(destination))
         } catch {
-            finishDownload(.failure(UpdateError("Không lưu được tệp: \(error.localizedDescription)")))
+            finishDownload(.failure(UpdateError(Lf("Không lưu được tệp: %@", error.localizedDescription))))
         }
     }
 
@@ -371,7 +371,7 @@ final class Updater: NSObject, URLSessionDownloadDelegate {
         if let reason = abortReason {
             finishDownload(.failure(UpdateError(reason)))
         } else if code == NSURLErrorCancelled {
-            finishDownload(.failure(UpdateError("Đã huỷ", cancelled: true)))
+            finishDownload(.failure(UpdateError(L("Đã huỷ"), cancelled: true)))
         } else {
             finishDownload(.failure(UpdateError(error.localizedDescription)))
         }

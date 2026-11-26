@@ -94,7 +94,7 @@ final class ChunkedLoader: NSObject, AVAssetResourceLoaderDelegate {
         // Biết tổng dung lượng trước đã.
         if total() <= 0 {
             guard let first = fetch(0, ChunkedLoader.chunkSize - 1) else {
-                request.finishLoading(with: NSError(domain: "Mochy", code: -1, userInfo: [NSLocalizedDescriptionKey: "Không tải được luồng nhạc"]))
+                request.finishLoading(with: NSError(domain: "Mochy", code: -1, userInfo: [NSLocalizedDescriptionKey: L("Không tải được luồng nhạc")]))
                 return
             }
             if let t = first.1 { setTotal(t) }
@@ -126,7 +126,7 @@ final class ChunkedLoader: NSObject, AVAssetResourceLoaderDelegate {
             }
             guard let got = piece else {
                 if !request.isCancelled {
-                    request.finishLoading(with: NSError(domain: "Mochy", code: -2, userInfo: [NSLocalizedDescriptionKey: "Luồng nhạc bị ngắt giữa chừng"]))
+                    request.finishLoading(with: NSError(domain: "Mochy", code: -2, userInfo: [NSLocalizedDescriptionKey: L("Luồng nhạc bị ngắt giữa chừng")]))
                 }
                 return
             }

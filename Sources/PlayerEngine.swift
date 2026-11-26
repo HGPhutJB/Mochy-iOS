@@ -355,7 +355,7 @@ final class PlayerEngine: NSObject {
         ) { [weak self] note in
             guard let self = self else { return }
             let error = (note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)
-                ?? MochyError.playback("Luồng nhạc bị ngắt giữa chừng")
+                ?? MochyError.playback(L("Luồng nhạc bị ngắt giữa chừng"))
             if !self.recover() { self.fail(error) }
         }
         startWatchdog()
@@ -427,7 +427,7 @@ final class PlayerEngine: NSObject {
         } else if stallSeconds >= 12 {
             stallSeconds = 0
             if !recover() {
-                fail(MochyError.playback("Mạng bị đứt, nhạc dừng giữa chừng. Hãy thử phát lại."))
+                fail(MochyError.playback(L("Mạng bị đứt, nhạc dừng giữa chừng. Hãy thử phát lại.")))
             }
         }
     }
@@ -450,7 +450,7 @@ final class PlayerEngine: NSObject {
             reverbItem = nil
             return
         }
-        ReverbParams.shared.status = "Đang gắn vào bài…"
+        ReverbParams.shared.status = L("Đang gắn vào bài…")
         if reverbItem === item { return }
         let asset = item.asset
         asset.loadValuesAsynchronously(forKeys: ["tracks"]) { [weak self] in
@@ -458,7 +458,7 @@ final class PlayerEngine: NSObject {
                 guard let self = self, item === self.player?.currentItem, ReverbSettings.enabled, self.reverbItem !== item else { return }
                 guard asset.statusOfValue(forKey: "tracks", error: nil) == .loaded,
                       let track = asset.tracks(withMediaType: .audio).first else {
-                    ReverbParams.shared.status = "Không áp dụng được: không đọc được rãnh âm thanh của bài"
+                    ReverbParams.shared.status = L("Không áp dụng được: không đọc được rãnh âm thanh của bài")
                     return
                 }
                 guard let mix = ReverbTap.makeMix(for: track) else { return }
@@ -474,7 +474,7 @@ final class PlayerEngine: NSObject {
         case .readyToPlay:
             handleReady(item)
         case .failed:
-            let error: Error = item.error ?? MochyError.playback("AVPlayer báo lỗi không rõ")
+            let error: Error = item.error ?? MochyError.playback(L("AVPlayer báo lỗi không rõ"))
             if !recover() { fail(error) }
         default:
             break
@@ -549,7 +549,7 @@ final class PlayerEngine: NSObject {
 
     private func describe(_ error: Error) -> String {
         if let mochy = error as? MochyError {
-            return mochy.errorDescription ?? "Lỗi không rõ"
+            return mochy.errorDescription ?? L("Lỗi không rõ")
         }
         let ns = error as NSError
         var text = "\(ns.localizedDescription) [\(ns.domain) \(ns.code)]"

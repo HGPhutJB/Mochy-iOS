@@ -80,7 +80,7 @@ final class LastFM {
             DispatchQueue.main.async {
                 if let error = error { completion(.failure(UpdateError(error.localizedDescription))); return }
                 guard let data = data, let json = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] else {
-                    completion(.failure(UpdateError("Last.fm trả về dữ liệu không đọc được.")))
+                    completion(.failure(UpdateError(L("Last.fm trả về dữ liệu không đọc được."))))
                     return
                 }
                 if let message = json["message"] as? String, json["error"] != nil {
@@ -101,7 +101,7 @@ final class LastFM {
                 completion(.failure(error))
             case .success(let json):
                 guard let s = json["session"] as? [String: Any], let sk = s["key"] as? String else {
-                    completion(.failure(UpdateError("Last.fm không trả về khoá phiên.")))
+                    completion(.failure(UpdateError(L("Last.fm không trả về khoá phiên."))))
                     return
                 }
                 let name = (s["name"] as? String) ?? username

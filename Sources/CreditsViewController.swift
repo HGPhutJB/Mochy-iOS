@@ -15,27 +15,27 @@ final class CreditsViewController: UIViewController, UITableViewDataSource, UITa
     }
 
     private let blocks: [Block] = [
-        Block(title: "Dự án gốc",
-              footer: "Mochy iOS là bản viết lại bằng Swift/UIKit cho iOS 12 trở lên, dựa trên ý tưởng, cách gọi YouTube Music, bộ thông số client và thiết kế giao diện của Mochy Music. Ported from Mochy Music.",
+        Block(title: L("Dự án gốc"),
+              footer: L("Mochy iOS là bản viết lại bằng Swift/UIKit cho iOS 12 trở lên, dựa trên ý tưởng, cách gọi YouTube Music, bộ thông số client và thiết kế giao diện của Mochy Music. Ported from Mochy Music."),
               items: [Item(title: "Mochy Music", detail: "realidkroo", url: "https://github.com/realidkroo/mochy-music")]),
-        Block(title: "Nền tảng của Mochy Music",
-              footer: "Mochy Music là bản phát triển từ ViviMusic và xây trên Metrolist. Ghi công của họ được giữ nguyên.",
+        Block(title: L("Nền tảng của Mochy Music"),
+              footer: L("Mochy Music là bản phát triển từ ViviMusic và xây trên Metrolist. Ghi công của họ được giữ nguyên."),
               items: [Item(title: "ViviMusic", detail: "vivizzz007Z", url: nil),
                       Item(title: "Metrolist", detail: "Mostafa Alagamy", url: nil),
                       Item(title: "InnerTube (RiMusic)", detail: "fast4x", url: nil)]),
-        Block(title: "Dịch vụ dùng ở các mốc sau",
-              footer: "Mỗi dịch vụ thuộc về tác giả của nó.",
+        Block(title: L("Dịch vụ dùng ở các mốc sau"),
+              footer: L("Mỗi dịch vụ thuộc về tác giả của nó."),
               items: [Item(title: "LRCLIB", detail: "tranxuanthang", url: nil),
                       Item(title: "SimpMusic", detail: "maxrave-dev", url: nil),
                       Item(title: "LyricsPlus", detail: "Ibra Al Tabian", url: nil),
                       Item(title: "Better Lyrics API", detail: "Boidushya", url: nil),
                       Item(title: "AutoEq", detail: "AutoEq", url: nil)]),
-        Block(title: "Giấy phép và mã nguồn",
-              footer: "Mochy iOS giữ giấy phép GPL-3.0. Nếu bạn phát hành bản chỉnh sửa, hãy giữ các ghi công này và công khai mã nguồn.",
-              items: [Item(title: "GPL-3.0", detail: "Toàn văn giấy phép", url: "https://www.gnu.org/licenses/gpl-3.0.html"),
-                      Item(title: "Mã nguồn Mochy iOS", detail: "GitHub", url: UpdateConfig.repoPage)]),
-        Block(title: "Lưu ý",
-              footer: "Mochy iOS là dự án không chính thức, không liên kết với YouTube, Google, Apple hay dịch vụ nào nó kết nối tới. App không lưu trữ hay phân phối nhạc.",
+        Block(title: L("Giấy phép và mã nguồn"),
+              footer: L("Mochy iOS giữ giấy phép GPL-3.0. Nếu bạn phát hành bản chỉnh sửa, hãy giữ các ghi công này và công khai mã nguồn."),
+              items: [Item(title: "GPL-3.0", detail: L("Toàn văn giấy phép"), url: "https://www.gnu.org/licenses/gpl-3.0.html"),
+                      Item(title: L("Mã nguồn Mochy iOS"), detail: "GitHub", url: UpdateConfig.repoPage)]),
+        Block(title: L("Lưu ý"),
+              footer: L("Mochy iOS là dự án không chính thức, không liên kết với YouTube, Google, Apple hay dịch vụ nào nó kết nối tới. App không lưu trữ hay phân phối nhạc."),
               items: [])
     ]
 
@@ -43,7 +43,7 @@ final class CreditsViewController: UIViewController, UITableViewDataSource, UITa
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Credit và giấy phép"
+        title = L("Credit và giấy phép")
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = Theme.groupedBackground
         tableView.translatesAutoresizingMaskIntoConstraints = false

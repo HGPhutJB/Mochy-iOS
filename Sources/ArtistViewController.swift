@@ -181,7 +181,7 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
         view.backgroundColor = Theme.background
         navigationItem.largeTitleDisplayMode = .never
         if navigationController?.viewControllers.first === self {
-            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Đóng", style: .plain, target: self, action: #selector(close))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(title: L("Đóng"), style: .plain, target: self, action: #selector(close))
         }
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = Theme.background
@@ -242,12 +242,12 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
         infoLabel.font = Theme.bold(14)
         infoLabel.textColor = Theme.secondaryText
         header.addSubview(infoLabel)
-        playButton.setTitle("  Phát", for: .normal)
+        playButton.setTitle(L("  Phát"), for: .normal)
         playButton.setImage(Icons.play(16), for: .normal)
         playButton.tintColor = UIColor.white
         playButton.setTitleColor(UIColor.white, for: .normal)
         playButton.backgroundColor = Theme.accent
-        shuffleButton.setTitle("  Ngẫu nhiên", for: .normal)
+        shuffleButton.setTitle(L("  Ngẫu nhiên"), for: .normal)
         shuffleButton.setImage(Icons.shuffle(16), for: .normal)
         shuffleButton.tintColor = Theme.accent
         shuffleButton.setTitleColor(Theme.accent, for: .normal)
@@ -294,7 +294,7 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
         } else {
             InnerTube.shared.findArtistId(name: artistName) { [weak self] found in
                 guard let self = self else { return }
-                if let found = found { self.fetch(found) } else { self.fail("Không tìm thấy trang nghệ sĩ \"\(self.artistName)\".") }
+                if let found = found { self.fetch(found) } else { self.fail(Lf("Không tìm thấy trang nghệ sĩ \"%@\".", self.artistName)) }
             }
         }
     }
@@ -400,7 +400,7 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
         label.textColor = Theme.primaryText
         var more = false
         if hasSongs && section == 0 {
-            label.text = "Bài hát nổi bật"
+            label.text = L("Bài hát nổi bật")
         } else {
             let s = page.sections[section - (hasSongs ? 1 : 0)]
             label.text = s.title
@@ -410,7 +410,7 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
         container.addSubview(label)
         if more {
             let b = UIButton(type: .system)
-            b.setTitle("Xem tất cả", for: .normal)
+            b.setTitle(L("Xem tất cả"), for: .normal)
             b.titleLabel?.font = Theme.bold(14)
             b.setTitleColor(Theme.accent, for: .normal)
             b.contentHorizontalAlignment = .right
@@ -444,7 +444,7 @@ final class ArtistViewController: UIViewController, UITableViewDataSource, UITab
             }
             let cell = tableView.dequeueReusableCell(withIdentifier: "More", for: indexPath)
             cell.backgroundColor = Theme.background
-            cell.textLabel?.text = loadingAll ? "Đang tải…" : "Xem tất cả bài hát"
+            cell.textLabel?.text = loadingAll ? L("Đang tải…") : L("Xem tất cả bài hát")
             cell.textLabel?.font = Theme.bold(15)
             cell.textLabel?.textColor = Theme.accent
             cell.textLabel?.textAlignment = .center

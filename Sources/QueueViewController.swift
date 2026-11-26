@@ -7,11 +7,11 @@ final class QueueViewController: UIViewController, UITableViewDataSource, UITabl
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Hàng đợi"
+        title = L("Hàng đợi")
         view.backgroundColor = Theme.background
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Sắp xếp", style: .plain, target: self, action: #selector(toggleEditing))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: L("Sắp xếp"), style: .plain, target: self, action: #selector(toggleEditing))
         editButton = navigationItem.leftBarButtonItem
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Xong", style: .done, target: self, action: #selector(close))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: L("Xong"), style: .done, target: self, action: #selector(close))
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = Theme.background
@@ -47,7 +47,7 @@ final class QueueViewController: UIViewController, UITableViewDataSource, UITabl
     @objc private func toggleEditing() {
         let editing = !tableView.isEditing
         tableView.setEditing(editing, animated: true)
-        editButton?.title = editing ? "Xong sắp xếp" : "Sắp xếp"
+        editButton?.title = editing ? L("Xong sắp xếp") : L("Sắp xếp")
     }
 
     @objc private func stateChanged() {

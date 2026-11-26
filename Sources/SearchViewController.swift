@@ -20,10 +20,10 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Tìm kiếm"
+        title = L("Tìm kiếm")
         view.backgroundColor = Theme.background
 
-        searchBar.placeholder = "Bài hát, nghệ sĩ"
+        searchBar.placeholder = L("Bài hát, nghệ sĩ")
         searchBar.searchBarStyle = .minimal
         searchBar.autocapitalizationType = .none
         searchBar.returnKeyType = .search
@@ -81,7 +81,7 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
     private func showRecents() {
         mode = .recents
         songs = []
-        messageLabel.text = AppSettings.recentSearches.isEmpty ? "Nhập tên bài hát hoặc nghệ sĩ rồi bấm Tìm." : nil
+        messageLabel.text = AppSettings.recentSearches.isEmpty ? L("Nhập tên bài hát hoặc nghệ sĩ rồi bấm Tìm.") : nil
         tableView.reloadData()
     }
 
@@ -139,13 +139,13 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
             switch result {
             case .success(let found):
                 self.songs = found
-                self.messageLabel.text = found.isEmpty ? "Không tìm thấy kết quả cho \"\(query)\"." : nil
+                self.messageLabel.text = found.isEmpty ? Lf("Không tìm thấy kết quả cho \"%@\".", query) : nil
                 self.tableView.reloadData()
                 self.tableView.animateRowsIn()
             case .failure(let error):
                 self.songs = []
                 self.tableView.reloadData()
-                self.messageLabel.text = "Lỗi tìm kiếm:\n\(error.localizedDescription)"
+                self.messageLabel.text = Lf("Lỗi tìm kiếm:\n%@", error.localizedDescription)
             }
         }
     }
@@ -208,13 +208,13 @@ final class SearchViewController: UIViewController, UITableViewDataSource, UITab
         let container = UIView()
         container.backgroundColor = Theme.background
         let label = UILabel()
-        label.text = "Tìm gần đây"
+        label.text = L("Tìm gần đây")
         label.font = Theme.heavy(20)
         label.textColor = Theme.primaryText
         label.frame = CGRect(x: 16, y: 10, width: 200, height: 28)
         container.addSubview(label)
         let clear = UIButton(type: .system)
-        clear.setTitle("Xoá", for: .normal)
+        clear.setTitle(L("Xoá"), for: .normal)
         clear.titleLabel?.font = Theme.bold(15)
         clear.tintColor = Theme.accent
         clear.frame = CGRect(x: tableView.bounds.width - 76, y: 8, width: 60, height: 32)

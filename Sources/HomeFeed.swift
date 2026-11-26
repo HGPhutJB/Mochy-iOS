@@ -38,12 +38,12 @@ final class HomeFeed {
 
     /// Bài nổi bật hôm nay (đổi theo ngày, lấy từ hàng nhạc mới đầu tiên).
     func heroSong() -> (song: Song, kicker: String)? {
-        guard let shelf = shelves.first(where: { $0.title.hasPrefix("Vì bạn nghe") }) ?? shelves.first else { return nil }
+        guard let shelf = shelves.first(where: { $0.title.hasPrefix(L("Vì bạn nghe")) }) ?? shelves.first else { return nil }
         let pool = Array(shelf.songs.prefix(10))
         if pool.isEmpty { return nil }
         let day = Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0
         let song = pool[day % pool.count]
-        let kicker = shelf.title.hasPrefix("Vì bạn nghe") ? shelf.title.uppercased() : "GỢI Ý HÔM NAY"
+        let kicker = shelf.title.hasPrefix(L("Vì bạn nghe")) ? shelf.title.uppercased() : L("GỢI Ý HÔM NAY")
         return (song, kicker)
     }
 
@@ -70,7 +70,7 @@ final class HomeFeed {
                 switch result {
                 case .success(let songs):
                     if songs.count >= 3 {
-                        personal = [Shelf(title: "Vì bạn nghe \(artist)", songs: Array(songs.prefix(20)))]
+                        personal = [Shelf(title: Lf("Vì bạn nghe %@", artist), songs: Array(songs.prefix(20)))]
                     }
                 case .failure(let error):
                     errors.append(error.localizedDescription)
@@ -82,7 +82,7 @@ final class HomeFeed {
         group.enter()
         InnerTube.shared.browse("FEmusic_charts", formData: ["selectedValues": ["VN"]]) { result in
             if case .success(let found) = result, let first = found.first {
-                charts = [Shelf(title: "Thịnh hành", songs: Array(first.songs.prefix(20)))]
+                charts = [Shelf(title: L("Thịnh hành"), songs: Array(first.songs.prefix(20)))]
             }
             group.leave()
         }
@@ -91,7 +91,7 @@ final class HomeFeed {
         InnerTube.shared.search("nhạc việt mới \(year)") { result in
             switch result {
             case .success(let songs):
-                if !songs.isEmpty { vietNew = [Shelf(title: "Nhạc Việt mới", songs: Array(songs.prefix(20)))] }
+                if !songs.isEmpty { vietNew = [Shelf(title: L("Nhạc Việt mới"), songs: Array(songs.prefix(20)))] }
             case .failure(let error):
                 errors.append(error.localizedDescription)
             }
@@ -102,7 +102,7 @@ final class HomeFeed {
         InnerTube.shared.search("new songs \(year)") { result in
             switch result {
             case .success(let songs):
-                if !songs.isEmpty { worldNew = [Shelf(title: "Nhạc quốc tế mới", songs: Array(songs.prefix(20)))] }
+                if !songs.isEmpty { worldNew = [Shelf(title: L("Nhạc quốc tế mới"), songs: Array(songs.prefix(20)))] }
             case .failure(let error):
                 errors.append(error.localizedDescription)
             }
@@ -114,7 +114,7 @@ final class HomeFeed {
             self.isLoading = false
             let merged = personal + vietNew + charts + worldNew
             if merged.isEmpty {
-                self.lastError = errors.first ?? "Không tải được gợi ý. Kéo xuống để thử lại."
+                self.lastError = errors.first ?? L("Không tải được gợi ý. Kéo xuống để thử lại.")
             } else {
                 self.shelves = merged
                 let cache = Cache(day: HomeFeed.dayString(), shelves: merged)

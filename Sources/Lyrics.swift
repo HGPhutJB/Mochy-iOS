@@ -842,10 +842,10 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         if current >= 0 { scrollToCurrent(animated: false) }
     }
 
-    func showLoading() { set(lines: [], plain: nil, message: "Đang tìm lời…") }
+    func showLoading() { set(lines: [], plain: nil, message: L("Đang tìm lời…")) }
 
     func show(_ result: LyricsResult?) {
-        guard let r = result else { set(lines: [], plain: nil, message: "Không tìm thấy lời bài hát này"); return }
+        guard let r = result else { set(lines: [], plain: nil, message: L("Không tìm thấy lời bài hát này")); return }
         set(lines: r.synced, plain: r.synced.isEmpty ? r.plain : nil, message: nil)
     }
 

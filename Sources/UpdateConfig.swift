@@ -80,13 +80,13 @@ enum UpdateVerifier {
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attributes?[.size] as? NSNumber)?.int64Value ?? -1
         if size != expectedSize {
-            return UpdateError("Kích thước tệp không khớp (nhận \(size), cần \(expectedSize))")
+            return UpdateError(Lf("Kích thước tệp không khớp (nhận %@, cần %@)", size, expectedSize))
         }
         guard let actual = sha256Hex(ofFileAt: url) else {
-            return UpdateError("Không tính được SHA-256 của tệp đã tải")
+            return UpdateError(L("Không tính được SHA-256 của tệp đã tải"))
         }
         if actual != expectedSHA256.lowercased() {
-            return UpdateError("SHA-256 không khớp, tệp có thể đã bị sửa. Không cài đặt.")
+            return UpdateError(L("SHA-256 không khớp, tệp có thể đã bị sửa. Không cài đặt."))
         }
         return nil
     }

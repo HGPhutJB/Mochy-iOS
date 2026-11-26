@@ -101,7 +101,7 @@ final class DownloadManager {
         try? FileManager.default.removeItem(at: temp)
         FileManager.default.createFile(atPath: temp.path, contents: nil, attributes: nil)
         guard let handle = FileHandle(forWritingAtPath: temp.path) else {
-            finish(song, error: "Không tạo được tệp tạm.")
+            finish(song, error: L("Không tạo được tệp tạm."))
             return
         }
         fetch(song, info: info, handle: handle, temp: temp, offset: 0, total: nil)
@@ -119,7 +119,7 @@ final class DownloadManager {
         let written = ((try? FileManager.default.attributesOfItem(atPath: temp.path))?[.size] as? NSNumber)?.int64Value ?? 0
         if info.contentLength > 0 && written < Int64(Double(info.contentLength) * 0.98) {
             try? FileManager.default.removeItem(at: temp)
-            finish(song, error: "Tệp tải về bị thiếu (\(written) / \(info.contentLength) byte). Hãy thử tải lại.")
+            finish(song, error: Lf("Tệp tải về bị thiếu (%@ / %@ byte). Hãy thử tải lại.", written, info.contentLength))
             return
         }
         let target = Library.downloadsDirectory.appendingPathComponent(song.videoId + ".m4a")
@@ -127,7 +127,7 @@ final class DownloadManager {
         do {
             try FileManager.default.moveItem(at: temp, to: target)
         } catch {
-            finish(song, error: "Không lưu được tệp: \(error.localizedDescription)")
+            finish(song, error: Lf("Không lưu được tệp: %@", error.localizedDescription))
             return
         }
         // Độ dài thật + lời bài hát được lưu cạnh tệp nhạc để nghe offline đúng độ dài, có lời.
@@ -158,7 +158,7 @@ final class DownloadManager {
                     return
                 }
                 guard let http = response as? HTTPURLResponse, let data = data else {
-                    self.abort(song, handle: handle, temp: temp, error: "Không có phản hồi.")
+                    self.abort(song, handle: handle, temp: temp, error: L("Không có phản hồi."))
                     return
                 }
                 if http.statusCode == 416 && offset > 0 {
@@ -172,7 +172,7 @@ final class DownloadManager {
                     return
                 }
                 guard http.statusCode == 206 else {
-                    self.abort(song, handle: handle, temp: temp, error: "Máy chủ trả về HTTP \(http.statusCode).")
+                    self.abort(song, handle: handle, temp: temp, error: Lf("Máy chủ trả về HTTP %@.", http.statusCode))
                     return
                 }
                 handle.write(data)

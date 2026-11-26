@@ -50,10 +50,10 @@ final class WebLoginViewController: UIViewController, WKNavigationDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Đăng nhập \(service.title)"
+        title = Lf("Đăng nhập %@", service.title)
         view.backgroundColor = Theme.background
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Huỷ", style: .plain, target: self, action: #selector(cancel))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Xong", style: .done, target: self, action: #selector(doneTapped))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: L("Huỷ"), style: .plain, target: self, action: #selector(cancel))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: L("Xong"), style: .done, target: self, action: #selector(doneTapped))
         webView.frame = view.bounds
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.navigationDelegate = self
@@ -74,10 +74,10 @@ final class WebLoginViewController: UIViewController, WKNavigationDelegate {
             if self.required.allSatisfy({ jar[$0] != nil }) {
                 self.finish(header, jar)
             } else {
-                let alert = UIAlertController(title: "Chưa thấy đăng nhập",
-                                              message: "Hãy đăng nhập xong trong trang này (nếu đã đăng nhập thì mở trang chủ của \(self.service.title) một lần) rồi bấm Xong lại.",
+                let alert = UIAlertController(title: L("Chưa thấy đăng nhập"),
+                                              message: Lf("Hãy đăng nhập xong trong trang này (nếu đã đăng nhập thì mở trang chủ của %@ một lần) rồi bấm Xong lại.", self.service.title),
                                               preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+                alert.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
                 self.present(alert, animated: true, completion: nil)
             }
         }

@@ -7,7 +7,7 @@ final class AccountAvatarButton: UIButton {
     override init(frame: CGRect) {
         super.init(frame: CGRect(x: 0, y: 0, width: AccountAvatarButton.size, height: AccountAvatarButton.size))
         adjustsImageWhenHighlighted = true
-        accessibilityLabel = "Tài khoản"
+        accessibilityLabel = L("Tài khoản")
         widthAnchor.constraint(equalToConstant: AccountAvatarButton.size).isActive = true
         heightAnchor.constraint(equalToConstant: AccountAvatarButton.size).isActive = true
         refresh()

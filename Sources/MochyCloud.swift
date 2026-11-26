@@ -53,7 +53,7 @@ final class MochyCloud {
     fileprivate func request(_ path: String, method: String, body: [String: Any]?, auth: Bool,
                          completion: @escaping (Int, [String: Any]?) -> Void) {
         guard isConfigured, let url = URL(string: CloudConfig.baseURL + path) else {
-            completion(0, ["error": "Máy chủ tài khoản chưa được cấu hình."])
+            completion(0, ["error": L("Máy chủ tài khoản chưa được cấu hình.")])
             return
         }
         var req = URLRequest(url: url)
@@ -68,8 +68,8 @@ final class MochyCloud {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             var json: [String: Any]?
             if let data = data { json = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any] }
-            if status == 0 && json == nil { json = ["error": error?.localizedDescription ?? "Không kết nối được máy chủ."] }
-            if status != 0 && status != 200 && json == nil { json = ["error": "Máy chủ báo lỗi (mã \(status))."] }
+            if status == 0 && json == nil { json = ["error": error?.localizedDescription ?? L("Không kết nối được máy chủ.")] }
+            if status != 0 && status != 200 && json == nil { json = ["error": Lf("Máy chủ báo lỗi (mã %@).", status)] }
             DispatchQueue.main.async { completion(status, json) }
         }.resume()
     }
@@ -80,7 +80,7 @@ final class MochyCloud {
         let path = register ? "/register" : "/login"
         request(path, method: "POST", body: ["username": username, "password": password], auth: false) { status, json in
             guard status == 200, let token = json?["token"] as? String, let name = json?["username"] as? String else {
-                completion((json?["error"] as? String) ?? "Không thực hiện được (mã \(status)).")
+                completion((json?["error"] as? String) ?? Lf("Không thực hiện được (mã %@).", status))
                 return
             }
             Keychain.set(token, for: "mochy.token")
@@ -114,7 +114,7 @@ final class MochyCloud {
 
     func changePassword(old: String, new: String, completion: @escaping (String?) -> Void) {
         request("/password", method: "POST", body: ["oldPassword": old, "newPassword": new], auth: true) { status, json in
-            completion(status == 200 ? nil : ((json?["error"] as? String) ?? "Không đổi được mật khẩu."))
+            completion(status == 200 ? nil : ((json?["error"] as? String) ?? L("Không đổi được mật khẩu.")))
         }
     }
 
@@ -124,7 +124,7 @@ final class MochyCloud {
                 self.clearSession()
                 completion(nil)
             } else {
-                completion((json?["error"] as? String) ?? "Không xoá được tài khoản.")
+                completion((json?["error"] as? String) ?? L("Không xoá được tài khoản."))
             }
         }
     }
@@ -183,13 +183,13 @@ final class MochyCloud {
             let draw = CGSize(width: w * scale, height: h * scale)
             image.draw(in: CGRect(x: (side - draw.width) / 2, y: (side - draw.height) / 2, width: draw.width, height: draw.height))
         }
-        guard let data = square.jpegData(compressionQuality: 0.82) else { completion("Không xử lý được ảnh."); return }
+        guard let data = square.jpegData(compressionQuality: 0.82) else { completion(L("Không xử lý được ảnh.")); return }
         request("/avatar", method: "PUT", body: ["image": data.base64EncodedString()], auth: true) { status, json in
             if status == 200 {
                 self.setLocalAvatar(data)
                 completion(nil)
             } else {
-                completion((json?["error"] as? String) ?? "Không tải được ảnh lên.")
+                completion((json?["error"] as? String) ?? L("Không tải được ảnh lên."))
             }
         }
     }
@@ -200,7 +200,7 @@ final class MochyCloud {
                 self.setLocalAvatar(nil)
                 completion(nil)
             } else {
-                completion((json?["error"] as? String) ?? "Không xoá được ảnh.")
+                completion((json?["error"] as? String) ?? L("Không xoá được ảnh."))
             }
         }
     }
@@ -286,9 +286,9 @@ final class MochyCloud {
         if syncing { pending = true; completion?(false); return }
         syncing = true
         request("/data", method: "GET", body: nil, auth: true) { status, json in
-            if status == 401 { self.finish(error: "Phiên đăng nhập hết hạn, hãy đăng nhập lại.", expired: true, completion: completion); return }
+            if status == 401 { self.finish(error: L("Phiên đăng nhập hết hạn, hãy đăng nhập lại."), expired: true, completion: completion); return }
             guard status == 200, let json = json else {
-                self.finish(error: (json?["error"] as? String) ?? "Không đồng bộ được.", completion: completion)
+                self.finish(error: (json?["error"] as? String) ?? L("Không đồng bộ được."), completion: completion)
                 return
             }
             let remoteVersion = (json["version"] as? Int) ?? 0
@@ -317,7 +317,7 @@ final class MochyCloud {
         let blob = makeBlob()
         let fp = fingerprint(blob)
         if fp == lastHash { finish(error: nil, completion: completion); return }
-        guard let text = encode(blob, sorted: false) else { finish(error: "Không đóng gói được dữ liệu.", completion: completion); return }
+        guard let text = encode(blob, sorted: false) else { finish(error: L("Không đóng gói được dữ liệu."), completion: completion); return }
         request("/data", method: "PUT", body: ["baseVersion": version, "blob": text], auth: true) { status, json in
             if status == 200, let v = json?["version"] as? Int {
                 self.version = v
@@ -329,9 +329,9 @@ final class MochyCloud {
                 self.version = (json?["version"] as? Int) ?? self.version
                 self.pushIfNeeded(retry: false, completion: completion)
             } else if status == 401 {
-                self.finish(error: "Phiên đăng nhập hết hạn, hãy đăng nhập lại.", expired: true, completion: completion)
+                self.finish(error: L("Phiên đăng nhập hết hạn, hãy đăng nhập lại."), expired: true, completion: completion)
             } else {
-                self.finish(error: (json?["error"] as? String) ?? "Không đồng bộ được.", completion: completion)
+                self.finish(error: (json?["error"] as? String) ?? L("Không đồng bộ được."), completion: completion)
             }
         }
     }

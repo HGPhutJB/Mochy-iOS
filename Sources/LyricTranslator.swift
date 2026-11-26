@@ -121,7 +121,7 @@ final class LyricTranslator {
                     let t = out[k].trimmingCharacters(in: .whitespacesAndNewlines)
                     full[idx] = t.lowercased() == original.lowercased() ? "" : t
                 }
-                if out.count < texts.count { self.finish(key, videoId, target, nil, lastError ?? "Không dịch được."); return }
+                if out.count < texts.count { self.finish(key, videoId, target, nil, lastError ?? L("Không dịch được.")); return }
                 // Còn dòng chưa dịch được thì vẫn hiện nhưng không lưu, lần sau sẽ thử dịch bù.
                 let incomplete = out.contains { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                 self.finish(key, videoId, target, full, nil, store: !incomplete)
@@ -134,7 +134,7 @@ final class LyricTranslator {
                     next(i + 1)
                 } else {
                     lastError = error
-                    self.finish(key, videoId, target, nil, error ?? "Không dịch được.")
+                    self.finish(key, videoId, target, nil, error ?? L("Không dịch được."))
                 }
             }
         }
@@ -162,7 +162,7 @@ final class LyricTranslator {
             ("Google", google), ("Mochy", mochy), ("MyMemory", myMemory)
         ]
         func attempt(_ i: Int) {
-            guard i < providers.count else { completion(nil, i, "Không dịch được (các nguồn dịch đều lỗi hoặc hết lượt). Thử lại sau.") ; return }
+            guard i < providers.count else { completion(nil, i, L("Không dịch được (các nguồn dịch đều lỗi hoặc hết lượt). Thử lại sau.")) ; return }
             providers[i].1(chunk, source, target) { result in
                 guard let r = result, r.count == chunk.count else { attempt(i + 1); return }
                 // Dòng nào nguồn này bỏ trống thì dịch bù bằng các nguồn khác (từng dòng một).

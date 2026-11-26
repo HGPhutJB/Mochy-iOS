@@ -46,7 +46,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
         }
         title = pageName
         if navigationController?.viewControllers.first === self {
-            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Đóng", style: .plain, target: self, action: #selector(close))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(title: L("Đóng"), style: .plain, target: self, action: #selector(close))
         }
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -109,7 +109,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
         infoLabel.textColor = Theme.secondaryText
         infoLabel.textAlignment = .center
         header.addSubview(infoLabel)
-        for (button, title) in [(playButton, "Phát"), (shuffleButton, "Ngẫu nhiên")] {
+        for (button, title) in [(playButton, L("Phát")), (shuffleButton, L("Ngẫu nhiên"))] {
             button.setTitle(title, for: .normal)
             button.titleLabel?.font = Theme.bold(16)
             button.layer.cornerRadius = 10
@@ -145,7 +145,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
             } else {
                 InnerTube.shared.findArtistId(name: name) { [weak self] found in
                     guard let self = self else { return }
-                    if let found = found { self.loadArtist(found) } else { self.fail("Không tìm thấy trang nghệ sĩ \"\(name)\".") }
+                    if let found = found { self.loadArtist(found) } else { self.fail(Lf("Không tìm thấy trang nghệ sĩ \"%@\".", name)) }
                 }
             }
         case .album(let id, _):
@@ -156,7 +156,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
                     self.pageName = page.title
                     self.title = page.title
                     self.songs = page.songs
-                    self.infoLabel.text = page.artist + " · \(page.songs.count) bài"
+                    self.infoLabel.text = page.artist + Lf(" · %@ bài", page.songs.count)
                     self.show(thumbnail: page.thumbnail)
                 case .failure(let error):
                     self.fail(error.localizedDescription)
@@ -173,7 +173,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
                 if !page.name.isEmpty { self.pageName = page.name; self.title = page.name }
                 self.songs = page.songs
                 self.sections = page.sections
-                self.infoLabel.text = page.songs.isEmpty ? "" : "\(page.songs.count) bài nổi bật"
+                self.infoLabel.text = page.songs.isEmpty ? "" : Lf("%@ bài nổi bật", page.songs.count)
                 self.show(thumbnail: page.thumbnail)
             case .failure(let error):
                 self.fail(error.localizedDescription)
@@ -223,7 +223,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         if hasSongs && section == 0 {
-            if case .artist = kind { return "Bài hát" }
+            if case .artist = kind { return L("Bài hát") }
             return nil
         }
         return sections[section - (hasSongs ? 1 : 0)].title
@@ -257,7 +257,7 @@ final class MusicPageViewController: UIViewController, UITableViewDataSource, UI
         } else if card.browseId.hasPrefix("UC") {
             navigationController?.pushViewController(ArtistViewController(id: card.browseId, name: card.title), animated: true)
         } else {
-            Toast.show("Chưa mở được mục này")
+            Toast.show(L("Chưa mở được mục này"))
         }
     }
 

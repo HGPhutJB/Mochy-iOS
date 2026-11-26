@@ -11,7 +11,7 @@ final class ImportViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Nhập playlist"
+        title = L("Nhập playlist")
         view.backgroundColor = Theme.background
         navigationItem.largeTitleDisplayMode = .never
 
@@ -19,7 +19,7 @@ final class ImportViewController: UIViewController {
         intro.numberOfLines = 0
         intro.font = Theme.regular(14)
         intro.textColor = Theme.secondaryText
-        intro.text = "Dán link playlist/album/bài hát từ Spotify, Apple Music, Deezer, SoundCloud hoặc YouTube Music. Playlist phải ở chế độ công khai. Mochy sẽ ghép từng bài sang YouTube Music. Nhập lại cùng một link sẽ chỉ thêm các bài mới (đồng bộ)."
+        intro.text = L("Dán link playlist/album/bài hát từ Spotify, Apple Music, Deezer, SoundCloud hoặc YouTube Music. Playlist phải ở chế độ công khai. Mochy sẽ ghép từng bài sang YouTube Music. Nhập lại cùng một link sẽ chỉ thêm các bài mới (đồng bộ).")
 
         field.placeholder = "https://open.spotify.com/playlist/…"
         field.font = Theme.regular(16)
@@ -34,13 +34,13 @@ final class ImportViewController: UIViewController {
         field.leftViewMode = .always
         field.heightAnchor.constraint(equalToConstant: 48).isActive = true
 
-        button.setTitle("Dán từ clipboard", for: .normal)
+        button.setTitle(L("Dán từ clipboard"), for: .normal)
         button.titleLabel?.font = Theme.bold(15)
         button.tintColor = Theme.accent
         button.addTarget(self, action: #selector(pasteLink), for: .touchUpInside)
 
         let go = UIButton(type: .system)
-        go.setTitle("Nhập", for: .normal)
+        go.setTitle(L("Nhập"), for: .normal)
         go.titleLabel?.font = Theme.bold(17)
         go.setTitleColor(.white, for: .normal)
         go.backgroundColor = Theme.accent
@@ -85,19 +85,19 @@ final class ImportViewController: UIViewController {
         if busy { return }
         view.endEditing(true)
         guard let url = PlaylistImporter.extractURL(field.text ?? "") else {
-            status.text = "Không thấy link hợp lệ."
+            status.text = L("Không thấy link hợp lệ.")
             return
         }
         busy = true
         missedView.isHidden = true
         bar.isHidden = false
         bar.progress = 0
-        status.text = "Đang đọc playlist…"
+        status.text = L("Đang đọc playlist…")
         PlaylistImporter.shared.fetch(url) { [weak self] result in
             guard let self = self else { return }
             switch result {
             case .failure(let error):
-                self.finish("Lỗi: \(error.message)")
+                self.finish(Lf("Lỗi: %@", error.message))
             case .success(let collection):
                 self.run(collection, link: url.absoluteString)
             }
@@ -109,11 +109,11 @@ final class ImportViewController: UIViewController {
             save(collection, songs: collection.directSongs, missed: [], link: link)
             return
         }
-        status.text = "Đang ghép \(collection.tracks.count) bài…"
+        status.text = Lf("Đang ghép %@ bài…", collection.tracks.count)
         PlaylistImporter.shared.match(collection, progress: { [weak self] done, total in
             DispatchQueue.main.async {
                 self?.bar.progress = total > 0 ? Float(done) / Float(total) : 0
-                self?.status.text = "Đang ghép bài \(done)/\(total)…"
+                self?.status.text = Lf("Đang ghép bài %@/%@…", done, total)
             }
         }, completion: { [weak self] result in
             DispatchQueue.main.async {
@@ -124,14 +124,14 @@ final class ImportViewController: UIViewController {
 
     private func save(_ collection: ImportedCollection, songs: [Song], missed: [ImportedTrack], link: String) {
         if songs.isEmpty {
-            finish("Không ghép được bài nào.")
+            finish(L("Không ghép được bài nào."))
             return
         }
         let result = Library.shared.importPlaylist(name: collection.name, songs: songs, sourceURL: link)
-        var text = "Xong: playlist “\(result.playlist.name)” – thêm \(result.added) bài (từ \(collection.source))."
-        if collection.truncated { text += "\nLưu ý: nguồn này chỉ cho lấy tối đa khoảng 100 bài đầu." }
+        var text = Lf("Xong: playlist “%@” – thêm %@ bài (từ %@).", result.playlist.name, result.added, collection.source)
+        if collection.truncated { text += L("\nLưu ý: nguồn này chỉ cho lấy tối đa khoảng 100 bài đầu.") }
         if !missed.isEmpty {
-            text += "\nKhông ghép được \(missed.count) bài."
+            text += Lf("\nKhông ghép được %@ bài.", missed.count)
             missedView.text = missed.map { "• \($0.title) – \($0.artist)" }.joined(separator: "\n")
             missedView.isHidden = false
         }

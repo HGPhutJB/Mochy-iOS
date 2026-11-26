@@ -134,7 +134,7 @@ final class MiniPlayerView: UIView {
         let engine = PlayerEngine.shared
         guard let song = engine.currentSong else { return }
         titleLabel.text = song.title
-        artistLabel.text = engine.isLoading ? "Đang tải…" : song.artist
+        artistLabel.text = engine.isLoading ? L("Đang tải…") : song.artist
         let icon = engine.isPlaying ? Icons.pause(26) : Icons.play(26)
         playButton.setImage(icon, for: .normal)
         if shownVideoId != song.videoId {

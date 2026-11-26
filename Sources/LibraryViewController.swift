@@ -89,10 +89,10 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Thư viện"
+        title = L("Thư viện")
         view.backgroundColor = Theme.background
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Playlist mới", style: .plain, target: self, action: #selector(newPlaylist))
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Nhập", style: .plain, target: self, action: #selector(openImport))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: L("Playlist mới"), style: .plain, target: self, action: #selector(newPlaylist))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: L("Nhập"), style: .plain, target: self, action: #selector(openImport))
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = Theme.background
@@ -175,19 +175,19 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
         if indexPath.section == 0 {
             switch indexPath.row {
             case 0:
-                cell.configure(title: "Yêu thích", detail: "\(library.liked.count) bài",
+                cell.configure(title: L("Yêu thích"), detail: Lf("%@ bài", library.liked.count),
                                icon: Icons.heart(26, filled: true), color: Theme.accent)
             case 1:
                 let size = ByteCountFormatter.string(fromByteCount: library.totalDownloadBytes(), countStyle: .file)
-                cell.configure(title: "Đã tải xuống", detail: "\(library.downloads.count) bài · \(size)",
+                cell.configure(title: L("Đã tải xuống"), detail: Lf("%@ bài · %@", library.downloads.count, size),
                                icon: Icons.download(26), color: UIColor(red: 0.2, green: 0.6, blue: 0.95, alpha: 1))
             default:
-                cell.configure(title: "Lịch sử nghe", detail: "\(library.history.count) lượt nghe",
+                cell.configure(title: L("Lịch sử nghe"), detail: Lf("%@ lượt nghe", library.history.count),
                                icon: Icons.clock(26), color: UIColor(red: 0.45, green: 0.35, blue: 0.85, alpha: 1))
             }
         } else {
             let list = library.playlists[indexPath.row]
-            cell.configure(title: list.name, detail: "\(list.songs.count) bài", icon: Icons.music(26),
+            cell.configure(title: list.name, detail: Lf("%@ bài", list.songs.count), icon: Icons.music(26),
                            color: Theme.placeholder, coverURL: list.songs.first?.thumbnailURL,
                            coverImage: PlaylistCover.image(for: list) ?? MusicCover.image(for: list.cover))
         }
@@ -216,14 +216,14 @@ final class LibraryViewController: UIViewController, UITableViewDataSource, UITa
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         guard editingStyle == .delete, indexPath.section == 1 else { return }
         let list = Library.shared.playlists[indexPath.row]
-        DeleteDialogViewController.present(from: self, title: "Xoá playlist này?", message: LibraryViewController.deleteMessage(for: list),
+        DeleteDialogViewController.present(from: self, title: L("Xoá playlist này?"), message: LibraryViewController.deleteMessage(for: list),
                                            onConfirm: { Library.shared.deletePlaylist(id: list.id) },
                                            onCancel: { [weak self] in self?.tableView.reloadData() })
     }
 
     static func deleteMessage(for list: Playlist) -> String {
-        var text = "Playlist “\(list.name)” sẽ bị xoá khỏi thư viện. Các bài đã thích và đã tải xuống vẫn được giữ."
-        if (list.sourceURL ?? "").hasPrefix("acct:") { text += " Playlist đồng bộ này sẽ không được tạo lại nữa." }
-        return text + " Không thể hoàn tác."
+        var text = Lf("Playlist “%@” sẽ bị xoá khỏi thư viện. Các bài đã thích và đã tải xuống vẫn được giữ.", list.name)
+        if (list.sourceURL ?? "").hasPrefix("acct:") { text += L(" Playlist đồng bộ này sẽ không được tạo lại nữa.") }
+        return text + L(" Không thể hoàn tác.")
     }
 }

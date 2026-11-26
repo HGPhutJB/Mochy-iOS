@@ -8,6 +8,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case reverb
         case translateLang
         case crossfade
+        case language
         case videoBackdrop
         case downloadsInfo
         case clearDownloads
@@ -42,7 +43,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Cài đặt"
+        title = L("Cài đặt")
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = Theme.groupedBackground
 
@@ -86,35 +87,35 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
         let channelFooter: String
         if AppSettings.channel == .dev {
-            channelFooter = "Kênh Nhà phát triển nhận bản dựng mới nhất sau mỗi lần cập nhật mã nguồn, có thể còn lỗi. Bản cập nhật được kiểm tra chữ ký và SHA-256 trước khi cho cài."
+            channelFooter = L("Kênh Nhà phát triển nhận bản dựng mới nhất sau mỗi lần cập nhật mã nguồn, có thể còn lỗi. Bản cập nhật được kiểm tra chữ ký và SHA-256 trước khi cho cài.")
         } else {
-            channelFooter = "Kênh Ổn định chỉ nhận các bản đã được phát hành chính thức. Bản cập nhật được kiểm tra chữ ký và SHA-256 trước khi cho cài."
+            channelFooter = L("Kênh Ổn định chỉ nhận các bản đã được phát hành chính thức. Bản cập nhật được kiểm tra chữ ký và SHA-256 trước khi cho cài.")
         }
         let installKind = AppInfo.isJailbreakInstall ? "Jailbreak (.deb)" : "Sideload (.ipa)"
-        let builtChannel = AppInfo.builtChannel == "dev" ? "Nhà phát triển" : "Ổn định"
+        let builtChannel = AppInfo.builtChannel == "dev" ? L("Nhà phát triển") : L("Ổn định")
         var accountSections: [Section] = []
         if MochyCloud.shared.isConfigured {
-            accountSections = [Section(title: "Tài khoản", footer: "Đăng nhập để đồng bộ yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải giữa các máy.", rows: [.mochyAccount])]
+            accountSections = [Section(title: L("Tài khoản"), footer: L("Đăng nhập để đồng bộ yêu thích, playlist, lịch sử nghe, cài đặt và danh sách bài đã tải giữa các máy."), rows: [.mochyAccount])]
         }
         sections = accountSections + [
-            Section(title: "Giao diện", footer: "\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối.",
-                    rows: [.theme]),
-            Section(title: "Âm thanh", footer: "\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp.",
+            Section(title: L("Giao diện"), footer: L("\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối."),
+                    rows: [.theme, .language]),
+            Section(title: L("Âm thanh"), footer: L("\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp."),
                     rows: [.quality, .crossfade, .reverb, .translateLang, .videoBackdrop]),
-            Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .advanced]),
-            Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
-            Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
+            Section(title: L("Tính năng"), footer: nil, rows: [.recap, .importList, .advanced]),
+            Section(title: L("Bộ nhớ"), footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
+            Section(title: L("Dữ liệu"), footer: L("Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật."),
                     rows: [.backup, .restore]),
-            Section(title: "Cập nhật phần mềm", footer: channelFooter, rows: updateRows),
-            Section(title: "Thông tin bản dựng", footer: nil, rows: [
-                .info("Kênh của bản dựng", builtChannel),
+            Section(title: L("Cập nhật phần mềm"), footer: channelFooter, rows: updateRows),
+            Section(title: L("Thông tin bản dựng"), footer: nil, rows: [
+                .info(L("Kênh của bản dựng"), builtChannel),
                 .info("Commit", AppInfo.commit.isEmpty ? "—" : AppInfo.commit),
-                .info("Cách cài", installKind),
+                .info(L("Cách cài"), installKind),
                 .info("iOS", AppInfo.osVersion)
             ]),
-            Section(title: "Giới thiệu", footer: nil, rows: [
+            Section(title: L("Giới thiệu"), footer: nil, rows: [
                 .credits,
-                .link("Mã nguồn Mochy iOS", "GitHub", UpdateConfig.repoPage)
+                .link(L("Mã nguồn Mochy iOS"), "GitHub", UpdateConfig.repoPage)
             ])
         ]
     }
@@ -167,96 +168,102 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             let control = M3Segmented(items: [ThemeMode.system.title, ThemeMode.light.title, ThemeMode.dark.title], selected: Theme.mode.rawValue)
             control.addTarget(self, action: #selector(themeChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
-            cell.textLabel?.text = "Chế độ"
+            cell.textLabel?.text = L("Chế độ")
             cell.selectionStyle = .none
 
         case .quality:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            let control = M3Segmented(items: ["Cao nhất", "Tiết kiệm"], selected: AppSettings.audioQuality == .best ? 0 : 1)
+            let control = M3Segmented(items: [L("Cao nhất"), L("Tiết kiệm")], selected: AppSettings.audioQuality == .best ? 0 : 1)
             control.addTarget(self, action: #selector(qualityChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
-            cell.textLabel?.text = "Chất lượng"
+            cell.textLabel?.text = L("Chất lượng")
             cell.selectionStyle = .none
 
         case .reverb:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
-            cell.textLabel?.text = "Reverb (độ vang)"
-            cell.detailTextLabel?.text = ReverbSettings.enabled ? "Bật · \(Int(round(ReverbSettings.amount * 100)))%" : "Tắt"
+            cell.textLabel?.text = L("Reverb (độ vang)")
+            cell.detailTextLabel?.text = ReverbSettings.enabled ? Lf("Bật · %@%", Int(round(ReverbSettings.amount * 100))) : L("Tắt")
+            cell.accessoryType = .disclosureIndicator
+
+        case .language:
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = L("Ngôn ngữ")
+            cell.detailTextLabel?.text = Lang.setting.title
             cell.accessoryType = .disclosureIndicator
 
         case .crossfade:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
-            cell.textLabel?.text = "Chuyển bài mượt"
+            cell.textLabel?.text = L("Chuyển bài mượt")
             cell.detailTextLabel?.text = SettingsViewController.crossfadeTitle(CrossfadeSettings.seconds)
             cell.accessoryType = .disclosureIndicator
 
         case .translateLang:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
-            cell.textLabel?.text = "Dịch lời sang"
+            cell.textLabel?.text = L("Dịch lời sang")
             cell.detailTextLabel?.text = TranslateSettings.targetName
             cell.accessoryType = .disclosureIndicator
 
         case .downloadsInfo:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
-            cell.textLabel?.text = "Bài đã tải xuống"
+            cell.textLabel?.text = L("Bài đã tải xuống")
             let size = ByteCountFormatter.string(fromByteCount: Library.shared.totalDownloadBytes(), countStyle: .file)
-            cell.detailTextLabel?.text = "\(Library.shared.downloads.count) bài · \(size)"
+            cell.detailTextLabel?.text = Lf("%@ bài · %@", Library.shared.downloads.count, size)
             cell.selectionStyle = .none
 
         case .clearDownloads:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Xoá tất cả bài đã tải"
+            cell.textLabel?.text = L("Xoá tất cả bài đã tải")
             cell.textLabel?.textColor = Theme.accent
 
         case .clearHistory:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Xoá lịch sử nghe"
+            cell.textLabel?.text = L("Xoá lịch sử nghe")
             cell.textLabel?.textColor = Theme.accent
 
         case .backup:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Sao lưu dữ liệu ngay…"
+            cell.textLabel?.text = L("Sao lưu dữ liệu ngay…")
             cell.textLabel?.textColor = Theme.accent
 
         case .restore:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Khôi phục từ tệp sao lưu…"
+            cell.textLabel?.text = L("Khôi phục từ tệp sao lưu…")
             cell.textLabel?.textColor = Theme.accent
 
         case .accounts, .mochyAccount, .recap, .importList, .lastfm, .advanced:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
             switch row {
             case .accounts:
-                cell.textLabel?.text = "Tài khoản nhạc (đồng bộ playlist)"
+                cell.textLabel?.text = L("Tài khoản nhạc (đồng bộ playlist)")
                 let n = AccountSync.shared.linkedServices.count
-                cell.detailTextLabel?.text = n == 0 ? "Chưa liên kết" : "\(n) tài khoản"
+                cell.detailTextLabel?.text = n == 0 ? L("Chưa liên kết") : Lf("%@ tài khoản", n)
             case .mochyAccount:
-                cell.textLabel?.text = "Tài khoản Mochy"
-                cell.detailTextLabel?.text = MochyCloud.shared.isLoggedIn ? "@" + (MochyCloud.shared.username ?? "") : "Chưa đăng nhập"
-            case .advanced: cell.textLabel?.text = "Nguồn nâng cao (Canvas, Spicy Lyrics)"
+                cell.textLabel?.text = L("Tài khoản Mochy")
+                cell.detailTextLabel?.text = MochyCloud.shared.isLoggedIn ? "@" + (MochyCloud.shared.username ?? "") : L("Chưa đăng nhập")
+            case .advanced: cell.textLabel?.text = L("Nguồn nâng cao (Canvas, Spicy Lyrics)")
             case .recap: cell.textLabel?.text = "Recap"
-            case .importList: cell.textLabel?.text = "Nhập playlist từ link"
+            case .importList: cell.textLabel?.text = L("Nhập playlist từ link")
             default:
                 cell.textLabel?.text = "Last.fm"
-                cell.detailTextLabel?.text = LastFM.shared.isLoggedIn ? LastFM.shared.username : "Chưa đăng nhập"
+                cell.detailTextLabel?.text = LastFM.shared.isLoggedIn ? LastFM.shared.username : L("Chưa đăng nhập")
             }
             cell.accessoryType = .disclosureIndicator
 
         case .credits:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
-            cell.textLabel?.text = "Credit và giấy phép"
+            cell.textLabel?.text = L("Credit và giấy phép")
             cell.detailTextLabel?.text = "Mochy Music"
             cell.accessoryType = .disclosureIndicator
 
         case .version:
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
-            cell.textLabel?.text = "Phiên bản hiện tại"
+            cell.textLabel?.text = L("Phiên bản hiện tại")
             cell.detailTextLabel?.text = "\(AppInfo.version) (build \(AppInfo.build))"
             cell.selectionStyle = .none
 
         case .channel:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Kênh cập nhật"
+            cell.textLabel?.text = L("Kênh cập nhật")
             let control = M3Segmented(items: [UpdateChannel.stable.title, UpdateChannel.dev.title], selected: AppSettings.channel == .stable ? 0 : 1)
             control.addTarget(self, action: #selector(channelChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
@@ -264,7 +271,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         case .videoBackdrop:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Video làm nền khi phát (nếu có)"
+            cell.textLabel?.text = L("Video làm nền khi phát (nếu có)")
             let toggle = M3Switch()
             toggle.isOn = AppSettings.videoBackdrop
             toggle.addTarget(self, action: #selector(videoBackdropChanged(_:)), for: .valueChanged)
@@ -273,7 +280,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         case .autoCheck:
             cell = M3Cell(style: .default, reuseIdentifier: nil)
-            cell.textLabel?.text = "Tự động kiểm tra cập nhật"
+            cell.textLabel?.text = L("Tự động kiểm tra cập nhật")
             let toggle = M3Switch()
             toggle.isOn = AppSettings.autoCheck
             toggle.addTarget(self, action: #selector(autoCheckChanged(_:)), for: .valueChanged)
@@ -282,12 +289,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         case .checkNow:
             cell = M3Cell(style: .subtitle, reuseIdentifier: nil)
-            cell.textLabel?.text = "Kiểm tra cập nhật ngay"
+            cell.textLabel?.text = L("Kiểm tra cập nhật ngay")
             cell.textLabel?.textColor = Theme.accent
             cell.detailTextLabel?.numberOfLines = 0
             cell.detailTextLabel?.textColor = Theme.secondaryText
             if updater.isChecking {
-                cell.detailTextLabel?.text = "Đang kiểm tra…"
+                cell.detailTextLabel?.text = L("Đang kiểm tra…")
                 let spinner = UIActivityIndicatorView(style: Theme.spinnerStyle())
                 spinner.startAnimating()
                 cell.accessoryView = spinner
@@ -300,9 +307,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case .updateAvailable:
             cell = M3Cell(style: .subtitle, reuseIdentifier: nil)
             if let info = updater.available {
-                cell.textLabel?.text = "Có bản mới: \(info.version) (build \(info.build))"
-                let kind = info.channel == "dev" ? "Bản thử nghiệm" : "Bản ổn định"
-                cell.detailTextLabel?.text = "\(kind) · chạm để xem chi tiết và tải về"
+                cell.textLabel?.text = Lf("Có bản mới: %@ (build %@)", info.version, info.build)
+                let kind = info.channel == "dev" ? L("Bản thử nghiệm") : L("Bản ổn định")
+                cell.detailTextLabel?.text = Lf("%@ · chạm để xem chi tiết và tải về", kind)
             }
             cell.textLabel?.textColor = Theme.accent
             cell.textLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
@@ -349,6 +356,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             chooseTranslateLanguage()
         case .crossfade:
             chooseCrossfade()
+        case .language:
+            chooseLanguage()
         case .recap:
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:
@@ -360,9 +369,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case .credits:
             navigationController?.pushViewController(CreditsViewController(), animated: true)
         case .clearDownloads:
-            confirm("Xoá tất cả bài đã tải xuống?", button: "Xoá") { Library.shared.removeAllDownloads() }
+            confirm(L("Xoá tất cả bài đã tải xuống?"), button: L("Xoá")) { Library.shared.removeAllDownloads() }
         case .clearHistory:
-            confirm("Xoá toàn bộ lịch sử nghe?", button: "Xoá") { Library.shared.clearHistory() }
+            confirm(L("Xoá toàn bộ lịch sử nghe?"), button: L("Xoá")) { Library.shared.clearHistory() }
         case .backup:
             backupNow()
         case .restore:
@@ -387,15 +396,29 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         NotificationCenter.default.post(name: .themeChanged, object: nil)
     }
 
+    private func chooseLanguage() {
+        let sheet = UIAlertController(title: L("Ngôn ngữ"), message: L("Áp dụng đầy đủ sau khi mở lại app."), preferredStyle: .actionSheet)
+        for lang in [AppLanguage.auto, .vietnamese, .english] {
+            let title = (lang == Lang.setting ? "✓ " : "") + lang.title
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                Lang.setting = lang
+                self?.tableView.reloadData()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
+        if let pop = sheet.popoverPresentationController { pop.sourceView = view; pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1); pop.permittedArrowDirections = [] }
+        present(sheet, animated: true, completion: nil)
+    }
+
     static func crossfadeTitle(_ seconds: Int) -> String {
-        if seconds < 0 { return "Tắt" }
-        if seconds == 0 { return "Liền mạch" }
-        return "\(seconds) giây"
+        if seconds < 0 { return L("Tắt") }
+        if seconds == 0 { return L("Liền mạch") }
+        return Lf("%@ giây", seconds)
     }
 
     private func chooseCrossfade() {
-        let sheet = UIAlertController(title: "Chuyển bài mượt",
-                                      message: "Tải sẵn bài kế tiếp để không bị im giữa hai bài. \"Liền mạch\" nối ngay khi hết bài; số giây là thời gian hai bài hoà vào nhau.",
+        let sheet = UIAlertController(title: L("Chuyển bài mượt"),
+                                      message: L("Tải sẵn bài kế tiếp để không bị im giữa hai bài. \"Liền mạch\" nối ngay khi hết bài; số giây là thời gian hai bài hoà vào nhau."),
                                       preferredStyle: .actionSheet)
         for value in CrossfadeSettings.options {
             let title = (value == CrossfadeSettings.seconds ? "✓ " : "") + SettingsViewController.crossfadeTitle(value)
@@ -404,13 +427,13 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 self?.tableView.reloadData()
             })
         }
-        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
         if let pop = sheet.popoverPresentationController { pop.sourceView = view; pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1); pop.permittedArrowDirections = [] }
         present(sheet, animated: true, completion: nil)
     }
 
     private func chooseTranslateLanguage() {
-        let sheet = UIAlertController(title: "Dịch lời sang", message: "Nút dịch nằm cạnh tên bài trong màn hình lời.", preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: L("Dịch lời sang"), message: L("Nút dịch nằm cạnh tên bài trong màn hình lời."), preferredStyle: .actionSheet)
         for lang in TranslateSettings.languages {
             let title = (lang.code == TranslateSettings.target ? "✓ " : "") + lang.name
             sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
@@ -418,7 +441,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 self?.tableView.reloadData()
             })
         }
-        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
         if let pop = sheet.popoverPresentationController { pop.sourceView = view; pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1); pop.permittedArrowDirections = [] }
         present(sheet, animated: true, completion: nil)
     }
@@ -429,7 +452,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     private func confirm(_ message: String, button: String, _ action: @escaping () -> Void) {
         let alert = UIAlertController(title: message, message: nil, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
         alert.addAction(UIAlertAction(title: button, style: .destructive) { _ in action() })
         present(alert, animated: true, completion: nil)
     }
@@ -462,21 +485,21 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     private func showMessage(_ title: String, _ message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         present(alert, animated: true, completion: nil)
     }
 
     private func presentUpdateSheet() {
         guard let info = Updater.shared.available else { return }
-        var message = "Phiên bản \(info.version) (build \(info.build))"
+        var message = Lf("Phiên bản %@ (build %@)", info.version, info.build)
         if !info.commit.isEmpty { message += ", commit \(info.commit)" }
         message += "\n"
-        message += info.signed ? "Chữ ký số: hợp lệ ✓" : "Chữ ký số: chưa có (chỉ kiểm SHA-256)"
+        message += info.signed ? L("Chữ ký số: hợp lệ ✓") : L("Chữ ký số: chưa có (chỉ kiểm SHA-256)")
         if !info.notes.isEmpty {
             message += "\n\n" + String(info.notes.prefix(600))
         }
-        message += "\n\nDữ liệu của bạn được sao lưu tự động trước khi tải. Khi ký .ipa hãy giữ nguyên Bundle ID \(UpdateConfig.appId) và cài đè lên bản cũ để không mất dữ liệu."
-        let alert = UIAlertController(title: "Có bản cập nhật", message: message, preferredStyle: .alert)
+        message += Lf("\n\nDữ liệu của bạn được sao lưu tự động trước khi tải. Khi ký .ipa hãy giữ nguyên Bundle ID %@ và cài đè lên bản cũ để không mất dữ liệu.", UpdateConfig.appId)
+        let alert = UIAlertController(title: L("Có bản cập nhật"), message: message, preferredStyle: .alert)
 
         // Cả hai nguồn (.ipa để ký bằng ESign…, .deb cho Sileo/Filza) đều hiện ra; nguồn hợp với cách cài của bạn ghi "khuyên dùng".
         let recommended = Updater.shared.preferredFile(for: info)
@@ -486,29 +509,29 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             if let other = other, !files.contains(where: { $0.name == other.name }) { files.append(other) }
         }
         for file in files {
-            let kind = file.name.lowercased().hasSuffix(".deb") ? ".deb (Sileo, Filza)" : ".ipa (ký bằng ESign…)"
-            let star = file.name == recommended?.name ? " — khuyên dùng" : ""
-            alert.addAction(UIAlertAction(title: "Tải \(kind)\(star) · \(sizeText(file.size))", style: .default) { [weak self] _ in
+            let kind = file.name.lowercased().hasSuffix(".deb") ? ".deb (Sileo, Filza)" : L(".ipa (ký bằng ESign…)")
+            let star = file.name == recommended?.name ? L(" — khuyên dùng") : ""
+            alert.addAction(UIAlertAction(title: Lf("Tải %@%@ · %@", kind, star, sizeText(file.size)), style: .default) { [weak self] _ in
                 self?.startDownload(file)
             })
         }
         if AppInfo.isJailbreakInstall && info.channel == "stable" {
-            alert.addAction(UIAlertAction(title: "Mở Sileo (nguồn repo)", style: .default) { [weak self] _ in
+            alert.addAction(UIAlertAction(title: L("Mở Sileo (nguồn repo)"), style: .default) { [weak self] _ in
                 self?.open("sileo://package/\(UpdateConfig.appId)")
             })
         }
-        alert.addAction(UIAlertAction(title: "Xem trên GitHub", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: L("Xem trên GitHub"), style: .default) { [weak self] _ in
             self?.open(UpdateConfig.releasesPage)
         })
-        alert.addAction(UIAlertAction(title: "Để sau", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Để sau"), style: .cancel, handler: nil))
         present(alert, animated: true, completion: nil)
     }
 
     private func startDownload(_ file: UpdateFile) {
         // Sao lưu dữ liệu trước khi cập nhật, phòng khi bản ký lại dùng Bundle ID khác hoặc phải gỡ app.
         BackupManager.backup(name: "truoc-cap-nhat")
-        let alert = UIAlertController(title: "Đang tải", message: "\(file.name)\n0%", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Huỷ", style: .cancel) { _ in
+        let alert = UIAlertController(title: L("Đang tải"), message: "\(file.name)\n0%", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel) { _ in
             Updater.shared.cancelDownload()
         })
         present(alert, animated: true, completion: nil)
@@ -522,7 +545,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 case .success(let url):
                     self?.presentDownloaded(url, file: file)
                 case .failure(let error):
-                    self?.showMessage("Tải thất bại", error.message)
+                    self?.showMessage(L("Tải thất bại"), error.message)
                 }
             }
         })
@@ -531,21 +554,21 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     private func presentDownloaded(_ url: URL, file: UpdateFile) {
         let hint: String
         if file.name.lowercased().hasSuffix(".deb") {
-            hint = "Chọn Sileo (hoặc Filza) rồi bấm Cài đặt."
+            hint = L("Chọn Sileo (hoặc Filza) rồi bấm Cài đặt.")
         } else {
-            hint = "Chọn ESign / Sideloadly / AltStore để ký rồi cài."
+            hint = L("Chọn ESign / Sideloadly / AltStore để ký rồi cài.")
         }
-        let alert = UIAlertController(title: "Đã tải và xác minh",
-                                      message: "\(file.name)\nSHA-256 khớp với bản phát hành.\n\(hint)",
+        let alert = UIAlertController(title: L("Đã tải và xác minh"),
+                                      message: Lf("%@\nSHA-256 khớp với bản phát hành.\n%@", file.name, hint),
                                       preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Mở bằng ứng dụng khác…", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: L("Mở bằng ứng dụng khác…"), style: .default) { [weak self] _ in
             self?.openInOtherApp(url)
         })
-        alert.addAction(UIAlertAction(title: "Chia sẻ / Lưu vào Tệp…", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: L("Chia sẻ / Lưu vào Tệp…"), style: .default) { [weak self] _ in
             let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
             self?.present(controller, animated: true, completion: nil)
         })
-        alert.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         present(alert, animated: true, completion: nil)
     }
 
@@ -554,8 +577,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         documentController = controller
         let anchor = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
         if !controller.presentOpenInMenu(from: anchor, in: view, animated: true) {
-            showMessage("Không có ứng dụng phù hợp",
-                        "Không tìm thấy ứng dụng nào mở được tệp này. Hãy dùng \"Chia sẻ / Lưu vào Tệp…\" rồi mở bằng Sileo, Filza hoặc ESign.")
+            showMessage(L("Không có ứng dụng phù hợp"),
+                        L("Không tìm thấy ứng dụng nào mở được tệp này. Hãy dùng \"Chia sẻ / Lưu vào Tệp…\" rồi mở bằng Sileo, Filza hoặc ESign."))
         }
     }
 
@@ -563,7 +586,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     private func backupNow() {
         guard let url = BackupManager.backup(name: BackupManager.timestampName()) else {
-            showMessage("Không sao lưu được", "Không ghi được tệp sao lưu.")
+            showMessage(L("Không sao lưu được"), L("Không ghi được tệp sao lưu."))
             return
         }
         let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
@@ -584,9 +607,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         guard let url = urls.first else { return }
         switch BackupManager.restore(from: url) {
         case .success(let added):
-            showMessage("Đã khôi phục", added == 0 ? "Không có mục nào mới, dữ liệu hiện tại đã đủ." : "Đã gộp thêm \(added) mục vào thư viện.")
+            showMessage(L("Đã khôi phục"), added == 0 ? L("Không có mục nào mới, dữ liệu hiện tại đã đủ.") : Lf("Đã gộp thêm %@ mục vào thư viện.", added))
         case .failure(let error):
-            showMessage("Không khôi phục được", error.message)
+            showMessage(L("Không khôi phục được"), error.message)
         }
     }
 }

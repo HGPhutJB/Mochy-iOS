@@ -12,9 +12,9 @@ enum ReverbPreset: Int, CaseIterable {
     case small = 0, hall, cathedral
     var title: String {
         switch self {
-        case .small: return "Phòng nhỏ"
-        case .hall: return "Hội trường"
-        case .cathedral: return "Nhà thờ"
+        case .small: return L("Phòng nhỏ")
+        case .hall: return L("Hội trường")
+        case .cathedral: return L("Nhà thờ")
         }
     }
     /// Kích thước phòng (độ dài đuôi vang) và độ hút cao tần.
@@ -67,7 +67,7 @@ final class ReverbParams {
     var room: Float = 0.75
     var damping: Float = 0.4
     /// Trạng thái hiển thị cho người dùng (để biết reverb có đang chạy trên bài này không).
-    var status: String = "Chưa gắn vào bài nào"
+    var status: String = L("Chưa gắn vào bài nào")
     var frames: Int = 0
 }
 
@@ -124,7 +124,7 @@ final class ReverbDSP {
         let isFloat = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0 && asbd.mBitsPerChannel == 32
         guard isFloat, asbd.mSampleRate > 8000 else {
             ready = false
-            ReverbParams.shared.status = "Không áp dụng được: định dạng âm thanh \(asbd.mBitsPerChannel)-bit không hỗ trợ"
+            ReverbParams.shared.status = Lf("Không áp dụng được: định dạng âm thanh %@-bit không hỗ trợ", asbd.mBitsPerChannel)
             return
         }
         let scale = asbd.mSampleRate / 44100.0
@@ -135,7 +135,7 @@ final class ReverbDSP {
         interleaved = (asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved) == 0
         channels = Int(asbd.mChannelsPerFrame)
         ready = channels >= 1 && channels <= 2
-        ReverbParams.shared.status = ready ? "Đang hoạt động (\(Int(asbd.mSampleRate)) Hz, \(channels) kênh)" : "Không áp dụng được: \(channels) kênh"
+        ReverbParams.shared.status = ready ? Lf("Đang hoạt động (%@ Hz, %@ kênh)", Int(asbd.mSampleRate), channels) : Lf("Không áp dụng được: %@ kênh", channels)
     }
 
     @inline(__always)
@@ -247,10 +247,10 @@ enum ReverbTap {
         let status = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PostEffects, &tapRef)
         guard status == noErr, let tap = tapRef else {
             Unmanaged.passUnretained(dsp).release()
-            ReverbParams.shared.status = "Không tạo được bộ lọc (mã \(status))"
+            ReverbParams.shared.status = Lf("Không tạo được bộ lọc (mã %@)", status)
             return nil
         }
-        ReverbParams.shared.status = "Đã gắn, đang chờ âm thanh…"
+        ReverbParams.shared.status = L("Đã gắn, đang chờ âm thanh…")
         ReverbParams.shared.frames = 0
         let params = AVMutableAudioMixInputParameters(track: track)
         params.audioTapProcessor = tap
@@ -301,7 +301,7 @@ final class ReverbPanelViewController: UIViewController, UIGestureRecognizerDele
         titleRow.alignment = .center
 
         let amountTitle = UILabel()
-        amountTitle.text = "Độ vang"
+        amountTitle.text = L("Độ vang")
         amountTitle.font = Theme.bold(15)
         amountTitle.textColor = Theme.primaryText
         valueLabel.font = Theme.regular(15)
@@ -315,7 +315,7 @@ final class ReverbPanelViewController: UIViewController, UIGestureRecognizerDele
         slider.addTarget(self, action: #selector(sliderMoved), for: .valueChanged)
 
         let roomTitle = UILabel()
-        roomTitle.text = "Kiểu phòng"
+        roomTitle.text = L("Kiểu phòng")
         roomTitle.font = Theme.bold(15)
         roomTitle.textColor = Theme.primaryText
         presetControl.addTarget(self, action: #selector(presetChanged), for: .valueChanged)
@@ -331,7 +331,7 @@ final class ReverbPanelViewController: UIViewController, UIGestureRecognizerDele
         ])
 
         let note = UILabel()
-        note.text = "Reverb áp dụng ngay cho bài đang phát; tắt đi thì phát nguyên bản."
+        note.text = L("Reverb áp dụng ngay cho bài đang phát; tắt đi thì phát nguyên bản.")
         note.font = Theme.regular(12)
         note.textColor = Theme.secondaryText
         note.numberOfLines = 0
@@ -367,9 +367,9 @@ final class ReverbPanelViewController: UIViewController, UIGestureRecognizerDele
     }
 
     private func updateStatus() {
-        if !ReverbSettings.enabled { statusLabel.text = "Đang tắt"; return }
+        if !ReverbSettings.enabled { statusLabel.text = L("Đang tắt"); return }
         let p = ReverbParams.shared
-        statusLabel.text = p.status + (p.frames > 0 ? " · đã xử lý \(p.frames / 1000)k mẫu" : "")
+        statusLabel.text = p.status + (p.frames > 0 ? Lf(" · đã xử lý %@k mẫu", p.frames / 1000) : "")
     }
 
     private func updateValueLabel() { valueLabel.text = "\(Int(round(slider.value * 100)))%" }

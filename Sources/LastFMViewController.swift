@@ -12,7 +12,7 @@ final class LastFMViewController: UIViewController {
         title = "Last.fm"
         view.backgroundColor = Theme.background
         navigationItem.largeTitleDisplayMode = .never
-        for (f, p) in [(key, "API key"), (secret, "Shared secret"), (user, "Tên đăng nhập"), (pass, "Mật khẩu")] {
+        for (f, p) in [(key, "API key"), (secret, "Shared secret"), (user, L("Tên đăng nhập")), (pass, L("Mật khẩu"))] {
             f.placeholder = p
             f.font = Theme.regular(16)
             f.textColor = Theme.primaryText
@@ -37,7 +37,7 @@ final class LastFMViewController: UIViewController {
         toggle.onTintColor = Theme.accent
         toggle.addTarget(self, action: #selector(toggled), for: .valueChanged)
         let toggleLabel = UILabel()
-        toggleLabel.text = "Tự động scrobble"
+        toggleLabel.text = L("Tự động scrobble")
         toggleLabel.font = Theme.regular(16)
         toggleLabel.textColor = Theme.primaryText
         let toggleRow = UIStackView(arrangedSubviews: [toggleLabel, toggle])
@@ -60,9 +60,9 @@ final class LastFMViewController: UIViewController {
         [key, secret, user, pass].forEach { $0.isHidden = on }
         toggle.superview?.isHidden = !on
         toggle.isOn = LastFM.shared.scrobbleEnabled
-        action.setTitle(on ? "Đăng xuất" : "Đăng nhập", for: .normal)
-        status.text = on ? "Đã đăng nhập: \(LastFM.shared.username)" :
-            "Tạo API key miễn phí tại last.fm/api/account/create rồi nhập vào đây. Mật khẩu chỉ dùng một lần để lấy khoá phiên, không được lưu."
+        action.setTitle(on ? L("Đăng xuất") : L("Đăng nhập"), for: .normal)
+        status.text = on ? Lf("Đã đăng nhập: %@", LastFM.shared.username) :
+            L("Tạo API key miễn phí tại last.fm/api/account/create rồi nhập vào đây. Mật khẩu chỉ dùng một lần để lấy khoá phiên, không được lưu.")
     }
 
     @objc private func toggled() {
@@ -81,15 +81,15 @@ final class LastFMViewController: UIViewController {
         let u = (user.text ?? "").trimmingCharacters(in: .whitespaces)
         let p = pass.text ?? ""
         if k.isEmpty || s.isEmpty || u.isEmpty || p.isEmpty {
-            status.text = "Hãy điền đủ 4 ô."
+            status.text = L("Hãy điền đủ 4 ô.")
             return
         }
-        status.text = "Đang đăng nhập…"
+        status.text = L("Đang đăng nhập…")
         LastFM.shared.login(key: k, secret: s, username: u, password: p) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success: self?.pass.text = ""; self?.refresh()
-                case .failure(let e): self?.status.text = "Lỗi: \(e.message)"
+                case .failure(let e): self?.status.text = Lf("Lỗi: %@", e.message)
                 }
             }
         }

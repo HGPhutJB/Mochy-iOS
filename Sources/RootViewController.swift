@@ -325,13 +325,13 @@ final class RootViewController: UIViewController {
     // MARK: - Hộp thoại
 
     @objc private func playbackFailed(_ notification: Notification) {
-        let message = (notification.userInfo?["message"] as? String) ?? "Lỗi không rõ"
-        showAlert(title: "Không phát được", message: message)
+        let message = (notification.userInfo?["message"] as? String) ?? L("Lỗi không rõ")
+        showAlert(title: L("Không phát được"), message: message)
     }
 
     @objc private func downloadFailed(_ notification: Notification) {
-        let message = (notification.userInfo?["message"] as? String) ?? "Lỗi không rõ"
-        showAlert(title: "Tải xuống thất bại", message: message)
+        let message = (notification.userInfo?["message"] as? String) ?? L("Lỗi không rõ")
+        showAlert(title: L("Tải xuống thất bại"), message: message)
     }
 
     @objc private func handleUpdateState() {
@@ -340,19 +340,19 @@ final class RootViewController: UIViewController {
         guard let info = updater.available, !updater.isChecking, !updater.lastCheckWasManual,
               AppSettings.lastNotifiedBuild != info.build, presentedViewController == nil else { return }
         AppSettings.lastNotifiedBuild = info.build
-        let alert = UIAlertController(title: "Có bản cập nhật mới",
-                                      message: "Mochy iOS \(info.version) (build \(info.build)) đã sẵn sàng.",
+        let alert = UIAlertController(title: L("Có bản cập nhật mới"),
+                                      message: Lf("Mochy iOS %@ (build %@) đã sẵn sàng.", info.version, info.build),
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Xem", style: .default) { [weak self] _ in
             self?.select(3, animated: true)
         })
-        alert.addAction(UIAlertAction(title: "Để sau", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Để sau"), style: .cancel, handler: nil))
         present(alert, animated: true, completion: nil)
     }
 
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         var top: UIViewController = self
         while let presented = top.presentedViewController {
             top = presented

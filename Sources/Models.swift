@@ -58,9 +58,9 @@ enum MochyError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .http(let code, let host, let snippet):
-            return "Máy chủ \(host) trả về HTTP \(code)\n\(snippet)"
+            return Lf("Máy chủ %@ trả về HTTP %@\n%@", host, code, snippet)
         case .badResponse(let s):
-            return "Phản hồi không hợp lệ: \(s)"
+            return Lf("Phản hồi không hợp lệ: %@", s)
         case .noStream(let s):
             return s
         case .playback(let s):
@@ -93,7 +93,7 @@ struct StreamInfo {
             parts.append(String(format: "%.1f kHz", Double(sampleRate) / 1000.0).replacingOccurrences(of: ".", with: ","))
         }
         if bitrate > 0 { parts.append("\(bitrate / 1000) kbps") }
-        parts.append(unverified ? clientName + " (bị cắt)" : clientName)
+        parts.append(unverified ? clientName + L(" (bị cắt)") : clientName)
         return parts.joined(separator: " · ")
     }
 }

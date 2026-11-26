@@ -120,7 +120,7 @@ final class Library {
         if let index = playlists.firstIndex(where: { $0.id == Library.cloudDownloadsId }) {
             if missing.isEmpty { playlists.remove(at: index) } else { playlists[index].songs = missing }
         } else if !missing.isEmpty {
-            playlists.append(Playlist(id: Library.cloudDownloadsId, name: "Đã tải trên tài khoản", songs: missing, created: Date()))
+            playlists.append(Playlist(id: Library.cloudDownloadsId, name: L("Đã tải trên tài khoản"), songs: missing, created: Date()))
         } else {
             return
         }
@@ -160,7 +160,7 @@ final class Library {
     @discardableResult
     func createPlaylist(name: String, with song: Song? = nil) -> Playlist {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let list = Playlist(id: UUID().uuidString, name: clean.isEmpty ? "Playlist mới" : clean,
+        let list = Playlist(id: UUID().uuidString, name: clean.isEmpty ? L("Playlist mới") : clean,
                             songs: song.map { [$0] } ?? [], created: Date())
         playlists.insert(list, at: 0)
         save()
@@ -183,7 +183,7 @@ final class Library {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var unique: [Song] = []
         for song in songs where !unique.contains(song) { unique.append(song) }
-        var list = Playlist(id: UUID().uuidString, name: clean.isEmpty ? "Playlist nhập" : clean, songs: unique, created: Date())
+        var list = Playlist(id: UUID().uuidString, name: clean.isEmpty ? L("Playlist nhập") : clean, songs: unique, created: Date())
         list.sourceURL = sourceURL
         list.cover = cover
         playlists.insert(list, at: 0)

@@ -212,8 +212,8 @@ final class DeleteDialogViewController: UIViewController {
     private let trash = TrashIconView()
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
-    private let cancelButton = DialogButton(title: "Huỷ", filled: false)
-    private let deleteButton = DialogButton(title: "Xoá", filled: true)
+    private let cancelButton = DialogButton(title: L("Huỷ"), filled: false)
+    private let deleteButton = DialogButton(title: L("Xoá"), filled: true)
     private let titleText: String
     private let messageText: String
     private var onConfirm: (() -> Void)?

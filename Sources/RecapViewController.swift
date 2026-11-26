@@ -6,10 +6,10 @@ final class RecapViewController: UIViewController {
         case week, month, year, all
         var title: String {
             switch self {
-            case .week: return "Tuần"
-            case .month: return "Tháng"
-            case .year: return "Năm"
-            case .all: return "Tất cả"
+            case .week: return L("Tuần")
+            case .month: return L("Tháng")
+            case .year: return L("Năm")
+            case .all: return L("Tất cả")
             }
         }
         var days: Int? {
@@ -81,7 +81,7 @@ final class RecapViewController: UIViewController {
         let period = Period(rawValue: segmented.selectedSegmentIndex) ?? .month
         let list = records(in: period)
         if list.isEmpty {
-            content.addArrangedSubview(label("Chưa có dữ liệu nghe trong khoảng này.\nNghe nhạc một lúc rồi quay lại nhé.", font: Theme.regular(16), color: Theme.secondaryText, centered: true))
+            content.addArrangedSubview(label(L("Chưa có dữ liệu nghe trong khoảng này.\nNghe nhạc một lúc rồi quay lại nhé."), font: Theme.regular(16), color: Theme.secondaryText, centered: true))
             return
         }
         // Lượt nghe cũ (trước khi có Recap) chưa có thời gian: ước tính 3 phút rưỡi mỗi bài.
@@ -107,15 +107,15 @@ final class RecapViewController: UIViewController {
             days.insert(calendar.startOfDay(for: r.date))
         }
         let topSongs = songCounts.values.sorted { $0.count > $1.count }.prefix(5)
-        content.addArrangedSubview(section("Bài nghe nhiều nhất", rows: topSongs.enumerated().map { i, e in
-            (String(i + 1), e.record.title, e.record.artist, "\(e.count) lần", e.record.thumb)
+        content.addArrangedSubview(section(L("Bài nghe nhiều nhất"), rows: topSongs.enumerated().map { i, e in
+            (String(i + 1), e.record.title, e.record.artist, Lf("%@ lần", e.count), e.record.thumb)
         }))
         let topArtists = artistSeconds.sorted { $0.value > $1.value }.prefix(5)
-        content.addArrangedSubview(section("Nghệ sĩ nghe nhiều nhất", rows: topArtists.enumerated().map { i, e in
-            (String(i + 1), e.key, "", "\(minutes(e.value)) phút", nil)
+        content.addArrangedSubview(section(L("Nghệ sĩ nghe nhiều nhất"), rows: topArtists.enumerated().map { i, e in
+            (String(i + 1), e.key, "", Lf("%@ phút", minutes(e.value)), nil)
         }))
 
-        let names = ["", "Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
+        let names = ["", L("Chủ nhật"), L("Thứ Hai"), L("Thứ Ba"), L("Thứ Tư"), L("Thứ Năm"), L("Thứ Sáu"), L("Thứ Bảy")]
         let bestDay = (1...7).max { weekdays[$0] < weekdays[$1] } ?? 1
         let bestHour = (0..<24).max { hours[$0] < hours[$1] } ?? 0
         var streak = 0
@@ -125,11 +125,11 @@ final class RecapViewController: UIViewController {
             streak += 1
             cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor.addingTimeInterval(-86400)
         }
-        content.addArrangedSubview(section("Thói quen", rows: [
-            ("", "Ngày nghe nhiều nhất", names[bestDay], "", nil),
-            ("", "Giờ nghe nhiều nhất", "\(bestHour) giờ", "", nil),
-            ("", "Chuỗi ngày liên tiếp", "\(streak) ngày", "", nil),
-            ("", "Số ngày có nghe", "\(days.count) ngày", "", nil)
+        content.addArrangedSubview(section(L("Thói quen"), rows: [
+            ("", L("Ngày nghe nhiều nhất"), names[bestDay], "", nil),
+            ("", L("Giờ nghe nhiều nhất"), Lf("%@ giờ", bestHour), "", nil),
+            ("", L("Chuỗi ngày liên tiếp"), Lf("%@ ngày", streak), "", nil),
+            ("", L("Số ngày có nghe"), Lf("%@ ngày", days.count), "", nil)
         ]))
     }
 
@@ -152,11 +152,11 @@ final class RecapViewController: UIViewController {
         card.gradientLayer.endPoint = CGPoint(x: 1, y: 1)
         card.layer.cornerRadius = 20
         card.clipsToBounds = true
-        let caption = label("Bạn đã nghe", font: Theme.bold(15), color: UIColor(white: 1, alpha: 0.8))
-        let big = label("\(minutes) phút", font: Theme.bold(44), color: .white)
-        let hours = minutes >= 60 ? String(format: "≈ %.1f giờ", Double(minutes) / 60) : " "
+        let caption = label(L("Bạn đã nghe"), font: Theme.bold(15), color: UIColor(white: 1, alpha: 0.8))
+        let big = label(Lf("%@ phút", minutes), font: Theme.bold(44), color: .white)
+        let hours = minutes >= 60 ? String(format: L("≈ %.1f giờ"), Double(minutes) / 60) : " "
         let sub = label(hours, font: Theme.bold(16), color: UIColor(white: 1, alpha: 0.85))
-        let stats = label("\(plays) lượt nghe · \(songs) bài · \(artists) nghệ sĩ", font: Theme.regular(15), color: UIColor(white: 1, alpha: 0.9))
+        let stats = label(Lf("%@ lượt nghe · %@ bài · %@ nghệ sĩ", plays, songs, artists), font: Theme.regular(15), color: UIColor(white: 1, alpha: 0.9))
         let stack = UIStackView(arrangedSubviews: [caption, big, sub, stats])
         stack.axis = .vertical
         stack.spacing = 4

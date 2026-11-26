@@ -167,7 +167,7 @@ final class HeroView: UIView {
         artistLabel.textColor = UIColor(white: 1, alpha: 0.8)
         for label in [kickerLabel, titleLabel, artistLabel] { addSubview(label) }
 
-        playButton.setTitle("  Phát", for: .normal)
+        playButton.setTitle(L("  Phát"), for: .normal)
         playButton.setImage(Icons.play(16), for: .normal)
         playButton.tintColor = UIColor.black
         playButton.setTitleColor(UIColor.black, for: .normal)
@@ -234,7 +234,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
     @objc private func openAccount() {
         let vc = MochyAccountViewController()
-        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Xong", style: .done, target: self, action: #selector(closeAccount))
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: L("Xong"), style: .done, target: self, action: #selector(closeAccount))
         let nav = GlassNavigationController(rootViewController: vc)
         Theme.style(navigationBar: nav.navigationBar)
         nav.view.backgroundColor = Theme.background
@@ -247,7 +247,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Trang chủ"
+        title = L("Trang chủ")
         let avatar = AccountAvatarButton()
         avatar.addTarget(self, action: #selector(openAccount), for: .touchUpInside)
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: avatar)
@@ -320,7 +320,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
     private func load(force: Bool) {
         if HomeFeed.shared.shelves.isEmpty {
             spinner.startAnimating()
-            statusLabel.text = "Đang tìm nhạc mới cho bạn…"
+            statusLabel.text = L("Đang tìm nhạc mới cho bạn…")
         }
         HomeFeed.shared.load(force: force) { [weak self] in
             guard let self = self else { return }
@@ -356,7 +356,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             heroSong = nil
         }
         if shelves.isEmpty {
-            statusLabel.text = HomeFeed.shared.lastError ?? (HomeFeed.shared.isLoading ? "Đang tìm nhạc mới cho bạn…" : "Chưa có gợi ý. Kéo xuống để tải.")
+            statusLabel.text = HomeFeed.shared.lastError ?? (HomeFeed.shared.isLoading ? L("Đang tìm nhạc mới cho bạn…") : L("Chưa có gợi ý. Kéo xuống để tải."))
         } else {
             statusLabel.text = nil
         }

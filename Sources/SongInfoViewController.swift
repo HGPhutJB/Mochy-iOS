@@ -14,7 +14,7 @@ final class SongInfoViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Thông tin bài hát"
+        title = L("Thông tin bài hát")
         tableView.backgroundColor = Theme.groupedBackground
         tableView.allowsSelection = false
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(close))
@@ -31,46 +31,46 @@ final class SongInfoViewController: UITableViewController {
     private func build() {
         let engine = PlayerEngine.shared
         let isCurrent = engine.currentSong == song
-        var general: [(String, String)] = [("Tên", song.title), ("Nghệ sĩ", song.artist), ("Mã video", song.videoId)]
-        if let d = song.duration { general.append(("Độ dài (YouTube)", d)) }
-        sections.append(("Bài hát", general))
+        var general: [(String, String)] = [(L("Tên"), song.title), (L("Nghệ sĩ"), song.artist), (L("Mã video"), song.videoId)]
+        if let d = song.duration { general.append((L("Độ dài (YouTube)"), d)) }
+        sections.append((L("Bài hát"), general))
 
         var stream: [(String, String)] = []
         let downloaded = Library.shared.isDownloaded(song)
         if isCurrent, let info = engine.streamInfo {
-            stream.append(("Nguồn phát", engine.isLocal ? "Tệp đã tải" : "Trực tuyến"))
+            stream.append((L("Nguồn phát"), engine.isLocal ? L("Tệp đã tải") : L("Trực tuyến")))
             stream.append(("Codec", info.codecLabel))
             if info.bitrate > 0 { stream.append(("Bitrate", "\(info.bitrate / 1000) kbps")) }
-            if info.sampleRate > 0 { stream.append(("Tần số mẫu", "\(info.sampleRate) Hz")) }
+            if info.sampleRate > 0 { stream.append((L("Tần số mẫu"), "\(info.sampleRate) Hz")) }
             stream.append(("Client", info.clientName))
-            if info.contentLength > 0 { stream.append(("Dung lượng luồng", ByteCountFormatter.string(fromByteCount: info.contentLength, countStyle: .file))) }
-            if info.durationSeconds > 0 { stream.append(("Độ dài thật", time(info.durationSeconds))) }
-            stream.append(("Kiểm tra byte cuối", info.unverified ? "Không qua (có thể bị cắt)" : "Đạt"))
+            if info.contentLength > 0 { stream.append((L("Dung lượng luồng"), ByteCountFormatter.string(fromByteCount: info.contentLength, countStyle: .file))) }
+            if info.durationSeconds > 0 { stream.append((L("Độ dài thật"), time(info.durationSeconds))) }
+            stream.append((L("Kiểm tra byte cuối"), info.unverified ? L("Không qua (có thể bị cắt)") : L("Đạt")))
         } else if isCurrent && engine.isLocal {
-            stream.append(("Nguồn phát", "Tệp đã tải"))
+            stream.append((L("Nguồn phát"), L("Tệp đã tải")))
         } else {
-            stream.append(("Nguồn phát", isCurrent ? "Đang tải thông tin…" : "Không phải bài đang phát"))
+            stream.append((L("Nguồn phát"), isCurrent ? L("Đang tải thông tin…") : L("Không phải bài đang phát")))
         }
-        if isCurrent && engine.duration > 0 { stream.append(("Độ dài player", time(engine.duration))) }
-        sections.append(("Luồng âm thanh", stream))
+        if isCurrent && engine.duration > 0 { stream.append((L("Độ dài player"), time(engine.duration))) }
+        sections.append((L("Luồng âm thanh"), stream))
 
-        var offline: [(String, String)] = [("Đã tải xuống", downloaded ? "Có" : "Chưa")]
+        var offline: [(String, String)] = [(L("Đã tải xuống"), downloaded ? L("Có") : L("Chưa"))]
         if downloaded {
-            offline.append(("Dung lượng tệp", ByteCountFormatter.string(fromByteCount: Library.shared.fileSize(of: song), countStyle: .file)))
+            offline.append((L("Dung lượng tệp"), ByteCountFormatter.string(fromByteCount: Library.shared.fileSize(of: song), countStyle: .file)))
             let real = DownloadStore.realDuration(for: song)
-            if real > 0 { offline.append(("Độ dài đã lưu", time(real))) }
-            offline.append(("Lời kèm theo", DownloadStore.lyrics(song.videoId) != nil ? "Có" : "Không"))
+            if real > 0 { offline.append((L("Độ dài đã lưu"), time(real))) }
+            offline.append((L("Lời kèm theo"), DownloadStore.lyrics(song.videoId) != nil ? L("Có") : L("Không")))
         }
-        sections.append(("Ngoại tuyến", offline))
+        sections.append((L("Ngoại tuyến"), offline))
 
         var lyr: [(String, String)] = []
         if let result = LyricsService.shared.cached(song.videoId) ?? DownloadStore.lyrics(song.videoId) {
-            lyr.append(("Nguồn lời", result.source))
-            lyr.append(("Kiểu", result.synced.isEmpty ? "Lời thường" : "Đồng bộ theo \(result.synced.count) dòng"))
+            lyr.append((L("Nguồn lời"), result.source))
+            lyr.append((L("Kiểu"), result.synced.isEmpty ? L("Lời thường") : Lf("Đồng bộ theo %@ dòng", result.synced.count)))
         } else {
-            lyr.append(("Nguồn lời", "Chưa tải / không có"))
+            lyr.append((L("Nguồn lời"), L("Chưa tải / không có")))
         }
-        sections.append(("Lời bài hát", lyr))
+        sections.append((L("Lời bài hát"), lyr))
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int { return sections.count }

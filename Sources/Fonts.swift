@@ -6,7 +6,7 @@ enum RoundedFont {
     static let names = ["SFProRounded-Light", "SFProRounded-Regular", "SFProRounded-Medium", "SFProRounded-Semibold",
                         "SFProRounded-Bold", "SFProRounded-Heavy", "SFProRounded-Black"]
     static let weights: [UIFont.Weight] = [.light, .regular, .medium, .semibold, .bold, .heavy, .black]
-    static let titles = ["Rất nhạt", "Nhạt", "Vừa", "Hơi đậm", "Đậm", "Rất đậm", "Đậm nhất"]
+    static let titles = [L("Rất nhạt"), L("Nhạt"), L("Vừa"), L("Hơi đậm"), L("Đậm"), L("Rất đậm"), L("Đậm nhất")]
     static let defaultLyricIndex = 6   // mặc định chọn mức đậm nhất
 
     static func font(_ size: CGFloat, index: Int) -> UIFont {

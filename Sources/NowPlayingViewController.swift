@@ -552,7 +552,7 @@ final class NowPlayingViewController: UIViewController {
         infoA.set(title: song.title, artist: song.artist, explicit: explicit, liked: liked)
         infoB.set(title: song.title, artist: song.artist, explicit: explicit, liked: liked)
 
-        let context = engine.contextTitle ?? "Đang phát"
+        let context = engine.contextTitle ?? L("Đang phát")
         if contextPill.titleLabel.text != context {
             contextPill.titleLabel.text = context
             let width = (context as NSString).size(withAttributes: [.font: contextPill.titleLabel.font as Any]).width
@@ -726,7 +726,7 @@ final class NowPlayingViewController: UIViewController {
         guard TranslateSettings.enabled, let song = PlayerEngine.shared.currentSong, lyricsVideoId == song.videoId else { return }
         let texts = lyricsView.lineTexts
         guard !texts.isEmpty else {
-            if manual { Toast.show("Bài này chưa có lời đồng bộ theo dòng để dịch") }
+            if manual { Toast.show(L("Bài này chưa có lời đồng bộ theo dòng để dịch")) }
             return
         }
         let target = TranslateSettings.target
@@ -734,17 +734,17 @@ final class NowPlayingViewController: UIViewController {
             lyricsView.setTranslations(hit)
             return
         }
-        if manual { Toast.show("Đang dịch sang \(TranslateSettings.targetName)…") }
+        if manual { Toast.show(Lf("Đang dịch sang %@…", TranslateSettings.targetName)) }
         LyricTranslator.shared.translate(videoId: song.videoId, lines: texts, target: target) { [weak self] result, error in
             guard let self = self, TranslateSettings.enabled, self.lyricsVideoId == song.videoId, TranslateSettings.target == target else { return }
             if let result = result {
                 if result.allSatisfy({ $0.isEmpty }) {
-                    if manual { Toast.show("Lời bài này đã là \(TranslateSettings.targetName)") }
+                    if manual { Toast.show(Lf("Lời bài này đã là %@", TranslateSettings.targetName)) }
                 } else {
                     self.lyricsView.setTranslations(result)
                 }
             } else {
-                Toast.show(error ?? "Không dịch được")
+                Toast.show(error ?? L("Không dịch được"))
             }
         }
     }
@@ -795,48 +795,48 @@ final class NowPlayingViewController: UIViewController {
         var message: String? = nil
         if let stream = engine.streamInfo { message = stream.badge }
         let sheet = UIAlertController(title: song.title, message: message, preferredStyle: .actionSheet)
-        sheet.addAction(UIAlertAction(title: engine.sleepEnd != nil ? "Hẹn giờ tắt (đang bật)…" : "Hẹn giờ tắt nhạc…", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: engine.sleepEnd != nil ? L("Hẹn giờ tắt (đang bật)…") : L("Hẹn giờ tắt nhạc…"), style: .default) { [weak self] _ in
             self?.sleepTapped()
         })
-        sheet.addAction(UIAlertAction(title: ReverbSettings.enabled ? "Reverb (đang bật)…" : "Reverb…", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: ReverbSettings.enabled ? L("Reverb (đang bật)…") : "Reverb…", style: .default) { [weak self] _ in
             guard let self = self else { return }
             ReverbPanelViewController.present(from: self)
         })
-        sheet.addAction(UIAlertAction(title: "Thiết bị phát (AirPlay)…", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: L("Thiết bị phát (AirPlay)…"), style: .default) { [weak self] _ in
             self?.showRoutePicker()
         })
         let manager = DownloadManager.shared
         if manager.isActive(song.videoId) {
-            sheet.addAction(UIAlertAction(title: "Huỷ tải xuống", style: .default) { _ in manager.cancel(song.videoId) })
+            sheet.addAction(UIAlertAction(title: L("Huỷ tải xuống"), style: .default) { _ in manager.cancel(song.videoId) })
         } else if !Library.shared.isDownloaded(song) {
-            sheet.addAction(UIAlertAction(title: "Tải xuống", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: L("Tải xuống"), style: .default) { _ in
                 manager.start(song)
-                Toast.show("Đang tải xuống…")
+                Toast.show(L("Đang tải xuống…"))
             })
         }
-        sheet.addAction(UIAlertAction(title: "Thêm vào playlist, chia sẻ…", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: L("Thêm vào playlist, chia sẻ…"), style: .default) { [weak self] _ in
             guard let self = self else { return }
             SongActions.present(for: song, from: self, sourceView: self.moreGlass)
         })
-        sheet.addAction(UIAlertAction(title: "Thông tin bài hát", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: L("Thông tin bài hát"), style: .default) { [weak self] _ in
             let nav = GlassNavigationController(rootViewController: SongInfoViewController(song: song))
             self?.present(nav, animated: true, completion: nil)
         })
         if let artistId = song.artistId, !artistId.isEmpty {
-            sheet.addAction(UIAlertAction(title: "Xem nghệ sĩ", style: .default) { [weak self] _ in
+            sheet.addAction(UIAlertAction(title: L("Xem nghệ sĩ"), style: .default) { [weak self] _ in
                 guard let self = self else { return }
                 self.dismiss(animated: true) {
                     MusicPageViewController.present(artist: song.artist, id: artistId, from: UIApplication.shared.keyWindow?.rootViewController ?? self)
                 }
             })
         }
-        sheet.addAction(UIAlertAction(title: "Độ đậm lời: \(RoundedFont.titles[AppSettings.lyricWeight])…", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: Lf("Độ đậm lời: %@…", RoundedFont.titles[AppSettings.lyricWeight]), style: .default) { [weak self] _ in
             self?.showWeightPanel()
         })
-        sheet.addAction(UIAlertAction(title: "Làm mờ nền: \(AppSettings.playerBlur.title)…", style: .default) { [weak self] _ in
+        sheet.addAction(UIAlertAction(title: Lf("Làm mờ nền: %@…", AppSettings.playerBlur.title), style: .default) { [weak self] _ in
             self?.blurTapped()
         })
-        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = moreGlass
             popover.sourceRect = moreGlass.bounds
@@ -890,7 +890,7 @@ final class NowPlayingViewController: UIViewController {
 
     /// Chọn kiểu làm mờ phía dưới màn hình bìa: tự động theo ảnh bìa, luôn sáng hoặc luôn tối.
     private func blurTapped() {
-        let sheet = UIAlertController(title: "Làm mờ nền", message: "Áp dụng cho phần dưới màn hình đang phát khi chưa bật lời.", preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: L("Làm mờ nền"), message: L("Áp dụng cho phần dưới màn hình đang phát khi chưa bật lời."), preferredStyle: .actionSheet)
         for option in [PlayerBlur.auto, .light, .dark] {
             let mark = AppSettings.playerBlur == option ? "✓ " : ""
             sheet.addAction(UIAlertAction(title: mark + option.title, style: .default) { [weak self] _ in
@@ -898,7 +898,7 @@ final class NowPlayingViewController: UIViewController {
                 self?.refreshBackdrop(animated: true)
             })
         }
-        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = moreGlass
             popover.sourceRect = moreGlass.bounds
@@ -924,15 +924,15 @@ final class NowPlayingViewController: UIViewController {
     @objc private func shuffleTapped() {
         let engine = PlayerEngine.shared
         engine.setShuffle(!engine.shuffleOn)
-        Toast.show(engine.shuffleOn ? "Ngẫu nhiên: bật" : "Ngẫu nhiên: tắt")
+        Toast.show(engine.shuffleOn ? L("Ngẫu nhiên: bật") : L("Ngẫu nhiên: tắt"))
     }
 
     @objc private func repeatTapped() {
         PlayerEngine.shared.cycleRepeat()
         switch PlayerEngine.shared.repeatMode {
-        case .off: Toast.show("Lặp lại: tắt")
-        case .all: Toast.show("Lặp lại cả danh sách")
-        case .one: Toast.show("Lặp lại một bài")
+        case .off: Toast.show(L("Lặp lại: tắt"))
+        case .all: Toast.show(L("Lặp lại cả danh sách"))
+        case .one: Toast.show(L("Lặp lại một bài"))
         }
     }
 
@@ -942,21 +942,21 @@ final class NowPlayingViewController: UIViewController {
         if let end = engine.sleepEnd {
             let f = DateFormatter()
             f.dateFormat = "HH:mm"
-            message = "Đang hẹn tắt lúc \(f.string(from: end))"
+            message = Lf("Đang hẹn tắt lúc %@", f.string(from: end))
         }
-        let sheet = UIAlertController(title: "Hẹn giờ tắt nhạc", message: message, preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: L("Hẹn giờ tắt nhạc"), message: message, preferredStyle: .actionSheet)
         for minutes in [15, 30, 45, 60] {
-            sheet.addAction(UIAlertAction(title: "\(minutes) phút", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: Lf("%@ phút", minutes), style: .default) { _ in
                 engine.setSleepTimer(minutes: minutes)
-                Toast.show("Sẽ tắt nhạc sau \(minutes) phút")
+                Toast.show(Lf("Sẽ tắt nhạc sau %@ phút", minutes))
             })
         }
         if engine.sleepEnd != nil {
-            sheet.addAction(UIAlertAction(title: "Tắt hẹn giờ", style: .destructive) { _ in
+            sheet.addAction(UIAlertAction(title: L("Tắt hẹn giờ"), style: .destructive) { _ in
                 engine.setSleepTimer(minutes: nil)
             })
         }
-        sheet.addAction(UIAlertAction(title: "Đóng", style: .cancel, handler: nil))
+        sheet.addAction(UIAlertAction(title: L("Đóng"), style: .cancel, handler: nil))
         if let popover = sheet.popoverPresentationController {
             popover.sourceView = moreGlass
             popover.sourceRect = moreGlass.bounds
