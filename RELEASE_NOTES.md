@@ -1,3 +1,8 @@
+Mochy iOS 0.13.2 — sửa chuyển tab và ô chọn
+
+- Chuyển tab nhanh và gọn hơn: bỏ hiệu ứng phóng/thu màn hình, thanh tab nổi thu/mở và thấu kính trượt nhanh hơn, không còn nảy lâu ~0,5 giây.
+- Ô trong Cài đặt: khi chạm không còn hiện hình chữ nhật ngoài khung bo tròn.
+
 Mochy iOS 0.13.1 — sửa giao diện xoay ngang
 
 - Xoay ngang: bìa to hơn trên màn hình thấp (iPhone SE), tên bài chạy chữ thay vì bị cắt "Simp...", lời không còn bị cắt ở mép phải và được đo lại ngay khi xoay.

@@ -147,7 +147,7 @@ final class RootViewController: UIViewController {
             tabLeading.constant = 28
             NSLayoutConstraint.activate(miniExpanded)
         }
-        UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.4,
+        UIView.animate(withDuration: 0.38, delay: 0, usingSpringWithDamping: 0.92, initialSpringVelocity: 0.2,
                        options: [.allowUserInteraction, .beginFromCurrentState], animations: {
             self.view.layoutIfNeeded()
         }, completion: nil)
@@ -219,14 +219,11 @@ final class RootViewController: UIViewController {
         new.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         if animated {
             new.view.alpha = 0
-            new.view.transform = CGAffineTransform(translationX: 0, y: 18).scaledBy(x: 0.985, y: 0.985)
+            new.view.transform = .identity
             if new.view.superview == nil { contentView.insertSubview(new.view, belowSubview: old.view) } else { contentView.bringSubviewToFront(new.view) }
-            UIView.animate(withDuration: 0.38, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0.2,
-                           options: [.allowUserInteraction], animations: {
+            UIView.animate(withDuration: 0.22, delay: 0, options: [.allowUserInteraction, .curveEaseOut], animations: {
                 new.view.alpha = 1
-                new.view.transform = CGAffineTransform.identity
                 old.view.alpha = 0
-                old.view.transform = CGAffineTransform(scaleX: 0.985, y: 0.985)
             }, completion: { [weak self] _ in
                 // Chỉ lần chuyển tab MỚI NHẤT được dọn dẹp; các lần cũ bị ghi đè (bấm nhanh) thì bỏ qua.
                 guard let self = self, token == self.transitionToken else { return }

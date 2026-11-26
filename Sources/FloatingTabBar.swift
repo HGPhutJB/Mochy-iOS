@@ -216,7 +216,7 @@ final class FloatingTabBar: UIView {
         let changes = { self.layoutItems() }
         if animated {
             // Chạy cùng nhịp với thay đổi bề rộng do ràng buộc ở bên ngoài.
-            UIView.animate(withDuration: 0.55, delay: 0, usingSpringWithDamping: 0.78, initialSpringVelocity: 0.4,
+            UIView.animate(withDuration: 0.38, delay: 0, usingSpringWithDamping: 0.92, initialSpringVelocity: 0.2,
                            options: [.allowUserInteraction, .beginFromCurrentState], animations: changes, completion: nil)
         } else {
             changes()
@@ -247,12 +247,12 @@ final class FloatingTabBar: UIView {
 
     /// Thấu kính trượt bằng lò xo; giữa chừng bị kéo dãn theo chiều ngang, tới nơi thì co lại và nảy.
     private func moveLens(to point: CGPoint, stretch: Bool) {
-        UIView.animate(withDuration: 0.62, delay: 0, usingSpringWithDamping: 0.68, initialSpringVelocity: 0.8,
+        UIView.animate(withDuration: 0.42, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.6,
                        options: [.allowUserInteraction, .beginFromCurrentState], animations: {
             self.lens.center = point
         }, completion: nil)
         guard stretch else { return }
-        UIView.animateKeyframes(withDuration: 0.62, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+        UIView.animateKeyframes(withDuration: 0.42, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: {
             UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.3) {
                 self.lens.transform = CGAffineTransform(scaleX: 1.38, y: 0.86)
             }

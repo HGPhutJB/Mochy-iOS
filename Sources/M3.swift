@@ -98,6 +98,10 @@ final class M3Cell: UITableViewCell {
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         layer.masksToBounds = true
+        super.selectedBackgroundView = UIView()   // trong suốt: không để hệ thống vẽ nền chữ nhật
+        press.alpha = 0
+        press.isUserInteractionEnabled = false
+        insertSubview(press, at: 0)
         divider.backgroundColor = Theme.separator
         addSubview(divider)
         applyShape()
@@ -120,9 +124,34 @@ final class M3Cell: UITableViewCell {
         divider.isHidden = (position == .single || position == .bottom)
     }
 
+    /// Tự vẽ trạng thái chạm ngay trong lớp đã bo góc (nền chọn mặc định của hệ thống hiện thành hình chữ nhật).
+    private let press = UIView()
+    override var selectedBackgroundView: UIView? {
+        get { return super.selectedBackgroundView }
+        set { }   // Theme.style(cell:) đặt nền chọn hình chữ nhật; ô này tự vẽ nên bỏ qua
+    }
+
+    override func setHighlighted(_ highlighted: Bool, animated: Bool) {
+        super.setHighlighted(highlighted, animated: animated)
+        applyPress(highlighted, animated: animated)
+    }
+
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+        applyPress(selected, animated: animated)
+    }
+
+    private func applyPress(_ on: Bool, animated: Bool) {
+        guard selectionStyle != .none else { press.alpha = 0; return }
+        press.backgroundColor = Theme.chip
+        let change = { self.press.alpha = on ? 1 : 0 }
+        if animated { UIView.animate(withDuration: 0.2, animations: change) } else { change() }
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         let h = 1.0 / UIScreen.main.scale
+        press.frame = bounds
         divider.frame = CGRect(x: 16, y: bounds.height - h, width: bounds.width - 32, height: h)
     }
 }
