@@ -8,7 +8,7 @@ enum TranslateSettings {
     ]
 
     static var target: String {
-        get { return UserDefaults.standard.string(forKey: "lyrics.translateLang") ?? "vi" }
+        get { return UserDefaults.standard.string(forKey: "lyrics.translateLang") ?? (Lang.isVietnamese ? "vi" : "en") }
         set { UserDefaults.standard.set(newValue, forKey: "lyrics.translateLang") }
     }
 
