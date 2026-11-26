@@ -210,6 +210,7 @@ final class PlayerEngine: NSObject {
 
     func pause() {
         guard let player = player else { return }
+        finishFade()
         player.pause()
         isPlaying = false
         postState()
@@ -221,16 +222,15 @@ final class PlayerEngine: NSObject {
     }
 
     private func advance() {
-        if index + 1 < queue.count {
-            index += 1
-            startCurrent()
-        } else if repeatMode == .all && !queue.isEmpty {
-            index = 0
-            startCurrent()
-        } else {
+        guard let ni = nextIndexForAdvance() else {
             pause()
             seek(to: 0)
+            return
         }
+        // Đã tải sẵn bài kế thì chuyển ngay, không phải chờ lấy link.
+        if switchToPrepared(fade: 0) { return }
+        index = ni
+        startCurrent()
     }
 
     func previous() {
@@ -322,7 +322,12 @@ final class PlayerEngine: NSObject {
         let item = AVPlayerItem(asset: asset)
         let newPlayer = AVPlayer(playerItem: item)
         player = newPlayer
+        attach(newPlayer, item: item)
+        newPlayer.play()
+    }
 
+    /// Gắn các bộ quan sát (trạng thái, thời gian, hết bài, lỗi, canh chừng kẹt) vào player đang là player chính.
+    private func attach(_ newPlayer: AVPlayer, item: AVPlayerItem) {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] observedItem, _ in
             DispatchQueue.main.async {
                 self?.itemStatusChanged(observedItem)
@@ -354,7 +359,6 @@ final class PlayerEngine: NSObject {
             if !self.recover() { self.fail(error) }
         }
         startWatchdog()
-        newPlayer.play()
     }
 
     /// Phát lại từ vị trí hiện tại bằng link mới khi luồng bị đứt / hết hạn / kẹt. Trả về false nếu đã thử quá 3 lần.
@@ -468,6 +472,18 @@ final class PlayerEngine: NSObject {
         guard item === player?.currentItem else { return }
         switch item.status {
         case .readyToPlay:
+            handleReady(item)
+        case .failed:
+            let error: Error = item.error ?? MochyError.playback("AVPlayer báo lỗi không rõ")
+            if !recover() { fail(error) }
+        default:
+            break
+        }
+    }
+
+    /// Bài đã sẵn sàng phát: lấy độ dài, ghi lịch sử, gắn reverb, cập nhật giao diện.
+    private func handleReady(_ item: AVPlayerItem) {
+        do {
             let seconds = item.duration.seconds
             duration = seconds.isFinite ? seconds : 0
             // Tệp DASH của YouTube đôi khi khai độ dài sai (bài 3:54 hiện 6:50): tin độ dài YouTube trả về.
@@ -490,11 +506,6 @@ final class PlayerEngine: NSObject {
             if recoveries == 0, let song = currentSong { Library.shared.addHistory(song); PlayLog.shared.record(song) }
             postState()
             updateNowPlayingInfo()
-        case .failed:
-            let error: Error = item.error ?? MochyError.playback("AVPlayer báo lỗi không rõ")
-            if !recover() { fail(error) }
-        default:
-            break
         }
     }
 
@@ -512,6 +523,15 @@ final class PlayerEngine: NSObject {
                 advance()
             }
             return
+        }
+        if isPlaying, !isLoading, duration > 0, seconds.isFinite, CrossfadeSettings.seconds >= 0 {
+            let remaining = duration - seconds
+            if remaining <= 45 { prepareNextIfNeeded() }
+            let fade = Double(CrossfadeSettings.seconds)
+            if fade > 0, outgoing == nil, repeatMode != .one, let pr = prepared, pr.ready {
+                let len = min(fade, max(1, duration / 3))
+                if remaining <= len + 0.1, switchToPrepared(fade: len) { return }
+            }
         }
         NotificationCenter.default.post(name: .playerTimeChanged, object: nil)
     }
@@ -539,7 +559,7 @@ final class PlayerEngine: NSObject {
         return text
     }
 
-    private func teardownPlayer() {
+    private func detachObservers() {
         chunkLoader = nil
         if let observer = timeObserver {
             player?.removeTimeObserver(observer)
@@ -557,8 +577,160 @@ final class PlayerEngine: NSObject {
         watchdog = nil
         statusObservation?.invalidate()
         statusObservation = nil
+    }
+
+    private func teardownPlayer() {
+        finishFade()
+        discardPrepared()
+        detachObservers()
         player?.pause()
         player = nil
+    }
+
+    // MARK: - Chuyển bài mượt (tải sẵn bài kế + hoà vào nhau)
+
+    private struct PreparedTrack {
+        let song: Song
+        let player: AVPlayer
+        let item: AVPlayerItem
+        let stream: StreamInfo?
+        let local: Bool
+        let realDuration: Double
+        var ready: Bool
+    }
+
+    private var prepared: PreparedTrack?
+    private var preparedObservation: NSKeyValueObservation?
+    private var preparing: String?
+    private var prepareFailedKey: String?
+    private var outgoing: AVPlayer?
+    private var fadeTimer: Timer?
+    private var fadeStart = Date()
+    private var fadeLength: Double = 1
+
+    /// Chỉ số bài kế tiếp theo đúng logic của `advance` (nil nếu hết danh sách).
+    private func nextIndexForAdvance() -> Int? {
+        if index + 1 < queue.count { return index + 1 }
+        if repeatMode == .all && !queue.isEmpty { return 0 }
+        return nil
+    }
+
+    private func discardPrepared() {
+        preparedObservation?.invalidate()
+        preparedObservation = nil
+        prepared?.player.pause()
+        prepared = nil
+        preparing = nil
+    }
+
+    /// Kết thúc hiệu ứng hoà âm ngay: dừng bài cũ, bài mới về âm lượng đầy.
+    private func finishFade() {
+        fadeTimer?.invalidate()
+        fadeTimer = nil
+        outgoing?.pause()
+        outgoing = nil
+        player?.volume = 1
+    }
+
+    /// Gần hết bài thì tải sẵn bài kế (lấy link, dựng player, nạp đệm) để chuyển không bị khựng.
+    private func prepareNextIfNeeded() {
+        let upcoming: Int? = {
+            guard repeatMode != .one, let n = nextIndexForAdvance(), n != index else { return nil }
+            return n
+        }()
+        if let pr = prepared, upcoming == nil || queue[upcoming!].videoId != pr.song.videoId { discardPrepared() }
+        guard prepared == nil, preparing == nil, let ni = upcoming else { return }
+        let song = queue[ni]
+        let token = requestToken
+        let key = "\(token)-\(song.videoId)"
+        if prepareFailedKey == key { return }
+        preparing = song.videoId
+
+        func build(url: URL, headers: [String: String]?, stream: StreamInfo?, local: Bool, real: Double) {
+            guard token == self.requestToken, self.preparing == song.videoId else { return }
+            var options: [String: Any]? = nil
+            if let headers = headers { options = ["AVURLAssetHTTPHeaderFieldsKey": headers] }
+            let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+            let p = AVPlayer(playerItem: item)
+            p.volume = 0
+            self.prepared = PreparedTrack(song: song, player: p, item: item, stream: stream, local: local, realDuration: real, ready: false)
+            self.preparing = nil
+            self.preparedObservation = item.observe(\.status, options: [.new]) { [weak self] observed, _ in
+                DispatchQueue.main.async {
+                    guard let self = self, var pr = self.prepared, pr.item === observed else { return }
+                    if observed.status == .readyToPlay {
+                        pr.ready = true
+                        self.prepared = pr
+                        pr.player.preroll(atRate: 1.0, completionHandler: nil)
+                    } else if observed.status == .failed {
+                        self.discardPrepared()
+                        self.prepareFailedKey = key
+                    }
+                }
+            }
+        }
+
+        if let local = Library.shared.localURL(for: song.videoId) {
+            build(url: local, headers: nil, stream: nil, local: true, real: DownloadStore.realDuration(for: song))
+            return
+        }
+        InnerTube.shared.resolveStream(videoId: song.videoId) { [weak self] result in
+            guard let self = self, token == self.requestToken, self.preparing == song.videoId else { return }
+            switch result {
+            case .success(let info):
+                build(url: info.url, headers: ["User-Agent": info.userAgent], stream: info, local: false, real: info.durationSeconds)
+            case .failure:
+                self.preparing = nil
+                self.prepareFailedKey = key
+            }
+        }
+    }
+
+    /// Chuyển sang bài đã tải sẵn. fade > 0: bài cũ nhỏ dần, bài mới to dần trong `fade` giây. Trả về false nếu chưa có bài sẵn sàng.
+    @discardableResult
+    private func switchToPrepared(fade: Double) -> Bool {
+        guard let ni = nextIndexForAdvance(), let pr = prepared, pr.ready, queue[ni].videoId == pr.song.videoId else { return false }
+        finishFade()
+        let old = player
+        detachObservers()
+        preparedObservation?.invalidate()
+        preparedObservation = nil
+        prepared = nil
+        preparing = nil
+        index = ni
+        requestToken += 1
+        recoveries = 0
+        pendingSeek = 0
+        lastError = nil
+        isLocal = pr.local
+        localRealDuration = pr.realDuration
+        streamInfo = pr.stream
+        artwork = nil
+        currentTime = 0
+        loadArtwork(for: pr.song, token: requestToken)
+        player = pr.player
+        attach(pr.player, item: pr.item)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if fade > 0.05 {
+            pr.player.volume = 0
+            outgoing = old
+            fadeStart = Date()
+            fadeLength = fade
+            fadeTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in self?.fadeTick() }
+        } else {
+            pr.player.volume = 1
+            old?.pause()
+        }
+        pr.player.play()
+        handleReady(pr.item)
+        return true
+    }
+
+    private func fadeTick() {
+        let x = min(1, Date().timeIntervalSince(fadeStart) / fadeLength)
+        outgoing?.volume = Float(cos(x * Double.pi / 2))
+        player?.volume = Float(sin(x * Double.pi / 2))
+        if x >= 1 { finishFade() }
     }
 
     private func loadArtwork(for song: Song, token: Int) {
@@ -658,4 +830,16 @@ final class PlayerEngine: NSObject {
             }
         }
     }
+}
+
+/// Chuyển bài: -1 = tắt (như cũ), 0 = liền mạch (tải sẵn, không chồng), n > 0 = hoà vào nhau n giây.
+enum CrossfadeSettings {
+    static var seconds: Int {
+        get {
+            if UserDefaults.standard.object(forKey: "player.crossfade") == nil { return 5 }
+            return UserDefaults.standard.integer(forKey: "player.crossfade")
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "player.crossfade") }
+    }
+    static let options: [Int] = [-1, 0, 2, 4, 6, 8, 10, 12]
 }

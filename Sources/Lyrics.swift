@@ -511,7 +511,8 @@ final class LyricCell: UITableViewCell {
     let label = UILabel()
     let blurView = UIImageView()
     let subLabel = UILabel()
-    private var translation = ""
+    let subBlur = UIImageView()
+    private(set) var translation = ""
     private var scaleNow: CGFloat = 1
     static var translationFont: UIFont { return RoundedFont.font(17, index: 4) }
     private let wordsHost = UIView()
@@ -542,6 +543,10 @@ final class LyricCell: UITableViewCell {
         subLabel.alpha = 0
         subLabel.isHidden = true
         contentView.addSubview(subLabel)
+        subBlur.contentMode = .scaleToFill
+        subBlur.alpha = 0
+        subBlur.isHidden = true
+        contentView.addSubview(subBlur)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
@@ -559,10 +564,13 @@ final class LyricCell: UITableViewCell {
         buildWordsIfNeeded(width: w)
         if translation.isEmpty {
             subLabel.isHidden = true
+            subBlur.isHidden = true
         } else {
             subLabel.isHidden = false
+            subBlur.isHidden = false
             let th = LyricCell.measure(translation, width: w, font: LyricCell.translationFont)
             subLabel.frame = CGRect(x: LyricCell.sideInset, y: LyricCell.vPad + h * scaleNow + 2, width: w, height: th)
+            subBlur.frame = subLabel.frame.insetBy(dx: -LyricCell.blurPad, dy: -LyricCell.blurPad)
         }
     }
 
@@ -588,6 +596,8 @@ final class LyricCell: UITableViewCell {
         contentView.layer.removeAllAnimations()
         contentView.transform = .identity
         blurView.image = nil
+        subBlur.image = nil
+        subBlur.alpha = 0
         shownActive = false
         builtKey = ""
         wordViews.forEach { $0.removeFromSuperview() }
@@ -631,9 +641,11 @@ final class LyricCell: UITableViewCell {
         if scaleNow != s { scaleNow = s; setNeedsLayout() }
     }
 
-    func showDim(image: UIImage?, alpha: CGFloat) {
+    func showDim(image: UIImage?, alpha: CGFloat, subImage: UIImage? = nil) {
         shownActive = false
-        subLabel.alpha = min(0.8, alpha * 0.85)
+        subLabel.alpha = 0
+        subBlur.image = subImage
+        subBlur.alpha = alpha
         label.alpha = 0
         wordsHost.alpha = 0
         blurView.image = image
@@ -646,6 +658,7 @@ final class LyricCell: UITableViewCell {
         if !shownActive {
             shownActive = true
             subLabel.alpha = 0.85
+            subBlur.alpha = 0
             blurView.alpha = 0
             label.alpha = karaoke ? 0 : 1
             wordsHost.alpha = karaoke ? 1 : 0
@@ -1040,7 +1053,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         let bucket = min(max(distance, 1), 4)
         let base: [CGFloat] = [0, 0.72, 0.6, 0.5, 0.42]
         let alpha = immersive ? base[bucket] * 0.85 : base[bucket]
-        cell.showDim(image: blurred(row: cell.row, bucket: bucket, text: cell.label.text ?? "", keep: cell.blurView.image), alpha: alpha)
+        let sub = cell.translation.isEmpty ? nil : blurred(row: cell.row, bucket: bucket, text: cell.translation, keep: cell.subBlur.image, translation: true)
+        cell.showDim(image: blurred(row: cell.row, bucket: bucket, text: cell.label.text ?? "", keep: cell.blurView.image), alpha: alpha, subImage: sub)
     }
 
     /// Dựng sẵn ảnh mờ cho các dòng sắp đổi mức mờ (khi dòng hát chuyển 1–2 dòng tới) để lúc chuyển không bị rõ một chớp.
@@ -1054,6 +1068,9 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
                 let text = lines[r].text.isEmpty ? "♪" : lines[r].text
                 let bucket = min(max(abs(r - target), 1), 4)
                 _ = blurred(row: r, bucket: bucket, text: text, keep: nil, prewarm: true)
+                if r < translations.count, !translations[r].isEmpty {
+                    _ = blurred(row: r, bucket: bucket, text: translations[r], keep: nil, prewarm: true, translation: true)
+                }
             }
         }
     }
@@ -1064,16 +1081,17 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 
     /// Ảnh chữ mờ: trả ngay bản làm mờ nhanh (vẽ nhỏ rồi phóng to), đồng thời dựng bản Gaussian chất lượng đầy đủ
     /// ở luồng nền rồi thay vào — hình ảnh giống hệt trước, nhưng không còn chặn luồng chính khi đổi dòng.
-    private func blurred(row: Int, bucket: Int, text: String, keep: UIImage?, prewarm: Bool = false) -> UIImage? {
+    private func blurred(row: Int, bucket: Int, text: String, keep: UIImage?, prewarm: Bool = false, translation: Bool = false) -> UIImage? {
         let width = max(40, table.bounds.width - LyricCell.sideInset * 2)
-        let key = "\(row)-\(bucket)-\(Int(width))-\(immersive)"
+        let key = "\(translation ? "t" : "")\(row)-\(bucket)-\(Int(width))-\(immersive)"
         if let hit = blurCache[key] { return hit }
-        let attrs = LyricCell.attributes(font: LyricCell.font, color: .white)
-        let height = LyricCell.measure(text, width: width, font: LyricCell.font)
+        let font = translation ? LyricCell.translationFont : LyricCell.font
+        let attrs = LyricCell.attributes(font: font, color: .white)
+        let height = LyricCell.measure(text, width: width, font: font)
         let pad = LyricCell.blurPad
         let size = CGSize(width: width + pad * 2, height: height + pad * 2)
         let points: [CGFloat] = [0, 2.6, 4, 5.4, 6.8]
-        let radius = points[bucket] * (immersive ? 1.5 : 1.0)
+        let radius = points[bucket] * (immersive ? 1.5 : 1.0) * (translation ? 0.75 : 1.0)
         func drawFlat(scale: CGFloat) -> UIImage {
             let format = UIGraphicsImageRendererFormat()
             format.scale = scale

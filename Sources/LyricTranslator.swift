@@ -122,7 +122,9 @@ final class LyricTranslator {
                     full[idx] = t.lowercased() == original.lowercased() ? "" : t
                 }
                 if out.count < texts.count { self.finish(key, videoId, target, nil, lastError ?? "Không dịch được."); return }
-                self.finish(key, videoId, target, full, nil)
+                // Còn dòng chưa dịch được thì vẫn hiện nhưng không lưu, lần sau sẽ thử dịch bù.
+                let incomplete = out.contains { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                self.finish(key, videoId, target, full, nil, store: !incomplete)
                 return
             }
             self.run(chunk: chunks[i], source: source, target: target, from: provider) { result, usedProvider, error in
@@ -139,8 +141,8 @@ final class LyricTranslator {
         if chunks.isEmpty { finish(key, videoId, target, Array(repeating: "", count: lines.count), nil) } else { next(0) }
     }
 
-    private func finish(_ key: String, _ videoId: String, _ target: String, _ result: [String]?, _ error: String?) {
-        if let r = result {
+    private func finish(_ key: String, _ videoId: String, _ target: String, _ result: [String]?, _ error: String?, store: Bool = true) {
+        if let r = result, store {
             memory[key] = r
             if let data = try? JSONSerialization.data(withJSONObject: r, options: []) {
                 try? data.write(to: cacheDir.appendingPathComponent(safe(videoId) + "." + safe(target) + ".json"), options: .atomic)
@@ -154,7 +156,7 @@ final class LyricTranslator {
     // MARK: - Các nguồn dịch
 
     /// Thử từ nguồn `from` trở đi; trả về bản dịch + chỉ số nguồn đã dùng được.
-    private func run(chunk: [String], source: String, target: String, from: Int,
+    private func run(chunk: [String], source: String, target: String, from: Int, depth: Int = 0,
                      completion: @escaping ([String]?, Int, String?) -> Void) {
         let providers: [(String, ([String], String, String, @escaping ([String]?) -> Void) -> Void)] = [
             ("Google", google), ("Mochy", mochy), ("MyMemory", myMemory)
@@ -162,7 +164,17 @@ final class LyricTranslator {
         func attempt(_ i: Int) {
             guard i < providers.count else { completion(nil, i, "Không dịch được (các nguồn dịch đều lỗi hoặc hết lượt). Thử lại sau.") ; return }
             providers[i].1(chunk, source, target) { result in
-                if let r = result, r.count == chunk.count { completion(r, i, nil) } else { attempt(i + 1) }
+                guard let r = result, r.count == chunk.count else { attempt(i + 1); return }
+                // Dòng nào nguồn này bỏ trống thì dịch bù bằng các nguồn khác (từng dòng một).
+                var missing: [Int] = []
+                for (k, t) in r.enumerated() where t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append(k) }
+                if missing.isEmpty || depth > 0 { completion(r, i, nil); return }
+                let sub = missing.map { chunk[$0] }
+                self.run(chunk: sub, source: source, target: target, from: 0, depth: 1) { fixed, _, _ in
+                    var merged = r
+                    if let fixed = fixed, fixed.count == missing.count { for (n, k) in missing.enumerated() { merged[k] = fixed[n] } }
+                    completion(merged, i, nil)
+                }
             }
         }
         attempt(from)
@@ -180,10 +192,10 @@ final class LyricTranslator {
         }.resume()
     }
 
-    private func google(_ lines: [String], _ source: String, _ target: String, _ done: @escaping ([String]?) -> Void) {
+    private func googleBatch(_ lines: [String], _ source: String, _ target: String, _ done: @escaping ([String]?) -> Void) {
         var comps = URLComponents(string: "https://translate.googleapis.com/translate_a/single")!
         comps.queryItems = [
-            URLQueryItem(name: "client", value: "gtx"), URLQueryItem(name: "sl", value: source == "auto" ? "auto" : source),
+            URLQueryItem(name: "client", value: "gtx"), URLQueryItem(name: "sl", value: source),
             URLQueryItem(name: "tl", value: target), URLQueryItem(name: "dt", value: "t"),
             URLQueryItem(name: "q", value: lines.joined(separator: "\n"))
         ]
@@ -192,9 +204,39 @@ final class LyricTranslator {
             guard let root = obj as? [Any], let segs = root.first as? [Any] else { done(nil); return }
             var text = ""
             for s in segs { if let a = s as? [Any], let t = a.first as? String { text += t } }
+            if lines.count == 1 { done([text.replacingOccurrences(of: "\n", with: " ")]); return }
             var parts = text.components(separatedBy: "\n")
             while parts.count > lines.count, parts.last?.isEmpty == true { parts.removeLast() }
             done(parts.count == lines.count ? parts : nil)
+        }
+    }
+
+    /// Dịch cả cụm một lần; Google đôi khi gộp/tách dòng làm lệch số dòng, khi đó dịch từng dòng một (4 yêu cầu song song).
+    private func google(_ lines: [String], _ source: String, _ target: String, _ done: @escaping ([String]?) -> Void) {
+        googleBatch(lines, source, target) { result in
+            if let result = result { done(result); return }
+            if lines.count == 1 { done(nil); return }
+            var results = Array(repeating: "", count: lines.count)
+            var failed = false
+            var finished = false
+            var index = 0
+            var active = 0
+            func launch() {
+                while active < 4 && index < lines.count && !failed {
+                    let i = index
+                    index += 1
+                    active += 1
+                    self.googleBatch([lines[i]], source, target) { r in
+                        active -= 1
+                        if let r = r?.first { results[i] = r } else { failed = true }
+                        if finished { return }
+                        if failed { finished = true; done(nil); return }
+                        if index >= lines.count && active == 0 { finished = true; done(results); return }
+                        launch()
+                    }
+                }
+            }
+            launch()
         }
     }
 

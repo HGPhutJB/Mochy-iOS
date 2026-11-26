@@ -168,7 +168,6 @@ final class NowPlayingViewController: UIViewController {
     private let repeatButton = UIButton(type: .custom)
     private let lyricsButton = UIButton(type: .custom)
     private let deviceButton = UIButton(type: .custom)
-    private let deviceUnderline = UIView()
     private let routePicker = AVRoutePickerView()
     private let queueButton = UIButton(type: .custom)
 
@@ -353,9 +352,6 @@ final class NowPlayingViewController: UIViewController {
         icon(lyricsButton, Icons.lyrics(28), #selector(lyricsTapped))
         icon(deviceButton, Icons.reverb(28), #selector(reverbTapped))
         icon(queueButton, Icons.queue(28), #selector(queueTapped))
-        deviceUnderline.translatesAutoresizingMaskIntoConstraints = false
-        deviceUnderline.backgroundColor = NowPlayingViewController.green
-        deviceUnderline.layer.cornerRadius = 1.5
         routePicker.isUserInteractionEnabled = false
         routePicker.translatesAutoresizingMaskIntoConstraints = false
         routePicker.tintColor = UIColor.clear
@@ -363,7 +359,7 @@ final class NowPlayingViewController: UIViewController {
         routePicker.backgroundColor = UIColor.clear
 
         chromeBottom = [progress, elapsedLabel, remainingLabel, shuffleButton, shuffleDot, prevButton, playButton,
-                        nextButton, repeatButton, lyricsButton, deviceButton, routePicker, deviceUnderline, queueButton]
+                        nextButton, repeatButton, lyricsButton, deviceButton, routePicker, queueButton]
         chromeBottom.forEach { view.addSubview($0) }
 
         let guide = view.safeAreaLayoutGuide
@@ -443,10 +439,6 @@ final class NowPlayingViewController: UIViewController {
             deviceButton.widthAnchor.constraint(equalToConstant: 64), deviceButton.heightAnchor.constraint(equalToConstant: 48),
             ratio(queueButton, 1.6), queueButton.centerYAnchor.constraint(equalTo: lyricsButton.centerYAnchor),
             queueButton.widthAnchor.constraint(equalToConstant: 64), queueButton.heightAnchor.constraint(equalToConstant: 48),
-            deviceUnderline.centerXAnchor.constraint(equalTo: deviceButton.centerXAnchor),
-            deviceUnderline.topAnchor.constraint(equalTo: deviceButton.centerYAnchor, constant: 15),
-            deviceUnderline.widthAnchor.constraint(equalToConstant: 26),
-            deviceUnderline.heightAnchor.constraint(equalToConstant: 3),
             routePicker.centerXAnchor.constraint(equalTo: deviceButton.centerXAnchor),
             routePicker.centerYAnchor.constraint(equalTo: deviceButton.centerYAnchor),
             routePicker.widthAnchor.constraint(equalToConstant: 8),
@@ -625,10 +617,11 @@ final class NowPlayingViewController: UIViewController {
             self.progress.setTone(color)
             self.elapsedLabel.textColor = color.withAlphaComponent(0.8)
             self.remainingLabel.textColor = color.withAlphaComponent(0.8)
-            for b in [self.prevButton, self.playButton, self.nextButton, self.deviceButton, self.queueButton] {
+            for b in [self.prevButton, self.playButton, self.nextButton, self.queueButton] {
                 b.tintColor = color
             }
             self.lyricsButton.tintColor = self.mode == .cover ? color : NowPlayingViewController.green
+            self.deviceButton.tintColor = ReverbSettings.enabled ? NowPlayingViewController.green : color
             self.shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : color.withAlphaComponent(0.7)
             self.repeatButton.tintColor = engine.repeatMode == .off ? color.withAlphaComponent(0.7) : NowPlayingViewController.green
         }
@@ -764,11 +757,9 @@ final class NowPlayingViewController: UIViewController {
         ReverbPanelViewController.present(from: self)
     }
 
-    /// Gạch dưới dưới nút reverb khi đang bật.
+    /// Nút reverb được tô màu xanh khi đang bật (không còn gạch dưới).
     @objc private func updateReverbIndicator() {
-        UIView.animate(withDuration: 0.25) {
-            self.deviceUnderline.backgroundColor = ReverbSettings.enabled ? NowPlayingViewController.green : UIColor.clear
-        }
+        applyIconTints()
     }
 
     /// Mở bảng chọn thiết bị phát (AirPlay) bằng nút bên trong AVRoutePickerView.

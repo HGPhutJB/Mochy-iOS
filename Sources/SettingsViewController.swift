@@ -7,6 +7,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case quality
         case reverb
         case translateLang
+        case crossfade
         case videoBackdrop
         case downloadsInfo
         case clearDownloads
@@ -99,7 +100,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             Section(title: "Giao diện", footer: "\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối.",
                     rows: [.theme]),
             Section(title: "Âm thanh", footer: "\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp.",
-                    rows: [.quality, .reverb, .translateLang, .videoBackdrop]),
+                    rows: [.quality, .crossfade, .reverb, .translateLang, .videoBackdrop]),
             Section(title: "Tính năng", footer: nil, rows: [.recap, .importList, .advanced]),
             Section(title: "Bộ nhớ", footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: "Dữ liệu", footer: "Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật.",
@@ -181,6 +182,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = "Reverb (độ vang)"
             cell.detailTextLabel?.text = ReverbSettings.enabled ? "Bật · \(Int(round(ReverbSettings.amount * 100)))%" : "Tắt"
+            cell.accessoryType = .disclosureIndicator
+
+        case .crossfade:
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = "Chuyển bài mượt"
+            cell.detailTextLabel?.text = SettingsViewController.crossfadeTitle(CrossfadeSettings.seconds)
             cell.accessoryType = .disclosureIndicator
 
         case .translateLang:
@@ -340,6 +347,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             ReverbPanelViewController.present(from: self)
         case .translateLang:
             chooseTranslateLanguage()
+        case .crossfade:
+            chooseCrossfade()
         case .recap:
             navigationController?.pushViewController(RecapViewController(), animated: true)
         case .importList:
@@ -376,6 +385,28 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         guard let mode = ThemeMode(rawValue: sender.selectedSegmentIndex) else { return }
         Theme.mode = mode
         NotificationCenter.default.post(name: .themeChanged, object: nil)
+    }
+
+    static func crossfadeTitle(_ seconds: Int) -> String {
+        if seconds < 0 { return "Tắt" }
+        if seconds == 0 { return "Liền mạch" }
+        return "\(seconds) giây"
+    }
+
+    private func chooseCrossfade() {
+        let sheet = UIAlertController(title: "Chuyển bài mượt",
+                                      message: "Tải sẵn bài kế tiếp để không bị im giữa hai bài. \"Liền mạch\" nối ngay khi hết bài; số giây là thời gian hai bài hoà vào nhau.",
+                                      preferredStyle: .actionSheet)
+        for value in CrossfadeSettings.options {
+            let title = (value == CrossfadeSettings.seconds ? "✓ " : "") + SettingsViewController.crossfadeTitle(value)
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                CrossfadeSettings.seconds = value
+                self?.tableView.reloadData()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "Huỷ", style: .cancel, handler: nil))
+        if let pop = sheet.popoverPresentationController { pop.sourceView = view; pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1); pop.permittedArrowDirections = [] }
+        present(sheet, animated: true, completion: nil)
     }
 
     private func chooseTranslateLanguage() {
