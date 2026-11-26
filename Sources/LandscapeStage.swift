@@ -8,16 +8,16 @@ final class LandscapeStage: UIView {
     let progress = ProgressBar()
     private let elapsed = UILabel()
     private let remaining = UILabel()
-    let prev = UIButton(type: .custom)
-    let play = UIButton(type: .custom)
-    let next = UIButton(type: .custom)
+    let prevBtn = UIButton(type: .custom)
+    let playBtn = UIButton(type: .custom)
+    let nextBtn = UIButton(type: .custom)
     let close = UIButton(type: .custom)
     let translate = UIButton(type: .custom)
     let reverb = UIButton(type: .custom)
     let queue = UIButton(type: .custom)
     let more = UIButton(type: .custom)
     /// Các nút tự ẩn khi không chạm; bìa và tên bài luôn hiện.
-    private var controls: [UIView] { return [progress, elapsed, remaining, prev, play, next, close, translate, reverb, queue, more] }
+    private var controls: [UIView] { return [progress, elapsed, remaining, prevBtn, playBtn, nextBtn, close, translate, reverb, queue, more] }
 
     var onScrub: ((Double, Bool) -> Void)?
     private(set) var controlsVisible = true
@@ -41,15 +41,15 @@ final class LandscapeStage: UIView {
         remaining.text = "-:--"
         remaining.textAlignment = .right
         progress.onScrub = { [weak self] v, ended in self?.onScrub?(v, ended) }
-        prev.setImage(Icons.previous(40), for: .normal)
-        next.setImage(Icons.next(40), for: .normal)
-        play.setImage(Icons.pause(52), for: .normal)
+        prevBtn.setImage(Icons.previous(40), for: .normal)
+        nextBtn.setImage(Icons.next(40), for: .normal)
+        playBtn.setImage(Icons.pause(52), for: .normal)
         close.setImage(Icons.chevronDown(24), for: .normal)
         translate.setImage(InfoRow.translateImage(on: TranslateSettings.enabled), for: .normal)
         reverb.setImage(Icons.reverb(24), for: .normal)
         queue.setImage(Icons.queue(24), for: .normal)
         more.setImage(Icons.more(24), for: .normal)
-        for b in [prev, play, next, close, translate, reverb, queue, more] { b.tintColor = .white }
+        for b in [prevBtn, playBtn, nextBtn, close, translate, reverb, queue, more] { b.tintColor = .white }
         [cover, titleLabel, artistLabel].forEach { addSubview($0) }
         controls.forEach { addSubview($0) }
     }
@@ -93,9 +93,9 @@ final class LandscapeStage: UIView {
         remaining.frame = CGRect(x: x + s / 2, y: y, width: s / 2, height: 16)
         y += 24
         let cy = y + 30
-        play.frame = CGRect(x: 0, y: 0, width: 64, height: 64); play.center = CGPoint(x: x + s / 2, y: cy)
-        prev.frame = CGRect(x: 0, y: 0, width: 56, height: 56); prev.center = CGPoint(x: x + s / 2 - 84, y: cy)
-        next.frame = CGRect(x: 0, y: 0, width: 56, height: 56); next.center = CGPoint(x: x + s / 2 + 84, y: cy)
+        playBtn.frame = CGRect(x: 0, y: 0, width: 64, height: 64); playBtn.center = CGPoint(x: x + s / 2, y: cy)
+        prevBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); prevBtn.center = CGPoint(x: x + s / 2 - 84, y: cy)
+        nextBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); nextBtn.center = CGPoint(x: x + s / 2 + 84, y: cy)
 
         close.frame = CGRect(x: max(safe.left, 12) + 8, y: max(safe.top, 8) + 8, width: 44, height: 44)
         var rx = w - max(safe.right, 12) - 8
@@ -121,7 +121,7 @@ final class LandscapeStage: UIView {
     }
 
     func setPlaying(_ playing: Bool) {
-        play.setImage(playing ? Icons.pause(52) : Icons.play(52), for: .normal)
+        playBtn.setImage(playing ? Icons.pause(52) : Icons.play(52), for: .normal)
     }
 
     func setControls(visible: Bool, animated: Bool) {

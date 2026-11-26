@@ -336,9 +336,9 @@ final class NowPlayingViewController: UIViewController {
         stage.alpha = 0
         stage.isHidden = true
         stage.onScrub = { [weak self] value, ended in self?.scrubbed(value, ended: ended) }
-        stage.prev.addTarget(self, action: #selector(prevTapped), for: .touchUpInside)
-        stage.play.addTarget(self, action: #selector(playTapped), for: .touchUpInside)
-        stage.next.addTarget(self, action: #selector(nextTapped), for: .touchUpInside)
+        stage.prevBtn.addTarget(self, action: #selector(prevTapped), for: .touchUpInside)
+        stage.playBtn.addTarget(self, action: #selector(playTapped), for: .touchUpInside)
+        stage.nextBtn.addTarget(self, action: #selector(nextTapped), for: .touchUpInside)
         stage.close.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
         stage.translate.addTarget(self, action: #selector(translateTapped), for: .touchUpInside)
         stage.reverb.addTarget(self, action: #selector(reverbTapped), for: .touchUpInside)
