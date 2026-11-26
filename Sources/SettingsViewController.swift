@@ -8,6 +8,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case reverb
         case translateLang
         case crossfade
+        case hidePast
         case language
         case videoBackdrop
         case downloadsInfo
@@ -101,7 +102,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             Section(title: L("Giao diện"), footer: L("\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối."),
                     rows: [.theme, .language]),
             Section(title: L("Âm thanh"), footer: L("\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp."),
-                    rows: [.quality, .crossfade, .reverb, .translateLang, .videoBackdrop]),
+                    rows: [.quality, .crossfade, .reverb, .translateLang, .hidePast, .videoBackdrop]),
             Section(title: L("Tính năng"), footer: nil, rows: [.recap, .importList, .advanced]),
             Section(title: L("Bộ nhớ"), footer: nil, rows: [.downloadsInfo, .clearDownloads, .clearHistory]),
             Section(title: L("Dữ liệu"), footer: L("Sao lưu gồm yêu thích, playlist, lịch sử nghe và cài đặt (không gồm tệp nhạc đã tải). Tệp nằm trong Tệp ▸ Mochy ▸ MochyBackup. Khôi phục luôn là gộp, không xoá dữ liệu đang có. App tự sao lưu mỗi khi mở và trước khi cập nhật."),
@@ -195,6 +196,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell = M3Cell(style: .value1, reuseIdentifier: nil)
             cell.textLabel?.text = L("Chuyển bài mượt")
             cell.detailTextLabel?.text = SettingsViewController.crossfadeTitle(CrossfadeSettings.seconds)
+            cell.accessoryType = .disclosureIndicator
+
+        case .hidePast:
+            cell = M3Cell(style: .value1, reuseIdentifier: nil)
+            cell.textLabel?.text = L("Ẩn lời đã hát")
+            cell.detailTextLabel?.text = SettingsViewController.hidePastTitle(AppSettings.hidePastLyrics)
             cell.accessoryType = .disclosureIndicator
 
         case .translateLang:
@@ -356,6 +363,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             chooseTranslateLanguage()
         case .crossfade:
             chooseCrossfade()
+        case .hidePast:
+            chooseHidePast()
         case .language:
             chooseLanguage()
         case .recap:
@@ -414,6 +423,28 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         if seconds < 0 { return L("Tắt") }
         if seconds == 0 { return L("Liền mạch") }
         return Lf("%@ giây", seconds)
+    }
+
+    static func hidePastTitle(_ v: Int) -> String {
+        switch v {
+        case 1: return L("Luôn ẩn")
+        case 2: return L("Luôn hiện")
+        default: return L("Tự động (xoay ngang)")
+        }
+    }
+
+    private func chooseHidePast() {
+        let sheet = UIAlertController(title: L("Ẩn lời đã hát"), message: L("Các dòng lời đã trôi qua sẽ biến mất, chỉ còn dòng đang hát và các dòng sắp tới."), preferredStyle: .actionSheet)
+        for value in [0, 1, 2] {
+            let title = (value == AppSettings.hidePastLyrics ? "✓ " : "") + SettingsViewController.hidePastTitle(value)
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                AppSettings.hidePastLyrics = value
+                self?.tableView.reloadData()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: L("Huỷ"), style: .cancel, handler: nil))
+        if let pop = sheet.popoverPresentationController { pop.sourceView = view; pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1); pop.permittedArrowDirections = [] }
+        present(sheet, animated: true, completion: nil)
     }
 
     private func chooseCrossfade() {

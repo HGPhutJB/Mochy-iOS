@@ -134,6 +134,7 @@ final class MochyCloud {
     var badges: [String] { return UserDefaults.standard.stringArray(forKey: "cloud.badges") ?? [] }
     var isVerified: Bool { return badges.contains("verified") }
     var isOwner: Bool { return badges.contains("owner") }
+    var isBlue: Bool { return badges.contains("blue") }
 
     func refreshProfile() {
         guard isLoggedIn else { return }

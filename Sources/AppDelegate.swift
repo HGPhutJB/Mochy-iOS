@@ -25,6 +25,11 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
+    /// Chỉ màn hình đang phát được xoay ngang; mọi màn hình khác luôn dọc.
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        return OrientationPolicy.allowLandscape ? .allButUpsideDown : .portrait
+    }
+
     /// Đổi sáng/tối: dựng lại toàn bộ giao diện với hiệu ứng mờ dần, giữ nguyên tab đang mở.
     @objc private func themeChanged() {
         guard let window = window else { return }
@@ -46,4 +51,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         BackupManager.autoBackupIfNeeded()
         MochyCloud.shared.syncNow()
     }
+}
+
+enum OrientationPolicy {
+    /// Bật khi màn hình đang phát hiện ra.
+    static var allowLandscape = false
 }

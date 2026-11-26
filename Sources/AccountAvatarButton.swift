@@ -25,12 +25,14 @@ final class AccountAvatarButton: UIButton {
     }
 
     /// Tick đen đã xác minh: hình tròn đen, dấu ✓ trắng, viền trắng mảnh để vẫn thấy trên nền tối.
-    static func verifiedTick(size s: CGFloat) -> UIImage {
+    static let blueTick = UIColor(red: 0.11, green: 0.61, blue: 0.94, alpha: 1)
+
+    static func verifiedTick(size s: CGFloat, color: UIColor = .black) -> UIImage {
         return UIGraphicsImageRenderer(size: CGSize(width: s, height: s)).image { ctx in
             let c = ctx.cgContext
             let inset = s * 0.04
             let rect = CGRect(x: inset, y: inset, width: s - 2 * inset, height: s - 2 * inset)
-            UIColor.black.setFill()
+            color.setFill()
             c.fillEllipse(in: rect)
             UIColor(white: 1, alpha: Theme.isDark ? 0.9 : 0).setStroke()
             c.setLineWidth(s * 0.06)

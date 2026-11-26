@@ -222,7 +222,7 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         present(sheet, animated: true)
     }
 
-    /// Tên tài khoản kèm huy hiệu: tick đen (đã xác minh) và nhãn Owner.
+    /// Tên tài khoản kèm huy hiệu: tick đen (đã xác minh), tick xanh và nhãn Owner.
     private func nameRow(_ cloud: MochyCloud) -> UIView {
         let name = label(cloud.username ?? "", font: Theme.heavy(24), color: Theme.primaryText)
         name.numberOfLines = 1
@@ -232,8 +232,8 @@ final class MochyAccountViewController: UIViewController, UITextFieldDelegate, U
         row.axis = .horizontal
         row.alignment = .center
         row.spacing = 8
-        if cloud.isVerified {
-            let tick = UIImageView(image: AccountAvatarButton.verifiedTick(size: 24))
+        if cloud.isVerified || cloud.isBlue {
+            let tick = UIImageView(image: AccountAvatarButton.verifiedTick(size: 24, color: cloud.isBlue && !cloud.isVerified ? AccountAvatarButton.blueTick : .black))
             tick.setContentHuggingPriority(.required, for: .horizontal)
             tick.widthAnchor.constraint(equalToConstant: 24).isActive = true
             tick.heightAnchor.constraint(equalToConstant: 24).isActive = true

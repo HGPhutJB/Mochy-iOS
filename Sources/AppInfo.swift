@@ -92,6 +92,12 @@ enum AppSettings {
         set { defaults.set(min(max(newValue, 0), 6), forKey: "lyrics.weight") }
     }
 
+    /// Ẩn các dòng lời đã hát: 0 = tự động (chỉ khi xoay ngang), 1 = luôn ẩn, 2 = luôn hiện.
+    static var hidePastLyrics: Int {
+        get { return min(max(defaults.integer(forKey: "lyrics.hidePast"), 0), 2) }
+        set { defaults.set(min(max(newValue, 0), 2), forKey: "lyrics.hidePast") }
+    }
+
     static var recentSearches: [String] {
         get { return defaults.stringArray(forKey: "search.recent") ?? [] }
         set { defaults.set(Array(newValue.prefix(12)), forKey: "search.recent") }

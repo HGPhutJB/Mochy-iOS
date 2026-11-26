@@ -1,4 +1,5 @@
 import Foundation
+import CommonCrypto
 
 /// Một "client" giả danh app YouTube để xin link phát nhạc trực tiếp.
 /// Thông số lấy từ providers/innertube của Mochy Music (GPL-3.0) và được viết lại bằng Swift.
@@ -134,6 +135,40 @@ final class InnerTube {
         }.resume()
     }
 
+    // MARK: - Đăng nhập tài khoản (nếu đã liên kết YouTube Music)
+
+    private static func sha1Hex(_ text: String) -> String {
+        var digest = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
+        let data = Data(text.utf8)
+        data.withUnsafeBytes { (p: UnsafeRawBufferPointer) in
+            _ = CC_SHA1(p.baseAddress, CC_LONG(data.count), &digest)
+        }
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Cookie + SAPISIDHASH của tài khoản YouTube Music đã liên kết (nil nếu chưa liên kết).
+    fileprivate func authHeaders(origin: String = "https://music.youtube.com") -> [String: String]? {
+        guard let cookie = Keychain.get("youtube.cookie"),
+              let sapisid = cookie.components(separatedBy: "; ").first(where: { $0.hasPrefix("SAPISID=") })?.dropFirst(8) else { return nil }
+        let now = Int(Date().timeIntervalSince1970)
+        let hash = InnerTube.sha1Hex("\(now) \(sapisid) \(origin)")
+        return ["Cookie": cookie, "Authorization": "SAPISIDHASH \(now)_\(hash)", "X-Goog-AuthUser": "0", "Origin": origin]
+    }
+
+    /// Gọi API web của YouTube Music: có tài khoản đã liên kết thì gửi kèm đăng nhập (YouTube ít hỏi xác minh hơn,
+    /// kể cả khi dùng VPN); lỗi thì thử lại không đăng nhập (cookie hết hạn…).
+    fileprivate func postWeb(_ urlString: String, headers: [String: String], body: [String: Any],
+                             completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        guard let auth = authHeaders() else {
+            postJSON(urlString, headers: headers, body: body, completion: completion)
+            return
+        }
+        postJSON(urlString, headers: headers.merging(auth) { _, new in new }, body: body) { [weak self] result in
+            if case .success = result { completion(result); return }
+            self?.postJSON(urlString, headers: headers, body: body, completion: completion)
+        }
+    }
+
     // MARK: - Tìm kiếm
 
     func search(_ query: String, completion: @escaping (Result<[Song], Error>) -> Void) {
@@ -156,7 +191,7 @@ final class InnerTube {
             "Referer": "https://music.youtube.com/",
             "User-Agent": webUserAgent
         ]
-        postJSON(apiBase + "search?prettyPrint=false", headers: headers, body: body) { result in
+        postWeb(apiBase + "search?prettyPrint=false", headers: headers, body: body) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .failure(let error):
@@ -191,7 +226,7 @@ final class InnerTube {
             "Referer": "https://music.youtube.com/",
             "User-Agent": webUserAgent
         ]
-        postJSON(apiBase + "browse?prettyPrint=false", headers: headers, body: body) { result in
+        postWeb(apiBase + "browse?prettyPrint=false", headers: headers, body: body) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .failure(let error):
@@ -205,13 +240,31 @@ final class InnerTube {
 
     // MARK: - Lấy link phát
 
-    func resolveStream(videoId: String, completion: @escaping (Result<StreamInfo, Error>) -> Void) {
+    func resolveStream(videoId: String, retried: Bool = false, completion: @escaping (Result<StreamInfo, Error>) -> Void) {
         // Mỗi link được kiểm tra bằng cách xin byte cuối tệp (giống Mochy Music): link bị cắt sẽ bị từ chối ở đó,
         // khi đó chuyển sang client kế tiếp. Nếu không client nào qua kiểm tra, dùng link đầu tiên lấy được.
         let clients: [PlayerClient] = [PlayerClient.visionOS(origin: "https://www.youtube.com"),
                                        PlayerClient.androidVR161, PlayerClient.androidVR143,
                                        PlayerClient.ios]
-        attempt(videoId: videoId, clients: clients, index: 0, notes: [], fallback: nil, completion: completion)
+        attempt(videoId: videoId, clients: clients, index: 0, notes: [], fallback: nil) { [weak self] result in
+            guard let self = self else { return }
+            if case .failure(let error) = result, InnerTube.isBotCheck(error.localizedDescription) {
+                if !retried {
+                    // YouTube đang hỏi xác minh (thường do IP của VPN): xin visitor id mới rồi thử lại một lần.
+                    self.visitorLock.lock(); self.visitorCache.removeAll(); self.visitorLock.unlock()
+                    self.resolveStream(videoId: videoId, retried: true, completion: completion)
+                    return
+                }
+                completion(.failure(MochyError.noStream(L("YouTube đang yêu cầu xác minh \"không phải robot\" (thường do IP của VPN bị nghi ngờ). Hãy đổi máy chủ VPN khác hoặc tắt VPN rồi thử lại.") + "\n\n" + error.localizedDescription)))
+                return
+            }
+            completion(result)
+        }
+    }
+
+    static func isBotCheck(_ text: String) -> Bool {
+        let t = text.lowercased()
+        return t.contains("not a bot") || t.contains("confirm you") || t.contains("login_required")
     }
 
     private func attempt(videoId: String,
@@ -635,7 +688,7 @@ extension InnerTube {
             "X-Goog-Api-Format-Version": "1", "X-YouTube-Client-Name": "67", "X-YouTube-Client-Version": webRemixVersion,
             "X-Origin": "https://music.youtube.com", "Referer": "https://music.youtube.com/", "User-Agent": webUserAgent
         ]
-        postJSON(apiBase + endpoint + "?prettyPrint=false", headers: headers, body: body) { result in
+        postWeb(apiBase + endpoint + "?prettyPrint=false", headers: headers, body: body) { result in
             DispatchQueue.main.async { completion(result) }
         }
     }

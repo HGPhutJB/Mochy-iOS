@@ -14,6 +14,7 @@ const JSON_HEADERS = {
 // Huy hiệu do chủ app cấp (sửa danh sách này rồi đẩy lên GitHub là tự triển khai).
 const BADGES = {
   pucpucpuc: ['verified', 'owner'],
+  bonheocho: ['blue'],   // tick xanh: người giúp tìm ra rất nhiều lỗi
 };
 const LANG_NAMES = {
   vi: 'vietnamese', en: 'english', ja: 'japanese', ko: 'korean', 'zh-CN': 'chinese', th: 'thai',

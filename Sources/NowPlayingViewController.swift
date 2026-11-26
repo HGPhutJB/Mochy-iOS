@@ -143,6 +143,8 @@ final class NowPlayingViewController: UIViewController {
 
     private let mediaView = UIView()
     private let artView = UIImageView()
+    private let backFill = UIImageView()   // bản mờ của bìa phủ kín màn hình, nằm sau bìa vuông
+    private let artFade = CAGradientLayer()
     private let video = VideoBackdrop()
     private let fluidView = FluidBackgroundView()
     private let bandBlur = ProgressiveBlurView(layers: 4)
@@ -150,6 +152,10 @@ final class NowPlayingViewController: UIViewController {
     private let topShade = GradientView()
     private let dragZone = UIView()
     private let lyricsView = LyricsView()
+    private let stage = LandscapeStage()
+    private var lyricsLeading: NSLayoutConstraint?
+    private var isLandscape = false
+    private var modeBeforeLandscape: Mode = .cover
 
     private let chevron = GlassView(tint: nil)
     private let contextPill = GlassView(tint: nil)
@@ -214,6 +220,20 @@ final class NowPlayingViewController: UIViewController {
 
     private var didAppearOnce = false
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        OrientationPolicy.allowLandscape = true
+        refreshHidesPast()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if presentedViewController == nil {
+            OrientationPolicy.allowLandscape = false
+            UIViewController.attemptRotationToDeviceOrientation()
+        }
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if !didAppearOnce {
@@ -239,12 +259,18 @@ final class NowPlayingViewController: UIViewController {
         super.viewDidLayoutSubviews()
         let w = view.bounds.width, h = view.bounds.height
         mediaView.frame = view.bounds
-        artView.frame = mediaView.bounds
+        backFill.frame = mediaView.bounds
+        // Bìa vuông rộng hết chiều ngang, phần đáy mờ dần vào nền; xoay ngang không dùng.
+        artView.frame = CGRect(x: 0, y: 0, width: w, height: min(w, h))
+        artFade.frame = artView.bounds
         video.layer.frame = mediaView.bounds
         let bandTop = h * 0.42
         bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
         bandShade.frame = bandBlur.frame
         topShade.frame = CGRect(x: 0, y: 0, width: w, height: 170)
+        stage.frame = view.bounds
+        let landscape = w > h
+        if landscape != isLandscape { setLandscape(landscape) }
         updateLyricsFrame()
     }
 
@@ -264,7 +290,14 @@ final class NowPlayingViewController: UIViewController {
         artView.contentMode = .scaleAspectFill
         artView.clipsToBounds = true
         artView.backgroundColor = UIColor(white: 0.1, alpha: 1)
+        backFill.contentMode = .scaleAspectFill
+        backFill.clipsToBounds = true
+        backFill.backgroundColor = UIColor(white: 0.06, alpha: 1)
+        mediaView.addSubview(backFill)
         mediaView.addSubview(artView)
+        artFade.colors = [UIColor.white.cgColor, UIColor.white.cgColor, UIColor.clear.cgColor]
+        artFade.locations = [0, 0.8, 1]
+        artView.layer.mask = artFade
         video.layer.opacity = 0
         mediaView.layer.addSublayer(video.layer)
         video.onReadyChanged = { [weak self] ready in
@@ -299,6 +332,19 @@ final class NowPlayingViewController: UIViewController {
         }
         lyricsView.onInteraction = { [weak self] in self?.scheduleIdle() }
         view.addSubview(lyricsView)
+
+        stage.alpha = 0
+        stage.isHidden = true
+        stage.onScrub = { [weak self] value, ended in self?.scrubbed(value, ended: ended) }
+        stage.prev.addTarget(self, action: #selector(prevTapped), for: .touchUpInside)
+        stage.play.addTarget(self, action: #selector(playTapped), for: .touchUpInside)
+        stage.next.addTarget(self, action: #selector(nextTapped), for: .touchUpInside)
+        stage.close.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        stage.translate.addTarget(self, action: #selector(translateTapped), for: .touchUpInside)
+        stage.reverb.addTarget(self, action: #selector(reverbTapped), for: .touchUpInside)
+        stage.queue.addTarget(self, action: #selector(queueTapped), for: .touchUpInside)
+        stage.more.addTarget(self, action: #selector(moreTapped), for: .touchUpInside)
+        view.addSubview(stage)
 
         dragZone.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(dragZone)
@@ -372,6 +418,8 @@ final class NowPlayingViewController: UIViewController {
         let lt = lyricsView.topAnchor.constraint(equalTo: view.topAnchor, constant: 200)
         let lb = lyricsView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -240)
         lyricsTop = lt
+        let ll = lyricsView.leadingAnchor.constraint(equalTo: view.leadingAnchor)
+        lyricsLeading = ll
         lyricsBottom = lb
 
         NSLayoutConstraint.activate([
@@ -393,7 +441,7 @@ final class NowPlayingViewController: UIViewController {
             infoB.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -side),
             infoB.heightAnchor.constraint(equalToConstant: 62),
 
-            lyricsView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            ll,
             lyricsView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             lt, lb,
 
@@ -456,6 +504,13 @@ final class NowPlayingViewController: UIViewController {
 
     private func updateLyricsFrame() {
         let safe = view.safeAreaInsets
+        if isLandscape {
+            lyricsLeading?.constant = view.bounds.width * 0.47
+            lyricsTop?.constant = 0
+            lyricsBottom?.constant = 0
+            return
+        }
+        lyricsLeading?.constant = 0
         if mode == .immersive {
             lyricsTop?.constant = 0
             lyricsBottom?.constant = 0
@@ -506,12 +561,95 @@ final class NowPlayingViewController: UIViewController {
         } else {
             timeChanged()
         }
+        if isLandscape { landscapeOverride() }
+        refreshHidesPast()
         scheduleIdle()
+    }
+
+    // MARK: - Xoay ngang
+
+    private func refreshHidesPast() {
+        switch AppSettings.hidePastLyrics {
+        case 1: lyricsView.hidesPast = true
+        case 2: lyricsView.hidesPast = false
+        default: lyricsView.hidesPast = isLandscape
+        }
+    }
+
+    private func setLandscape(_ on: Bool) {
+        guard on != isLandscape else { return }
+        isLandscape = on
+        LyricCell.landscape = on
+        if on {
+            modeBeforeLandscape = mode == .immersive ? .lyrics : mode
+            lyricsView.resetFollow()
+            loadLyrics()
+            apply(mode: .lyrics, animated: false)
+            stage.isHidden = false
+            stage.setControls(visible: true, animated: false)
+            lyricsView.anchorFraction = 0.33
+            lyricsView.immersive = false
+            updateLyricsFrame()
+            lyricsView.reloadStyle()
+            landscapeOverride()
+            syncStage()
+            UIView.animate(withDuration: 0.3) { self.stage.alpha = 1 }
+        } else {
+            stage.alpha = 0
+            stage.isHidden = true
+            updateLyricsFrame()
+            apply(mode: modeBeforeLandscape, animated: false)
+            lyricsView.reloadStyle()
+            for v in chromeTop + chromeBottom { v.isUserInteractionEnabled = true }
+        }
+        refreshHidesPast()
+        scheduleIdle()
+    }
+
+    /// Xoay ngang: ẩn mọi thứ của bố cục dọc, chỉ để nền màu, lời và bảng điều khiển bên trái.
+    private func landscapeOverride() {
+        mediaView.alpha = 0
+        bandBlur.alpha = 0
+        bandShade.alpha = 0
+        topShade.alpha = 0
+        infoA.alpha = 0
+        infoB.alpha = 0
+        (chromeTop + chromeBottom).forEach { $0.alpha = 0; $0.isUserInteractionEnabled = false }
+        fluidView.setReveal(.full, animated: false)
+        fluidView.alpha = 1
+        lyricsView.alpha = 1
+        lyricsView.anchorFraction = 0.33
+        lyricsView.immersive = false
+    }
+
+    private func syncStage() {
+        let engine = PlayerEngine.shared
+        guard let song = engine.currentSong else { return }
+        stage.set(title: song.title, artist: song.artist, image: engine.artwork)
+        stage.setPlaying(engine.isPlaying || engine.isLoading)
+        stage.reverb.tintColor = ReverbSettings.enabled ? NowPlayingViewController.green : .white
+        stage.translate.setImage(InfoRow.translateImage(on: TranslateSettings.enabled), for: .normal)
+        let total = engine.duration
+        stage.setTime(fraction: total > 0 ? min(1, engine.currentTime / total) : 0,
+                      elapsedText: formatTime(engine.currentTime),
+                      remainingText: total > 0 ? "-" + formatTime(max(0, total - engine.currentTime)) : "-:--")
+    }
+
+    @objc private func closeTapped() {
+        dismiss(animated: true, completion: nil)
     }
 
     private func scheduleIdle() {
         idleTimer?.invalidate()
         idleTimer = nil
+        if isLandscape {
+            guard weightPanel == nil else { return }
+            idleTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
+                guard let self = self, !self.stage.progress.isDragging else { return }
+                self.stage.setControls(visible: false, animated: true)
+            }
+            return
+        }
         guard mode == .lyrics, weightPanel == nil else { return }
         idleTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
             guard let self = self, self.mode == .lyrics, !self.progress.isDragging else { return }
@@ -521,6 +659,11 @@ final class NowPlayingViewController: UIViewController {
 
     /// Mọi lần chạm: đang ở chế độ toàn màn hình thì hiện lại các nút; luôn tính lại 5 giây.
     private func userTouched() {
+        if isLandscape {
+            if !stage.controlsVisible { stage.setControls(visible: true, animated: true) }
+            scheduleIdle()
+            return
+        }
         if mode == .immersive {
             suppressSeekUntil = Date().addingTimeInterval(0.8)
             DispatchQueue.main.async { self.apply(mode: .lyrics, animated: true) }
@@ -541,6 +684,7 @@ final class NowPlayingViewController: UIViewController {
             shownVideoId = song.videoId
             shownArtwork = nil
             artView.image = nil
+            backFill.image = nil
             infoA.thumb.image = nil
             infoB.thumb.image = nil
             lyricsVideoId = nil
@@ -566,6 +710,15 @@ final class NowPlayingViewController: UIViewController {
             }, completion: nil)
             infoA.thumb.image = image
             infoB.thumb.image = image
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let soft = FluidBackgroundView.makeAmbient(image) else { return }
+                DispatchQueue.main.async {
+                    guard let self = self, self.shownArtwork === image else { return }
+                    UIView.transition(with: self.backFill, duration: 0.45, options: .transitionCrossDissolve, animations: {
+                        self.backFill.image = UIImage(cgImage: soft)
+                    }, completion: nil)
+                }
+            }
             fluidView.setImage(image)
             applyTone(from: image)
         }
@@ -586,6 +739,7 @@ final class NowPlayingViewController: UIViewController {
         }
         refreshVideo()
         timeChanged()
+        if isLandscape { syncStage() }
     }
 
     /// Thanh tiến trình, nhãn thời gian và các icon lấy màu từ bìa.
@@ -646,7 +800,13 @@ final class NowPlayingViewController: UIViewController {
             elapsedLabel.text = formatTime(engine.currentTime)
             remainingLabel.text = total > 0 ? "-" + formatTime(max(0, total - engine.currentTime)) : "-:--"
         }
-        if mode == .cover { video.sync(position: engine.livePosition, playing: engine.isPlaying) }
+        if mode == .cover && !isLandscape { video.sync(position: engine.livePosition, playing: engine.isPlaying) }
+        if isLandscape {
+            let total = engine.duration
+            stage.setTime(fraction: total > 0 ? min(1, engine.currentTime / total) : 0,
+                          elapsedText: formatTime(engine.currentTime),
+                          remainingText: total > 0 ? "-" + formatTime(max(0, total - engine.currentTime)) : "-:--")
+        }
     }
 
     private func scrubbed(_ value: Double, ended: Bool) {
@@ -713,6 +873,7 @@ final class NowPlayingViewController: UIViewController {
         Haptics.tap()
         TranslateSettings.enabled.toggle()
         infoB.translateButton.setImage(InfoRow.translateImage(on: TranslateSettings.enabled), for: .normal)
+        stage.translate.setImage(InfoRow.translateImage(on: TranslateSettings.enabled), for: .normal)
         infoB.translateButton.pop()
         if TranslateSettings.enabled {
             applyTranslation(manual: true)
@@ -759,6 +920,7 @@ final class NowPlayingViewController: UIViewController {
 
     /// Nút reverb được tô màu xanh khi đang bật (không còn gạch dưới).
     @objc private func updateReverbIndicator() {
+        stage.reverb.tintColor = ReverbSettings.enabled ? NowPlayingViewController.green : .white
         applyIconTints()
     }
 
@@ -789,7 +951,7 @@ final class NowPlayingViewController: UIViewController {
         infoB.checkButton.pop()
     }
 
-    private func moreTapped() {
+    @objc private func moreTapped() {
         guard let song = PlayerEngine.shared.currentSong else { return }
         let engine = PlayerEngine.shared
         var message: String? = nil

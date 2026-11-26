@@ -1,3 +1,12 @@
+Mochy iOS 0.13.0 — xoay ngang, nền gradient mới, VPN
+
+- Xoay ngang màn hình đang phát: bìa, tên bài, tiến trình và điều khiển bên trái, lời bên phải (chữ cân lại cho vừa). Các nút tự ẩn sau 5 giây, chạm để hiện lại.
+- Ẩn các dòng lời đã hát: Cài đặt ▸ Âm thanh ▸ Ẩn lời đã hát (Tự động khi xoay ngang / Luôn ẩn / Luôn hiện).
+- Màn hình dọc: bìa vuông rộng hết chiều ngang, phần đáy mờ dần vào nền màu thay vì bị cắt hai bên.
+- Nền gradient làm lại: lấy trực tiếp màu từ bìa, làm mờ và trôi chậm như Apple Music.
+- VPN: gọi YouTube Music bằng tài khoản đã liên kết, tự đặt lại phiên rồi thử lại khi gặp xác minh "không phải robot"; nếu IP VPN vẫn bị chặn sẽ báo rõ (hãy đổi máy chủ VPN).
+- Dấu tick xanh cho tài khoản Bonheocho.
+
 Mochy iOS 0.12.0 — tiếng Anh, chuyển bài mượt, dịch lời tốt hơn
 
 - Thêm tiếng Anh cho toàn bộ giao diện. App tự theo ngôn ngữ hệ thống (hệ thống tiếng Việt thì dùng tiếng Việt, còn lại dùng English); có thể chọn tay ở Cài đặt ▸ Giao diện ▸ Ngôn ngữ (áp dụng đầy đủ sau khi mở lại app).

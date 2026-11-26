@@ -1,4 +1,5 @@
 import UIKit
+import CoreImage
 
 struct LyricWord {
     let text: String
@@ -488,9 +489,11 @@ final class WordView: UIView {
 
 /// Một dòng lời: dòng đang hát to, rõ, tô dần từng từ (từ đang hát nổi lên); dòng khác thu nhỏ và làm mờ như Apple Music.
 final class LyricCell: UITableViewCell {
-    static var font: UIFont { return RoundedFont.font(30, index: AppSettings.lyricWeight) }
-    static let inactiveScale: CGFloat = 0.78
-    static let sideInset: CGFloat = 26
+    /// Xoay ngang: chữ nhỏ lại, các dòng gần bằng nhau (giống Apple Music).
+    static var landscape = false
+    static var font: UIFont { return RoundedFont.font(landscape ? 23 : 30, index: AppSettings.lyricWeight) }
+    static var inactiveScale: CGFloat { return landscape ? 0.94 : 0.78 }
+    static var sideInset: CGFloat { return landscape ? 8 : 26 }
     static let vPad: CGFloat = 11
     static let blurPad: CGFloat = 44   // đủ rộng để vầng mờ lan hết, không bị cắt
 
@@ -514,7 +517,7 @@ final class LyricCell: UITableViewCell {
     let subBlur = UIImageView()
     private(set) var translation = ""
     private var scaleNow: CGFloat = 1
-    static var translationFont: UIFont { return RoundedFont.font(17, index: 4) }
+    static var translationFont: UIFont { return RoundedFont.font(landscape ? 15 : 17, index: 4) }
     private let wordsHost = UIView()
     private(set) var row = -1
     private var text = ""
@@ -760,6 +763,16 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             setNeedsLayout()
             layoutIfNeeded()
             if current >= 0 { scrollToCurrent(animated: false) }
+        }
+    }
+
+    /// Ẩn hẳn các dòng đã hát (chỉ còn dòng đang hát và các dòng sắp tới).
+    var hidesPast = false {
+        didSet {
+            guard hidesPast != oldValue else { return }
+            UIView.animate(withDuration: 0.45) {
+                for case let cell as LyricCell in self.table.visibleCells { self.style(cell, time: PlayerEngine.shared.livePosition) }
+            }
         }
     }
 
@@ -1049,6 +1062,10 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
             return
         }
         cell.setActive(false)
+        if hidesPast && current >= 0 && cell.row < current {
+            cell.showDim(image: nil, alpha: 0, subImage: nil)
+            return
+        }
         let distance = current < 0 ? cell.row + 1 : abs(cell.row - current)
         let bucket = min(max(distance, 1), 4)
         let base: [CGFloat] = [0, 0.72, 0.6, 0.5, 0.42]
@@ -1136,6 +1153,9 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
 /// Nền gradient từ màu của bìa: vài đốm màu mềm (gradient tròn) trôi chậm trên nền tối, không còn các lớp ảnh mờ xoay.
 final class FluidBackgroundView: UIView {
     private var blobs: [CALayer] = []
+    /// Hai lớp ảnh bìa phóng to + làm mờ nặng, xoay/trôi ngược chiều nhau: nền chuyển màu mềm đúng theo bìa (giống Apple Music).
+    private let ambient: [CALayer] = [CALayer(), CALayer()]
+    private static let ciContext = CIContext(options: nil)
     private let shade = CAGradientLayer()
     private var palette: [UIColor] = []
     private var token = 0
@@ -1163,7 +1183,13 @@ final class FluidBackgroundView: UIView {
             layer.addSublayer(g)
             blobs.append(g)
         }
-        shade.colors = [UIColor(white: 0, alpha: 0.1).cgColor, UIColor(white: 0, alpha: 0.0).cgColor, UIColor(white: 0, alpha: 0.42).cgColor]
+        for a in ambient {
+            a.contentsGravity = .resize
+            a.magnificationFilter = .linear
+            a.opacity = 0
+            layer.addSublayer(a)
+        }
+        shade.colors = [UIColor(white: 0, alpha: 0.2).cgColor, UIColor(white: 0, alpha: 0.1).cgColor, UIColor(white: 0, alpha: 0.5).cgColor]
         shade.locations = [0, 0.4, 1]
         layer.addSublayer(shade)
         reveal.startPoint = CGPoint(x: 0.5, y: 0)
@@ -1254,6 +1280,12 @@ final class FluidBackgroundView: UIView {
         for (i, g) in blobs.enumerated() {
             g.bounds = CGRect(x: 0, y: 0, width: size, height: size)
             g.position = CGPoint(x: bounds.width * spots[i].x, y: bounds.height * spots[i].y)
+            g.opacity = 0   // các đốm màu cũ không còn dùng: nền lấy trực tiếp từ ảnh bìa
+        }
+        let big = max(bounds.width, bounds.height) * 1.8
+        for a in ambient {
+            a.bounds = CGRect(x: 0, y: 0, width: big, height: big)
+            a.position = CGPoint(x: bounds.midX, y: bounds.midY)
         }
         shade.frame = bounds
         reveal.bounds = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height + 2 * FluidBackgroundView.maskExtra)
@@ -1271,7 +1303,8 @@ final class FluidBackgroundView: UIView {
     /// Cho từng đốm màu quay quanh một quỹ đạo elip rộng, vừa quay vừa phồng/xẹp (lặp vô hạn).
     private func startDrifting() {
         guard bounds.width > 0 else { return }
-        for (i, g) in blobs.enumerated() where g.animation(forKey: "drift") == nil {
+        startAmbient()
+        for (i, g) in blobs.enumerated() where g.animation(forKey: "drift") == nil && g.opacity > 0 {
             let s = spots[i]
             let cx = bounds.width * s.x, cy = bounds.height * s.y
             let rx = bounds.width * s.rx, ry = bounds.height * s.ry
@@ -1296,6 +1329,58 @@ final class FluidBackgroundView: UIView {
         }
     }
 
+    private func startAmbient() {
+        for (i, a) in ambient.enumerated() where a.animation(forKey: "spin") == nil {
+            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+            spin.fromValue = 0
+            spin.toValue = i == 0 ? Double.pi * 2 : -Double.pi * 2
+            spin.duration = i == 0 ? 75 : 55
+            spin.repeatCount = .infinity
+            a.add(spin, forKey: "spin")
+            let pulse = CABasicAnimation(keyPath: "transform.scale")
+            pulse.fromValue = i == 0 ? 0.9 : 1.15
+            pulse.toValue = i == 0 ? 1.2 : 0.85
+            pulse.duration = i == 0 ? 11 : 8.5
+            pulse.autoreverses = true
+            pulse.repeatCount = .infinity
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            a.add(pulse, forKey: "pulse")
+            let drift = CABasicAnimation(keyPath: "position")
+            let dx = bounds.width * 0.14, dy = bounds.height * 0.14
+            drift.fromValue = NSValue(cgPoint: CGPoint(x: bounds.midX - (i == 0 ? dx : -dx), y: bounds.midY + (i == 0 ? dy : -dy)))
+            drift.toValue = NSValue(cgPoint: CGPoint(x: bounds.midX + (i == 0 ? dx : -dx), y: bounds.midY - (i == 0 ? dy : -dy)))
+            drift.duration = i == 0 ? 13 : 10
+            drift.autoreverses = true
+            drift.repeatCount = .infinity
+            drift.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            a.add(drift, forKey: "drift")
+        }
+    }
+
+    /// Thu ảnh bìa còn 48×48 rồi làm mờ nặng, tăng độ rực: nền mượt chỉ còn các mảng màu lớn của bìa.
+    static func makeAmbient(_ image: UIImage) -> CGImage? {
+        let n = 48
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let cg = image.cgImage,
+              let ctx = CGContext(data: nil, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: n, height: n))
+        guard let small = ctx.makeImage() else { return nil }
+        let input = CIImage(cgImage: small)
+        guard let blur = CIFilter(name: "CIGaussianBlur") else { return nil }
+        blur.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)
+        blur.setValue(5.0, forKey: kCIInputRadiusKey)
+        guard let blurred = blur.outputImage?.cropped(to: input.extent),
+              let tune = CIFilter(name: "CIColorControls") else { return nil }
+        tune.setValue(blurred, forKey: kCIInputImageKey)
+        tune.setValue(1.5, forKey: kCIInputSaturationKey)
+        tune.setValue(-0.1, forKey: kCIInputBrightnessKey)
+        tune.setValue(1.05, forKey: kCIInputContrastKey)
+        guard let out = tune.outputImage else { return nil }
+        return FluidBackgroundView.ciContext.createCGImage(out, from: input.extent)
+    }
+
     private func reflectX(_ cx: CGFloat) -> CGAffineTransform {
         return CGAffineTransform(translationX: cx, y: 0).scaledBy(x: -1, y: 1).translatedBy(x: -cx, y: 0)
     }
@@ -1305,9 +1390,17 @@ final class FluidBackgroundView: UIView {
         let mine = token
         DispatchQueue.global(qos: .userInitiated).async {
             let colors = FluidBackgroundView.makePalette(image)
+            let soft = FluidBackgroundView.makeAmbient(image)
             DispatchQueue.main.async {
                 guard mine == self.token else { return }
                 self.apply(colors)
+                CATransaction.begin()
+                CATransaction.setAnimationDuration(1.2)
+                for (i, a) in self.ambient.enumerated() {
+                    a.contents = soft
+                    a.opacity = soft == nil ? 0 : (i == 0 ? 1 : 0.6)
+                }
+                CATransaction.commit()
             }
         }
     }
