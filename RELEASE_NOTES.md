@@ -1,3 +1,8 @@
+Mochy Remake 0.15.1 — trả lại nền gradient + blur khi bật lời
+
+- Bật lời: nền gradient màu động và lớp blur trở lại như 0.13.3; ảnh bìa lớn co nhỏ lại về ảnh nhỏ cạnh tên bài (bay ở dưới lớp nền, không đè lên hiệu ứng) rồi trở ra khi tắt lời.
+- Mở màn hình đang phát từ thanh phát nhỏ: ảnh bìa bay nằm dưới dải blur và nền màu thay vì đè lên.
+
 Mochy Remake 0.15.0 — Material 3 mở rộng, màu nhấn theo bài, trang chủ nhạc trẻ
 
 - Trang chủ chỉ gợi ý nhạc Việt của nghệ sĩ trẻ và các bài hot TikTok bản gốc; loại bolero, remix, lofi, cover, karaoke, live; bỏ hàng nhạc quốc tế.
