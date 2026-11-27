@@ -393,8 +393,13 @@ final class WordView: UIView {
         // Vầng sáng là ảnh chữ đã làm mờ, nằm sau chữ và không bị mặt nạ/khung nào cắt nên loang đều quanh chữ.
         let pad = WordView.glowPad
         glow.frame = CGRect(x: -pad, y: -pad, width: frame.width + 3 + pad * 2, height: frame.height + pad * 2)
-        glow.image = WordView.glowImage(text: text, font: font, width: frame.width + 3, height: frame.height)
-        WordView.upgradeGlow(text: text, font: font, width: frame.width + 3, height: frame.height) { [weak self] image in self?.glow.image = image }
+        // Không dùng bản nháp mờ nữa: chưa có vầng sáng chất lượng cao thì chưa hiện vầng sáng (tránh nhìn xấu), từ vẫn tô bình thường.
+        WordView.upgradeGlow(text: text, font: font, width: frame.width + 3, height: frame.height) { [weak self] image in
+            guard let self = self, let image = image else { return }
+            self.glow.image = image
+            self.glowReady = true
+            self.apply(p: max(0, self.lastP), lift: max(0, self.lastLift), force: true)
+        }
         glow.alpha = 0
         addSubview(glow)
         for label in [dim, bright] {
@@ -418,45 +423,40 @@ final class WordView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
     private var lastLift: CGFloat = -1
+    private(set) var glowReady = false
+    /// Số vầng sáng đang được dựng ở luồng nền (để màn lời đợi dựng xong mới hiện).
+    static private(set) var pendingGlows = 0
 
     private static let glowQueue = DispatchQueue(label: "mochyios.lyrics.glow", qos: .userInitiated)
     private static let ciContext = CIContext(options: nil)
 
-    /// Bản vầng sáng Gaussian đầy đủ, dựng ở luồng nền và thay vào khi xong (bản nhanh hiện ngay).
-    private static func upgradeGlow(text: String, font: UIFont, width: CGFloat, height: CGFloat, apply: @escaping (UIImage) -> Void) {
+    /// Vầng sáng Gaussian đầy đủ, dựng ở luồng nền; có sẵn trong bộ nhớ đệm thì dùng ngay.
+    private static func upgradeGlow(text: String, font: UIFont, width: CGFloat, height: CGFloat, apply: @escaping (UIImage?) -> Void) {
         let key = "hq|\(text)|\(font.pointSize)|\(Int(width))" as NSString
         if let hit = glowCache.object(forKey: key) { apply(hit); return }
+        pendingGlows += 1
         glowQueue.async {
             let pad = glowPad
             let size = CGSize(width: width + pad * 2, height: height + pad * 2)
+            var result: UIImage?
             let flat = UIGraphicsImageRenderer(size: size).image { _ in
                 (text as NSString).draw(in: CGRect(x: pad, y: pad, width: width, height: height),
                                         withAttributes: [.font: font, .foregroundColor: UIColor.white])
             }
-            guard let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") else { return }
-            filter.setValue(input, forKey: kCIInputImageKey)
-            filter.setValue(Double(9 * flat.scale), forKey: kCIInputRadiusKey)
-            guard let output = filter.outputImage, let cg = ciContext.createCGImage(output, from: input.extent) else { return }
-            let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
-            glowCache.setObject(image, forKey: key)
-            DispatchQueue.main.async { apply(image) }
+            if let input = CIImage(image: flat), let filter = CIFilter(name: "CIGaussianBlur") {
+                filter.setValue(input, forKey: kCIInputImageKey)
+                filter.setValue(Double(9 * flat.scale), forKey: kCIInputRadiusKey)
+                if let output = filter.outputImage, let cg = ciContext.createCGImage(output, from: input.extent) {
+                    let image = UIImage(cgImage: cg, scale: flat.scale, orientation: .up)
+                    glowCache.setObject(image, forKey: key)
+                    result = image
+                }
+            }
+            DispatchQueue.main.async {
+                pendingGlows = max(0, pendingGlows - 1)
+                apply(result)
+            }
         }
-    }
-
-    private static func glowImage(text: String, font: UIFont, width: CGFloat, height: CGFloat) -> UIImage? {
-        let key = "\(text)|\(font.pointSize)|\(Int(width))" as NSString
-        if let hit = glowCache.object(forKey: key) { return hit }
-        let pad = glowPad
-        let size = CGSize(width: width + pad * 2, height: height + pad * 2)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = UIScreen.main.scale / 4   // ảnh nhỏ, GPU phóng to = vầng sáng mềm, tạo gần như tức thì
-        format.opaque = false
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            (text as NSString).draw(in: CGRect(x: pad, y: pad, width: width, height: height),
-                                    withAttributes: [.font: font, .foregroundColor: UIColor.white])
-        }
-        glowCache.setObject(image, forKey: key)
-        return image
     }
 
     /// Cập nhật theo thời gian bài hát: tô dần từ trái sang phải; từ nổi lên nhanh khi tới lượt (ease-out)
@@ -481,7 +481,7 @@ final class WordView: UIView {
         CATransaction.setDisableActions(true)
         maskLayer.frame = CGRect(x: (p - 1) * total, y: -16, width: total, height: bounds.height + 32)
         CATransaction.commit()
-        glow.alpha = 0.9 * lift
+        glow.alpha = glowReady ? 0.9 * lift : 0
         let scale = 1 + 0.075 * lift
         transform = CGAffineTransform(translationX: 0, y: -4.5 * lift).scaledBy(x: scale, y: scale)
     }
@@ -637,6 +637,12 @@ final class LyricCell: UITableViewCell {
         }
     }
 
+    /// Dựng sẵn các từ (và vầng sáng) trước khi tới lượt hát, để lúc hát không có gì phải chờ.
+    func prebuildWords() {
+        guard canKaraoke, wordViews.isEmpty, bounds.width > 0 else { return }
+        buildWordsIfNeeded(width: max(10, bounds.width - LyricCell.sideInset * 2))
+    }
+
     /// Dòng đang hát thì giữ cỡ lớn, các dòng khác thu nhỏ (neo ở mép trái-trên).
     func setActive(_ active: Bool) {
         let s = active || row < 0 ? 1 : LyricCell.inactiveScale
@@ -752,6 +758,8 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
     private var link: CADisplayLink?
     private let dotsView = LyricDotsView(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
     private var dotsShown = false
+    private var revealed = true
+    private var gateStart = Date()
     private let fadeMask = CAGradientLayer()
     var onSeek: ((Double) -> Void)?
     var onInteraction: (() -> Void)?
@@ -871,6 +879,17 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         heightCache.removeAll(); transCache.removeAll()
         statusLabel.text = message
         statusLabel.isHidden = message == nil
+        // Có từng từ thì đợi dựng xong chữ + vầng sáng rồi mới hiện lời (hiện giữa chừng nhìn rất xấu).
+        if lines.contains(where: { !$0.words.isEmpty }) {
+            revealed = false
+            gateStart = Date()
+            table.alpha = 0
+            statusLabel.text = L("Đang tìm lời…")
+            statusLabel.isHidden = false
+        } else {
+            revealed = true
+            table.alpha = 1
+        }
         dotsShown = false
         if let first = lines.first, first.time > 1.5 {
             dotsShown = true
@@ -920,6 +939,18 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
                 dotsView.update(progress: time / max(0.5, lines[0].time), time: time)
             } else {
                 dotsView.dismiss()
+            }
+        }
+        let from = max(current, 0)
+        for row in from...min(lines.count - 1, from + 3) {
+            (table.cellForRow(at: IndexPath(row: row, section: 0)) as? LyricCell)?.prebuildWords()
+        }
+        if !revealed {
+            let waited = Date().timeIntervalSince(gateStart)
+            if (WordView.pendingGlows == 0 && waited > 0.2) || waited > 2.5 {
+                revealed = true
+                statusLabel.isHidden = true
+                UIView.animate(withDuration: 0.4) { self.table.alpha = 1 }
             }
         }
         if current >= 0, let cell = table.cellForRow(at: IndexPath(row: current, section: 0)) as? LyricCell {
@@ -1282,7 +1313,7 @@ final class FluidBackgroundView: UIView {
             g.position = CGPoint(x: bounds.width * spots[i].x, y: bounds.height * spots[i].y)
             g.opacity = 0   // các đốm màu cũ không còn dùng: nền lấy trực tiếp từ ảnh bìa
         }
-        let big = max(bounds.width, bounds.height) * 1.8
+        let big = hypot(bounds.width, bounds.height) * 2.0
         for a in ambient {
             a.bounds = CGRect(x: 0, y: 0, width: big, height: big)
             a.position = CGPoint(x: bounds.midX, y: bounds.midY)
@@ -1329,31 +1360,43 @@ final class FluidBackgroundView: UIView {
         }
     }
 
+    private var ambientSize = CGSize.zero
+
+    /// Hai lớp nền xoay/trôi. Độ trôi tính tương đối (additive) quanh tâm hiện tại nên vẫn đúng sau khi xoay màn hình;
+    /// lớp đủ lớn để dù xoay/co lại cũng luôn phủ kín khung (không lộ mép chéo).
     private func startAmbient() {
-        for (i, a) in ambient.enumerated() where a.animation(forKey: "spin") == nil {
-            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
-            spin.fromValue = 0
-            spin.toValue = i == 0 ? Double.pi * 2 : -Double.pi * 2
-            spin.duration = i == 0 ? 75 : 55
-            spin.repeatCount = .infinity
-            a.add(spin, forKey: "spin")
-            let pulse = CABasicAnimation(keyPath: "transform.scale")
-            pulse.fromValue = i == 0 ? 0.9 : 1.15
-            pulse.toValue = i == 0 ? 1.2 : 0.85
-            pulse.duration = i == 0 ? 11 : 8.5
-            pulse.autoreverses = true
-            pulse.repeatCount = .infinity
-            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            a.add(pulse, forKey: "pulse")
-            let drift = CABasicAnimation(keyPath: "position")
-            let dx = bounds.width * 0.14, dy = bounds.height * 0.14
-            drift.fromValue = NSValue(cgPoint: CGPoint(x: bounds.midX - (i == 0 ? dx : -dx), y: bounds.midY + (i == 0 ? dy : -dy)))
-            drift.toValue = NSValue(cgPoint: CGPoint(x: bounds.midX + (i == 0 ? dx : -dx), y: bounds.midY - (i == 0 ? dy : -dy)))
-            drift.duration = i == 0 ? 13 : 10
-            drift.autoreverses = true
-            drift.repeatCount = .infinity
-            drift.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            a.add(drift, forKey: "drift")
+        let rebuild = ambientSize != bounds.size
+        ambientSize = bounds.size
+        for (i, a) in ambient.enumerated() {
+            if a.animation(forKey: "spin") == nil {
+                let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+                spin.fromValue = 0
+                spin.toValue = i == 0 ? Double.pi * 2 : -Double.pi * 2
+                spin.duration = i == 0 ? 90 : 65
+                spin.repeatCount = .infinity
+                a.add(spin, forKey: "spin")
+                let pulse = CABasicAnimation(keyPath: "transform.scale")
+                pulse.fromValue = i == 0 ? 0.95 : 1.1
+                pulse.toValue = i == 0 ? 1.15 : 0.95
+                pulse.duration = i == 0 ? 11 : 8.5
+                pulse.autoreverses = true
+                pulse.repeatCount = .infinity
+                pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                a.add(pulse, forKey: "pulse")
+            }
+            if rebuild || a.animation(forKey: "drift") == nil {
+                a.removeAnimation(forKey: "drift")
+                let dx = bounds.width * 0.12, dy = bounds.height * 0.12
+                let drift = CABasicAnimation(keyPath: "position")
+                drift.isAdditive = true
+                drift.fromValue = NSValue(cgPoint: CGPoint(x: i == 0 ? -dx : dx, y: i == 0 ? dy : -dy))
+                drift.toValue = NSValue(cgPoint: CGPoint(x: i == 0 ? dx : -dx, y: i == 0 ? -dy : dy))
+                drift.duration = i == 0 ? 13 : 10
+                drift.autoreverses = true
+                drift.repeatCount = .infinity
+                drift.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                a.add(drift, forKey: "drift")
+            }
         }
     }
 

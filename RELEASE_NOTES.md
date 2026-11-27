@@ -1,3 +1,11 @@
+Mochy iOS 0.13.3 — sửa hàng loạt lỗi giao diện
+
+- Nền gradient: hết vệt chéo/lộ mép khi xoay ngang (hiệu ứng trôi tính lại theo kích thước mới, lớp nền phủ rộng hơn).
+- Xoay ngang: bìa bo tròn, nút tua/phát/tua tới xếp lại gọn và không sát đáy, nút đóng tách riêng bên trái.
+- Tên bài chạy một chiều, vòng lại liền mạch (không chạy qua chạy lại).
+- Mở/đóng màn hình đang phát mượt hơn: dải mờ phía dưới không còn biến mất rồi bật lên đột ngột.
+- Lời từng từ: đợi dựng xong chữ và vầng sáng rồi mới hiện; vầng sáng của các dòng sắp hát được dựng sẵn.
+
 Mochy iOS 0.13.2 — sửa chuyển tab và ô chọn
 
 - Chuyển tab nhanh và gọn hơn: bỏ hiệu ứng phóng/thu màn hình, thanh tab nổi thu/mở và thấu kính trượt nhanh hơn, không còn nảy lâu ~0,5 giây.

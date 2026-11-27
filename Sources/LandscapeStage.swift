@@ -3,6 +3,7 @@ import UIKit
 /// Bố cục xoay ngang của màn hình đang phát: bên trái bìa + tên bài + tiến trình + điều khiển, bên phải là lời (do NowPlaying đặt).
 final class LandscapeStage: UIView {
     let cover = UIImageView()
+    private let coverShadow = UIView()   // bóng đặt ở lớp riêng: lớp bìa cần cắt bo góc nên không thể vừa đổ bóng vừa cắt
     private let titleLabel = MarqueeLabel()
     private let artistLabel = UILabel()
     let progress = ProgressBar()
@@ -28,7 +29,11 @@ final class LandscapeStage: UIView {
         cover.clipsToBounds = true
         cover.layer.cornerRadius = 14
         cover.backgroundColor = UIColor(white: 0.15, alpha: 1)
-        cover.layer.shadowColor = UIColor.black.cgColor
+        coverShadow.backgroundColor = .clear
+        coverShadow.layer.shadowColor = UIColor.black.cgColor
+        coverShadow.layer.shadowOpacity = 0.4
+        coverShadow.layer.shadowRadius = 22
+        coverShadow.layer.shadowOffset = CGSize(width: 0, height: 10)
         titleLabel.label.font = RoundedFont.font(21, index: 6)
         titleLabel.label.textColor = .white
         artistLabel.font = RoundedFont.font(16, index: 4)
@@ -50,6 +55,7 @@ final class LandscapeStage: UIView {
         queue.setImage(Icons.queue(24), for: .normal)
         more.setImage(Icons.more(24), for: .normal)
         for b in [prevBtn, playBtn, nextBtn, close, translate, reverb, queue, more] { b.tintColor = .white }
+        addSubview(coverShadow)
         [cover, titleLabel, artistLabel].forEach { addSubview($0) }
         controls.forEach { addSubview($0) }
     }
@@ -69,20 +75,22 @@ final class LandscapeStage: UIView {
         let safe = safeAreaInsets
         let w = bounds.width, h = bounds.height
         let panel = w * 0.47
-        let pad = max(safe.left, 16) + 20
+        let pad = max(safe.left, 16) + 52               // chừa cột bên trái cho nút đóng
         let inner = max(140, panel - pad - 16)
-        // Khối dưới bìa gọn lại để màn thấp (iPhone SE, 375pt) vẫn có bìa to: tên 44 + tiến trình 22 + giờ 14 + điều khiển 50 + khoảng cách
-        let rest: CGFloat = 12 + 44 + 6 + 22 + 14 + 6 + 50
         let top = max(safe.top, 8) + 8
-        let s = max(90, min(inner, h - rest - top - max(safe.bottom, 10) - 24))
-        var y = max(top + 44, (h - (s + rest)) / 2 + 22)
+        let closeBottom = top
+        let bottomMargin = max(safe.bottom, 10) + 10
+        // Dưới bìa: tên/nghệ sĩ 46 + tiến trình 22 + giờ 14 + điều khiển 56 và các khoảng cách
+        let rest: CGFloat = 10 + 46 + 4 + 22 + 14 + 6 + 56
+        let s = max(80, min(inner, h - closeBottom - bottomMargin - rest))
+        var y = closeBottom
         let x = pad
         cover.frame = CGRect(x: x, y: y, width: s, height: s)
-        cover.layer.shadowOpacity = 0.4
-        cover.layer.shadowRadius = 22
-        cover.layer.shadowOffset = CGSize(width: 0, height: 10)
-        cover.layer.masksToBounds = false
-        y += s + 12
+        cover.layer.cornerRadius = 12
+        cover.layer.masksToBounds = true
+        coverShadow.frame = cover.frame
+        coverShadow.layer.shadowPath = UIBezierPath(roundedRect: coverShadow.bounds, cornerRadius: 12).cgPath
+        y += s + 10
         let tw = max(s, min(inner, 320))
         titleLabel.frame = CGRect(x: x, y: y, width: tw, height: 26)
         artistLabel.frame = CGRect(x: x, y: y + 24, width: tw, height: 20)
@@ -92,12 +100,14 @@ final class LandscapeStage: UIView {
         elapsed.frame = CGRect(x: x, y: y, width: tw / 2, height: 14)
         remaining.frame = CGRect(x: x + tw / 2, y: y, width: tw / 2, height: 14)
         y += 20
-        let cy = y + 25
-        playBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); playBtn.center = CGPoint(x: x + tw / 2, y: cy)
-        prevBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); prevBtn.center = CGPoint(x: x + tw / 2 - 80, y: cy)
-        nextBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); nextBtn.center = CGPoint(x: x + tw / 2 + 80, y: cy)
+        // Hàng điều khiển: tua lùi – phát/dừng – tua tới, canh đều quanh giữa thanh tiến trình, nút phát lớn hơn.
+        let cy = y + 28
+        let mid = x + tw / 2
+        playBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); playBtn.center = CGPoint(x: mid, y: cy)
+        prevBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); prevBtn.center = CGPoint(x: mid - 78, y: cy)
+        nextBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); nextBtn.center = CGPoint(x: mid + 78, y: cy)
 
-        close.frame = CGRect(x: max(safe.left, 12) + 8, y: max(safe.top, 8) + 8, width: 44, height: 44)
+        close.frame = CGRect(x: max(safe.left, 12) + 2, y: max(safe.top, 8) + 4, width: 44, height: 44)
         var rx = w - max(safe.right, 12) - 8
         for b in [more, queue, reverb, translate] {
             rx -= 44

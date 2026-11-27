@@ -193,12 +193,17 @@ final class GlassView: UIView {
 /// Nhãn chạy ngang khi tên dài, mờ hai đầu.
 final class MarqueeLabel: UIView {
     let label = UILabel()
+    /// Bản sao nối đuôi để chữ chạy một chiều, vòng lại liền mạch (không chạy qua chạy lại).
+    private let twin = UILabel()
+    private let scroller = UIView()
     private var runningKey = ""
     private let mask2 = CAGradientLayer()
+    private let gap: CGFloat = 40
 
     var text: String? {
         didSet {
             label.text = text
+            twin.text = text
             label.sizeToFit()
             runningKey = ""
             setNeedsLayout()
@@ -208,7 +213,10 @@ final class MarqueeLabel: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         clipsToBounds = true
-        addSubview(label)
+        addSubview(scroller)
+        scroller.addSubview(label)
+        scroller.addSubview(twin)
+        twin.isHidden = true
         mask2.startPoint = CGPoint(x: 0, y: 0.5)
         mask2.endPoint = CGPoint(x: 1, y: 0.5)
     }
@@ -217,25 +225,38 @@ final class MarqueeLabel: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        twin.font = label.font
+        twin.textColor = label.textColor
         label.sizeToFit()
-        let key = "\(label.text ?? "")-\(Int(bounds.width))"
+        let key = "\(label.text ?? "")-\(Int(bounds.width))-\(label.font.pointSize)"
         if key == runningKey { return }
         runningKey = key
-        label.layer.removeAllAnimations()
-        label.frame = CGRect(x: 0, y: (bounds.height - label.bounds.height) / 2, width: label.bounds.width, height: label.bounds.height)
-        let overflow = label.bounds.width - bounds.width
-        if overflow > 1 {
+        scroller.layer.removeAllAnimations()
+        let h = label.bounds.height
+        let w = label.bounds.width
+        scroller.frame = CGRect(x: 0, y: (bounds.height - h) / 2, width: w * 2 + gap, height: h)
+        label.frame = CGRect(x: 0, y: 0, width: w, height: h)
+        twin.frame = CGRect(x: w + gap, y: 0, width: w, height: h)
+        if w - bounds.width > 1 {
+            twin.isHidden = false
             mask2.frame = bounds
-            mask2.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
-            let edge = min(0.12, 18 / max(1, bounds.width))
-            mask2.locations = [0, NSNumber(value: Double(edge)), NSNumber(value: Double(1 - edge)), 1]
+            mask2.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+            let edge = min(0.14, 22 / max(1, bounds.width))
+            mask2.locations = [0, NSNumber(value: Double(1 - edge)), 1]
             layer.mask = mask2
-            let distance = overflow + 24
-            UIView.animate(withDuration: Double(distance) / 28, delay: 1.5,
-                           options: [.repeat, .autoreverse, .curveEaseInOut, .allowUserInteraction], animations: {
-                self.label.frame.origin.x = -distance
-            }, completion: nil)
+            // Đứng yên ~2s rồi chạy một chiều sang trái; hết một vòng thì bản sao đã vào đúng vị trí nên lặp liền mạch.
+            let distance = w + gap
+            let run = Double(distance) / 32
+            let pause = 2.0
+            let anim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            anim.values = [0, 0, -distance]
+            anim.keyTimes = [0, NSNumber(value: pause / (pause + run)), 1]
+            anim.timingFunctions = [CAMediaTimingFunction(name: .linear), CAMediaTimingFunction(name: .linear)]
+            anim.duration = pause + run
+            anim.repeatCount = .infinity
+            scroller.layer.add(anim, forKey: "marquee")
         } else {
+            twin.isHidden = true
             layer.mask = nil
         }
     }

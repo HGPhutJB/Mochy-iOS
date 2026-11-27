@@ -63,9 +63,8 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             realArt.alpha = 0
             miniArt?.alpha = 0
 
-            // Không biến đổi màn hình phía sau (tránh vẽ lại cả ứng dụng mỗi khung hình → giật, mất thanh điều hướng).
-            toView.layer.shouldRasterize = true
-            toView.layer.rasterizationScale = UIScreen.main.scale
+            // Không rasterize: các lớp làm mờ (blur) không chụp được, rasterize làm dải mờ biến mất rồi bật lên đột ngột.
+            // Dải mờ trượt lên cùng cả màn hình, luôn hiển thị đủ (không đổi alpha của lớp làm mờ vì iOS 12 vẽ sai).
             toView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
             UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0,
                            options: [.curveEaseOut], animations: {
@@ -73,11 +72,11 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
                 flying.frame = target
                 flying.layer.cornerRadius = 0
             }, completion: { _ in
-                toView.layer.shouldRasterize = false
                 realArt.alpha = 1
-                flying.removeFromSuperview()
+                UIView.animate(withDuration: 0.18, animations: { flying.alpha = 0 }, completion: { _ in flying.removeFromSuperview() })
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
             })
+
         } else {
             guard let fromVC = transitionContext.viewController(forKey: .from) as? NowPlayingViewController,
                   let fromView = transitionContext.view(forKey: .from) else {
@@ -98,16 +97,12 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
             container.addSubview(flying)
             realArt.alpha = 0
             miniArt?.alpha = 0
-            fromView.layer.shouldRasterize = true
-            fromView.layer.rasterizationScale = UIScreen.main.scale
-
             UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0,
                            options: [.curveEaseInOut], animations: {
                 fromView.transform = CGAffineTransform(translationX: 0, y: container.bounds.height)
                 flying.frame = end
                 flying.layer.cornerRadius = 10
             }, completion: { _ in
-                fromView.layer.shouldRasterize = false
                 flying.removeFromSuperview()
                 miniArt?.alpha = 1
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
