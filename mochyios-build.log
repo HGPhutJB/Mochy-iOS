@@ -59,10 +59,10 @@ dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.17.2_i
 ==> Packaging .ipa
 ==> Done
 total 6656
--rw-r--r--  1 runner  staff  1693334 Nov 27 23:32 com.puc.mochyios_0.17.2_iphoneos-arm.deb
--rw-r--r--  1 runner  staff  1710809 Nov 27 23:32 MochyiOS_0.17.2.ipa
+-rw-r--r--  1 runner  staff  1693338 Nov 27 23:40 com.puc.mochyios_0.17.2_iphoneos-arm.deb
+-rw-r--r--  1 runner  staff  1710809 Nov 27 23:40 MochyiOS_0.17.2.ipa
  new Debian package, version 2.0.
- size 1693334 bytes: control archive=612 bytes.
+ size 1693338 bytes: control archive=612 bytes.
      447 bytes,    10 lines      control
      183 bytes,     5 lines   *  postinst             #!/bin/sh
       86 bytes,     5 lines   *  postrm               #!/bin/sh
