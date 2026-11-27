@@ -986,8 +986,9 @@ final class NowPlayingViewController: UIViewController {
         Haptics.tap()
         let nowLiked = Library.shared.toggleLike(song)
         LastFM.shared.love(song, loved: nowLiked)
-        infoA.checkButton.pop()
-        infoB.checkButton.pop()
+        if nowLiked && !isLandscape {
+            HeartBurstView.play(in: view, at: CGPoint(x: view.bounds.midX, y: view.bounds.height * 0.3))
+        }
     }
 
     @objc private func moreTapped() {

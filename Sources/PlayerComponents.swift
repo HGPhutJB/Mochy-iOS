@@ -491,35 +491,40 @@ final class InfoRow: UIView {
         artistLabel.text = artist
         explicitBadge.isHidden = !explicit
         artistLeading?.constant = explicit ? 23 : 0
-        checkButton.setImage(InfoRow.checkImage(liked: liked), for: .normal)
+        let changed = lastLiked != nil && lastLiked != liked
+        lastLiked = liked
+        if changed && window != nil {
+            // Dấu cộng ↔ trái tim: đổi hình mờ chéo kèm cú nảy.
+            UIView.transition(with: checkButton, duration: 0.22, options: [.transitionCrossDissolve, .allowUserInteraction], animations: {
+                self.checkButton.setImage(InfoRow.checkImage(liked: liked), for: .normal)
+            }, completion: nil)
+            checkButton.imageView?.transform = CGAffineTransform(scaleX: liked ? 0.4 : 1.3, y: liked ? 0.4 : 1.3)
+            UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.42, initialSpringVelocity: 6,
+                           options: [.allowUserInteraction], animations: { self.checkButton.imageView?.transform = .identity }, completion: nil)
+        } else {
+            checkButton.setImage(InfoRow.checkImage(liked: liked), for: .normal)
+        }
     }
+
+    private var lastLiked: Bool?
 
     static func checkImage(liked: Bool) -> UIImage {
         let size = CGSize(width: 38, height: 38)
         return UIGraphicsImageRenderer(size: size).image { _ in
             let circle = UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1))
+            let heart = HeartShape.path(in: CGRect(x: 8, y: 8.5, width: 22, height: 22))
             if liked {
                 Theme.accent.setFill()
                 circle.fill()
-                let tick = UIBezierPath()
-                tick.move(to: CGPoint(x: 11, y: 19.5))
-                tick.addLine(to: CGPoint(x: 16.5, y: 25))
-                tick.addLine(to: CGPoint(x: 27, y: 13.5))
-                UIColor.white.setStroke()
-                tick.lineWidth = 3.4
-                tick.lineCapStyle = .round
-                tick.lineJoinStyle = .round
-                tick.stroke()
+                UIColor.white.setFill()
+                heart.fill()
             } else {
                 UIColor(white: 1, alpha: 0.22).setFill()
                 circle.fill()
-                let plus = UIBezierPath()
-                plus.move(to: CGPoint(x: 19, y: 11)); plus.addLine(to: CGPoint(x: 19, y: 27))
-                plus.move(to: CGPoint(x: 11, y: 19)); plus.addLine(to: CGPoint(x: 27, y: 19))
                 UIColor.white.setStroke()
-                plus.lineWidth = 3.2
-                plus.lineCapStyle = .round
-                plus.stroke()
+                heart.lineWidth = 2.2
+                heart.lineJoinStyle = .round
+                heart.stroke()
             }
         }
     }

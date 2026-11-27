@@ -1,3 +1,8 @@
+Mochy Remake 0.16.0 — hiệu ứng thích bài và màn khởi động
+
+- Nút thích: dấu cộng đổi thành trái tim (tim viền khi chưa thích, tim đặc nền đỏ khi đã thích). Bấm thích thì tim trắng lớn nảy lên giữa màn hình, đổi đỏ kèm vòng sóng và hạt nhỏ bung ra rồi mờ dần.
+- Màn khởi động: logo app hiện giữa nền tối, bo tròn dần kèm vòng xung nhịp trong lúc app tải; khi Trang chủ sẵn sàng logo co nhỏ và bay lên góc trái thanh tiêu đề của Trang chủ.
+
 Mochy Remake 0.15.1 — trả lại nền gradient + blur khi bật lời
 
 - Bật lời: nền gradient màu động và lớp blur trở lại như 0.13.3; ảnh bìa lớn co nhỏ lại về ảnh nhỏ cạnh tên bài (bay ở dưới lớp nền, không đè lên hiệu ứng) rồi trở ra khi tắt lời.

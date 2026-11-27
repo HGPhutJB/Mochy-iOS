@@ -18,8 +18,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         let window = UIWindow(frame: UIScreen.main.bounds)
         Theme.applyWindowStyle(window)
         window.rootViewController = RootViewController()
+        SplashView.landing = true
         window.makeKeyAndVisible()
         self.window = window
+        SplashView.show(on: window)
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
                                                name: .themeChanged, object: nil)
         return true

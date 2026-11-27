@@ -251,6 +251,17 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         let avatar = AccountAvatarButton()
         avatar.addTarget(self, action: #selector(openAccount), for: .touchUpInside)
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: avatar)
+        // Logo app ở góc trái: màn khởi động sẽ bay xuống đây.
+        let logo = UIImageView(image: SplashView.logoImage())
+        logo.contentMode = .scaleAspectFill
+        logo.clipsToBounds = true
+        logo.layer.cornerRadius = 15
+        logo.translatesAutoresizingMaskIntoConstraints = false
+        logo.widthAnchor.constraint(equalToConstant: 30).isActive = true
+        logo.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        logo.alpha = SplashView.landing ? 0 : 1
+        SplashView.targetView = logo
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: logo)
         view.backgroundColor = Theme.background
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -327,6 +338,7 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
             self.tableView.refreshControl?.endRefreshing()
             self.spinner.stopAnimating()
             self.reload(animated: true)
+            NotificationCenter.default.post(name: .homeLoaded, object: nil)
         }
     }
 
