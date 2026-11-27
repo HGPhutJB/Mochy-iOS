@@ -1,3 +1,7 @@
+Mochy Remake 0.17.2 — icon ngẫu nhiên và lặp lại mới
+
+- Thay icon ngẫu nhiên và lặp lại bằng đúng hình icon bạn gửi (kèm biến thể lặp một bài có số 1).
+
 Mochy Remake 0.17.1 — sửa chiều đường bay của logo
 
 - Logo khởi động bay vòng cung đúng chiều như bản gốc: lệch sang trái trước rồi mới vút lên góc trái Trang chủ.

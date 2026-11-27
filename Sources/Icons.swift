@@ -76,42 +76,23 @@ enum Icons {
         }
     }
 
-    static func shuffle(_ size: CGFloat) -> UIImage {
-        return make(size) { s in
-            let a = UIBezierPath()
-            a.move(to: CGPoint(x: s * 0.1, y: s * 0.7))
-            a.addCurve(to: CGPoint(x: s * 0.78, y: s * 0.3),
-                       controlPoint1: CGPoint(x: s * 0.45, y: s * 0.7), controlPoint2: CGPoint(x: s * 0.5, y: s * 0.3))
-            Icons.line(a, s)
-            let b = UIBezierPath()
-            b.move(to: CGPoint(x: s * 0.1, y: s * 0.3))
-            b.addCurve(to: CGPoint(x: s * 0.78, y: s * 0.7),
-                       controlPoint1: CGPoint(x: s * 0.45, y: s * 0.3), controlPoint2: CGPoint(x: s * 0.5, y: s * 0.7))
-            Icons.line(b, s)
-            Icons.arrowHead(s, at: CGPoint(x: s * 0.92, y: s * 0.3), pointingRight: true)
-            Icons.arrowHead(s, at: CGPoint(x: s * 0.92, y: s * 0.7), pointingRight: true)
-        }
-    }
+    /// Ngẫu nhiên và lặp lại: dựng từ ảnh icon người dùng cung cấp (giữ nguyên hình dạng).
+    static func shuffle(_ size: CGFloat) -> UIImage { return png(IconData.shuffle, size) }
 
-    static func repeatAll(_ size: CGFloat) -> UIImage {
-        return make(size) { s in
-            let p = UIBezierPath(roundedRect: CGRect(x: s * 0.12, y: s * 0.27, width: s * 0.76, height: s * 0.46), cornerRadius: s * 0.2)
-            Icons.line(p, s)
-            Icons.arrowHead(s, at: CGPoint(x: s * 0.62, y: s * 0.27), pointingRight: true)
-        }
-    }
+    static func repeatAll(_ size: CGFloat) -> UIImage { return png(IconData.repeatAll, size) }
 
     static func repeatOne(_ size: CGFloat) -> UIImage {
-        return make(size) { s in
-            let p = UIBezierPath(roundedRect: CGRect(x: s * 0.12, y: s * 0.27, width: s * 0.76, height: s * 0.46), cornerRadius: s * 0.2)
-            Icons.line(p, s)
-            Icons.arrowHead(s, at: CGPoint(x: s * 0.62, y: s * 0.27), pointingRight: true)
-            let attrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: s * 0.34, weight: .heavy),
-                                                        .foregroundColor: UIColor.black]
+        let base = png(IconData.repeatAll, size)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        let image = renderer.image { _ in
+            base.withRenderingMode(.alwaysOriginal).draw(in: CGRect(x: 0, y: 0, width: size, height: size))
+            let attrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: size * 0.3, weight: .heavy),
+                                                        .foregroundColor: UIColor.white]
             let text = "1" as NSString
             let box = text.size(withAttributes: attrs)
-            text.draw(at: CGPoint(x: s * 0.5 - box.width / 2, y: s * 0.5 - box.height / 2), withAttributes: attrs)
+            text.draw(at: CGPoint(x: size * 0.5 - box.width / 2, y: size * 0.5 - box.height / 2), withAttributes: attrs)
         }
+        return image.withRenderingMode(.alwaysTemplate)
     }
 
     /// Icon dựng từ ảnh PNG người dùng cung cấp (dạng template để đổi màu).
