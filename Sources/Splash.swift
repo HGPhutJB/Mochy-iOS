@@ -199,12 +199,12 @@ final class SplashView: UIView {
         let duration: CFTimeInterval = UIAccessibility.isReduceMotionEnabled ? 0.01 : 0.95
         let timing = CAMediaTimingFunction(controlPoints: 0.45, 0, 0.15, 1)
 
-        // Đường vòng cung: đi lên rồi cong sang trái (cubic Bézier mượt).
+        // Đường vòng cung giống bản gốc: lệch sang trái trước rồi mới vút lên (võng về phía dưới-trái so với đường thẳng).
         let path = UIBezierPath()
         path.move(to: from)
         path.addCurve(to: to,
-                      controlPoint1: CGPoint(x: from.x + (to.x - from.x) * 0.05, y: from.y + (to.y - from.y) * 0.55),
-                      controlPoint2: CGPoint(x: from.x + (to.x - from.x) * 0.55, y: to.y - 6))
+                      controlPoint1: CGPoint(x: from.x + (to.x - from.x) * 0.45, y: from.y + (to.y - from.y) * 0.06),
+                      controlPoint2: CGPoint(x: to.x - 4, y: from.y + (to.y - from.y) * 0.55))
         let move = CAKeyframeAnimation(keyPath: "position")
         move.path = path.cgPath
         move.calculationMode = .paced

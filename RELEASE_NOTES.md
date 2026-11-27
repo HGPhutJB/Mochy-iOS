@@ -1,3 +1,7 @@
+Mochy Remake 0.17.1 — sửa chiều đường bay của logo
+
+- Logo khởi động bay vòng cung đúng chiều như bản gốc: lệch sang trái trước rồi mới vút lên góc trái Trang chủ.
+
 Mochy Remake 0.17.0 — logo khởi động mới, tim theo video mẫu, sửa xoay ngang
 
 - Màn khởi động: logo Mochy không nền hiện ngay từ màn hình chờ (logo nằm sẵn trong màn hình chờ của hệ thống, phần dựng giao diện nặng dời ra sau khung hình đầu tiên). Tải xong thì logo núng nính (ịch xuống, nảy to, xoáy nhẹ), hiện vòng tròn quanh logo rồi bay theo đường vòng cung lên góc trái Trang chủ.
