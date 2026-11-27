@@ -1,3 +1,9 @@
+Mochy Remake 0.14.0 — đổi tên, Material 3
+
+- Đổi tên hiển thị thành Mochy Remake (bundle id giữ nguyên nên cập nhật đè lên bản cũ).
+- Ảnh bìa luôn nằm dưới lớp mờ ở màn hình đang phát, không còn chuyển đổi giữa bìa và nền gradient.
+- Thêm giao diện Material 3, đổi qua lại với giao diện gốc ở Cài đặt ▸ Giao diện ▸ Kiểu giao diện: ô danh sách dạng thẻ nhún bo tròn + ripple, thanh tab Material 3 (icon + nhãn, viên thuốc chỉ báo), bộ chuyển động lò xo Expressive.
+
 Mochy iOS 0.13.3 — sửa hàng loạt lỗi giao diện
 
 - Nền gradient: hết vệt chéo/lộ mép khi xoay ngang (hiệu ứng trôi tính lại theo kích thước mới, lớp nền phủ rộng hơn).

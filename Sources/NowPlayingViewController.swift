@@ -141,7 +141,6 @@ final class NowPlayingViewController: UIViewController {
     private let backFill = UIImageView()   // bản mờ của bìa phủ kín màn hình, nằm sau bìa vuông
     private let artFade = CAGradientLayer()
     private let video = VideoBackdrop()
-    private let fluidView = FluidBackgroundView()
     private let bandBlur = ProgressiveBlurView(layers: 4)
     private let bandShade = GradientView()
     private let topShade = GradientView()
@@ -210,7 +209,6 @@ final class NowPlayingViewController: UIViewController {
         center.addObserver(self, selector: #selector(libraryChanged), name: .downloadChanged, object: nil)
         stateChanged()
         apply(mode: .cover, animated: false)
-        fluidView.setReveal(.hidden, animated: false)   // dải màu sẽ trồi lên khi màn hình hiện xong
     }
 
     private var didAppearOnce = false
@@ -233,7 +231,6 @@ final class NowPlayingViewController: UIViewController {
         super.viewDidAppear(animated)
         if !didAppearOnce {
             didAppearOnce = true
-            if mode == .cover { fluidView.setReveal(.band, animated: true) }
             refreshVideo()
         }
     }
@@ -259,14 +256,23 @@ final class NowPlayingViewController: UIViewController {
         artView.frame = CGRect(x: 0, y: 0, width: w, height: min(w, h))
         artFade.frame = artView.bounds
         video.layer.frame = mediaView.bounds
-        let bandTop = h * 0.42
-        bandBlur.frame = CGRect(x: 0, y: bandTop, width: w, height: h - bandTop)
+        bandBlur.frame = bandFrame()
         bandShade.frame = bandBlur.frame
         topShade.frame = CGRect(x: 0, y: 0, width: w, height: 170)
         stage.frame = view.bounds
         let landscape = w > h
         if landscape != isLandscape { setLandscape(landscape) }
         updateLyricsFrame()
+    }
+
+    /// Lớp mờ ở đáy (xem bìa) hoặc phủ kín (bật lời / xoay ngang).
+    private var blurIsFull: Bool { return mode != .cover || isLandscape }
+
+    private func bandFrame() -> CGRect {
+        let w = view.bounds.width, h = view.bounds.height
+        if blurIsFull { return CGRect(x: 0, y: 0, width: w, height: h) }
+        let top = h * 0.42
+        return CGRect(x: 0, y: top, width: w, height: h - top)
     }
 
     // MARK: - Dựng giao diện
@@ -304,13 +310,9 @@ final class NowPlayingViewController: UIViewController {
             CATransaction.commit()
         }
 
-        fluidView.frame = view.bounds
-        fluidView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        fluidView.setReveal(.hidden, animated: false)
-
+        // Bìa luôn nằm dưới lớp mờ: xem bìa thì mờ dải đáy, bật lời thì lớp mờ phủ kín (không còn nền gradient riêng).
         bandBlur.isUserInteractionEnabled = false
         view.addSubview(bandBlur)
-        view.addSubview(fluidView)   // nằm trên lớp mờ: dải màu phủ lên phần ảnh đã mờ
         bandShade.isUserInteractionEnabled = false
         bandShade.gradientLayer.colors = [UIColor.clear.cgColor, UIColor(white: 0, alpha: 0.32).cgColor]
         bandShade.gradientLayer.locations = [0.3, 1]
@@ -524,13 +526,14 @@ final class NowPlayingViewController: UIViewController {
         let chromeAlpha: CGFloat = new == .immersive ? 0 : 1
         let chromeViews = chromeTop + chromeBottom
         if new != .immersive { chromeViews.forEach { $0.isUserInteractionEnabled = true } }
-        fluidView.setReveal(lyr ? .full : .band, animated: animated)
+        bandBlur.setFull(blurIsFull, animated: animated)
         if lyr { video.pause() }   // lời phủ kín thì không cần giải mã video phía sau
         let changes = {
-            self.mediaView.alpha = lyr ? 0 : 1
-            self.fluidView.alpha = lyr ? 1 : (self.backdropLight ? 0 : 1)
-            self.bandBlur.alpha = lyr ? 0 : 1
-            self.bandShade.alpha = lyr ? 0 : 1
+            self.mediaView.alpha = 1
+            self.bandBlur.frame = self.bandFrame()
+            self.bandShade.frame = self.bandBlur.frame
+            self.bandBlur.alpha = 1
+            self.bandShade.alpha = 1
             self.topShade.alpha = lyr ? 0 : 1
             self.infoA.alpha = new == .cover ? 1 : 0
             self.infoB.alpha = new == .lyrics ? 1 : 0
@@ -607,15 +610,16 @@ final class NowPlayingViewController: UIViewController {
 
     /// Xoay ngang: ẩn mọi thứ của bố cục dọc, chỉ để nền màu, lời và bảng điều khiển bên trái.
     private func landscapeOverride() {
-        mediaView.alpha = 0
-        bandBlur.alpha = 0
-        bandShade.alpha = 0
+        mediaView.alpha = 1
+        bandBlur.setFull(true, animated: false)
+        bandBlur.frame = bandFrame()
+        bandShade.frame = bandBlur.frame
+        bandBlur.alpha = 1
+        bandShade.alpha = 1
         topShade.alpha = 0
         infoA.alpha = 0
         infoB.alpha = 0
         (chromeTop + chromeBottom).forEach { $0.alpha = 0; $0.isUserInteractionEnabled = false }
-        fluidView.setReveal(.full, animated: false)
-        fluidView.alpha = 1
         lyricsView.alpha = 1
         lyricsView.anchorFraction = 0.33
         lyricsView.immersive = false
@@ -718,7 +722,6 @@ final class NowPlayingViewController: UIViewController {
                     }, completion: nil)
                 }
             }
-            fluidView.setImage(image)
             applyTone(from: image)
         }
 
@@ -752,13 +755,15 @@ final class NowPlayingViewController: UIViewController {
     /// Chỉnh dải mờ, bóng, chữ và nút theo độ sáng của nền (bìa sáng → mờ sáng + chữ tối).
     private func refreshBackdrop(animated: Bool) {
         let light = backdropLight
-        bandBlur.setLight(light, animated: animated)
-        if mode == .cover {
-            let target: CGFloat = light ? 0 : 1
-            if animated { UIView.animate(withDuration: 0.5) { self.fluidView.alpha = target } } else { fluidView.alpha = target }
+        bandBlur.setLight(light && !blurIsFull, animated: animated)
+        if blurIsFull {
+            bandShade.gradientLayer.locations = [0, 1]
+            bandShade.gradientLayer.colors = [UIColor(white: 0, alpha: 0.34).cgColor, UIColor(white: 0, alpha: 0.5).cgColor]
+        } else {
+            bandShade.gradientLayer.locations = [0.3, 1]
+            bandShade.gradientLayer.colors = [UIColor.clear.cgColor,
+                                              (light ? UIColor(white: 1, alpha: 0.28) : UIColor(white: 0, alpha: 0.32)).cgColor]
         }
-        bandShade.gradientLayer.colors = [UIColor.clear.cgColor,
-                                          (light ? UIColor(white: 1, alpha: 0.28) : UIColor(white: 0, alpha: 0.32)).cgColor]
         infoA.setInk(dark: light)
         applyIconTints()
     }

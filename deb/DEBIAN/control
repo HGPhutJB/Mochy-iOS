@@ -1,5 +1,5 @@
 Package: com.puc.mochyios
-Name: Mochy iOS
+Name: Mochy Remake
 Version: @VERSION@
 Architecture: iphoneos-arm
 Description: Music player for iOS 12+ (rootful), a Swift port of Mochy Music. Search and stream from YouTube Music, background playback and lock screen controls.

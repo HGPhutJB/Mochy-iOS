@@ -39,6 +39,28 @@ final class ProgressiveBlurView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
+    private var full = false
+
+    /// Phủ kín: chỉ dùng một lớp mờ đậm đều từ trên xuống (nhẹ hơn nhiều so với bốn lớp), đổi mượt từ dải đáy.
+    func setFull(_ value: Bool, animated: Bool) {
+        guard value != full else { return }
+        full = value
+        for (i, m) in masks.enumerated() {
+            let start = Double(i) * 0.15
+            let to: [NSNumber] = value ? [0, 0.001] : [NSNumber(value: start), NSNumber(value: start + 0.45)]
+            if animated {
+                let anim = CABasicAnimation(keyPath: "locations")
+                anim.fromValue = (m.presentation() ?? m).locations
+                anim.toValue = to
+                anim.duration = 0.5
+                anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                m.add(anim, forKey: "full")
+            }
+            m.locations = to
+            if i > 0 { effects[i].isHidden = value }
+        }
+    }
+
     /// Sáng cho bìa sáng, tối cho bìa tối.
     func setLight(_ light: Bool, animated: Bool) {
         let effect = UIBlurEffect(style: light ? .light : .dark)

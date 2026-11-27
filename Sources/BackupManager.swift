@@ -77,7 +77,7 @@ enum BackupManager {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         guard let envelope = try? decoder.decode(Envelope.self, from: data), envelope.app == UpdateConfig.appId else {
-            return .failure(UpdateError(L("Đây không phải tệp sao lưu của Mochy iOS.")))
+            return .failure(UpdateError(L("Đây không phải tệp sao lưu của Mochy Remake.")))
         }
         let added = Library.shared.merge(envelope.library)
         if let plays = envelope.plays { PlayLog.shared.merge(plays) }

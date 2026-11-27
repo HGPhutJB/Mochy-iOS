@@ -1,4 +1,4 @@
-// Mochy iOS — trình nghe nhạc cho iOS 12 trở lên (jailbreak rootful hoặc sideload).
+// Mochy Remake — trình nghe nhạc cho iOS 12 trở lên (jailbreak rootful hoặc sideload).
 //
 // Nguồn gốc: đây là bản viết lại bằng Swift/UIKit, dựa trên ý tưởng, luồng gọi YouTube Music và
 // bộ thông số client của Mochy Music (https://github.com/realidkroo/mochy-music, GPL-3.0) do realidkroo làm.

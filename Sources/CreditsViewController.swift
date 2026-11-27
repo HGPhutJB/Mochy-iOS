@@ -16,7 +16,7 @@ final class CreditsViewController: UIViewController, UITableViewDataSource, UITa
 
     private let blocks: [Block] = [
         Block(title: L("Dự án gốc"),
-              footer: L("Mochy iOS là bản viết lại bằng Swift/UIKit cho iOS 12 trở lên, dựa trên ý tưởng, cách gọi YouTube Music, bộ thông số client và thiết kế giao diện của Mochy Music. Ported from Mochy Music."),
+              footer: L("Mochy Remake là bản viết lại bằng Swift/UIKit cho iOS 12 trở lên, dựa trên ý tưởng, cách gọi YouTube Music, bộ thông số client và thiết kế giao diện của Mochy Music. Ported from Mochy Music."),
               items: [Item(title: "Mochy Music", detail: "realidkroo", url: "https://github.com/realidkroo/mochy-music")]),
         Block(title: L("Nền tảng của Mochy Music"),
               footer: L("Mochy Music là bản phát triển từ ViviMusic và xây trên Metrolist. Ghi công của họ được giữ nguyên."),
@@ -31,11 +31,11 @@ final class CreditsViewController: UIViewController, UITableViewDataSource, UITa
                       Item(title: "Better Lyrics API", detail: "Boidushya", url: nil),
                       Item(title: "AutoEq", detail: "AutoEq", url: nil)]),
         Block(title: L("Giấy phép và mã nguồn"),
-              footer: L("Mochy iOS giữ giấy phép GPL-3.0. Nếu bạn phát hành bản chỉnh sửa, hãy giữ các ghi công này và công khai mã nguồn."),
+              footer: L("Mochy Remake giữ giấy phép GPL-3.0. Nếu bạn phát hành bản chỉnh sửa, hãy giữ các ghi công này và công khai mã nguồn."),
               items: [Item(title: "GPL-3.0", detail: L("Toàn văn giấy phép"), url: "https://www.gnu.org/licenses/gpl-3.0.html"),
-                      Item(title: L("Mã nguồn Mochy iOS"), detail: "GitHub", url: UpdateConfig.repoPage)]),
+                      Item(title: L("Mã nguồn Mochy Remake"), detail: "GitHub", url: UpdateConfig.repoPage)]),
         Block(title: L("Lưu ý"),
-              footer: L("Mochy iOS là dự án không chính thức, không liên kết với YouTube, Google, Apple hay dịch vụ nào nó kết nối tới. App không lưu trữ hay phân phối nhạc."),
+              footer: L("Mochy Remake là dự án không chính thức, không liên kết với YouTube, Google, Apple hay dịch vụ nào nó kết nối tới. App không lưu trữ hay phân phối nhạc."),
               items: [])
     ]
 

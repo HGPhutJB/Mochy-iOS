@@ -6,7 +6,13 @@ final class RootViewController: UIViewController {
     static weak var shared: RootViewController?
 
     private let contentView = UIView()
-    private let tabBar = FloatingTabBar(icons: [Icons.home(25), Icons.search(25), Icons.library(25), Icons.sliders(25)])
+    private let tabBar: UIView & TabBarControl = {
+        if Mat.active {
+            return MaterialNavBar(icons: [Icons.home(24), Icons.search(24), Icons.library(24), Icons.sliders(24)],
+                                  titles: [L("Trang chủ"), L("Tìm kiếm"), L("Thư viện"), L("Cài đặt")])
+        }
+        return FloatingTabBar(icons: [Icons.home(25), Icons.search(25), Icons.library(25), Icons.sliders(25)])
+    }()
     private let mini = MiniPlayerView()
     private var controllers: [UINavigationController] = []
     private(set) var selectedIndex = 0
@@ -79,12 +85,22 @@ final class RootViewController: UIViewController {
             mini.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
             mini.centerYAnchor.constraint(equalTo: tabBar.centerYAnchor)
         ]
-        NSLayoutConstraint.activate([
-            tabLeading, tabTrailing,
-            tabBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
-            tabBar.heightAnchor.constraint(equalToConstant: FloatingTabBar.height),
-            miniHeight
-        ] + miniExpanded)
+        if Mat.active {
+            NSLayoutConstraint.activate([
+                tabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                tabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                tabBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                tabBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -MaterialNavBar.contentHeight),
+                miniHeight
+            ] + miniExpanded)
+        } else {
+            NSLayoutConstraint.activate([
+                tabLeading, tabTrailing,
+                tabBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+                tabBar.heightAnchor.constraint(equalToConstant: FloatingTabBar.height),
+                miniHeight
+            ] + miniExpanded)
+        }
         tabBar.backdrop = contentView
         tabBar.onTapWhileCollapsed = { [weak self] in self?.setCompact(false) }
         tabBar.select(selectedIndex, animated: false)
@@ -125,7 +141,7 @@ final class RootViewController: UIViewController {
 
     /// Đổi trạng thái do cuộn: có thời gian nghỉ để hiệu ứng lò xo chạy xong, tránh nhấp nháy.
     private func requestCompact(_ value: Bool) {
-        guard value != compact, Date().timeIntervalSince(lastToggle) > 0.7 else { return }
+        guard !Mat.active, value != compact, Date().timeIntervalSince(lastToggle) > 0.7 else { return }
         lastToggle = Date()
         setCompact(value)
     }
@@ -264,7 +280,7 @@ final class RootViewController: UIViewController {
 
     /// Chừa chỗ ở đáy cho thanh tab nổi (và thanh phát nhỏ) để danh sách không bị che.
     private func applyInsets(animated: Bool) {
-        var bottom = FloatingTabBar.height + 16
+        var bottom = Mat.active ? MaterialNavBar.contentHeight : FloatingTabBar.height + 16
         if miniVisible { bottom += MiniPlayerView.height + 8 }
         let apply = {
             for nav in self.controllers {
@@ -338,7 +354,7 @@ final class RootViewController: UIViewController {
               AppSettings.lastNotifiedBuild != info.build, presentedViewController == nil else { return }
         AppSettings.lastNotifiedBuild = info.build
         let alert = UIAlertController(title: L("Có bản cập nhật mới"),
-                                      message: Lf("Mochy iOS %@ (build %@) đã sẵn sàng.", info.version, info.build),
+                                      message: Lf("Mochy Remake %@ (build %@) đã sẵn sàng.", info.version, info.build),
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Xem", style: .default) { [weak self] _ in
             self?.select(3, animated: true)

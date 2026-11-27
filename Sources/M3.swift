@@ -111,7 +111,44 @@ final class M3Cell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private var card: MaterialCardView?
+    private var lastTouch = CGPoint.zero
+
+    /// Kiểu Material 3: mỗi hàng là một thẻ riêng (góc lớn ở đầu/cuối nhóm, góc nhỏ ở giữa), chạm thì nhún bo tròn + ripple.
+    private func applyMaterial() {
+        let c: MaterialCardView
+        if let existing = card { c = existing } else {
+            c = MaterialCardView()
+            insertSubview(c, at: 0)
+            card = c
+        }
+        c.isHidden = false
+        layer.masksToBounds = false
+        layer.cornerRadius = 0
+        backgroundColor = .clear
+        press.isHidden = true
+        divider.isHidden = true
+        let big: CGFloat = 24, small: CGFloat = 6
+        switch position {
+        case .single: c.topRadius = big; c.bottomRadius = big
+        case .top: c.topRadius = big; c.bottomRadius = small
+        case .middle: c.topRadius = small; c.bottomRadius = small
+        case .bottom: c.topRadius = small; c.bottomRadius = big
+        }
+        c.fillColor = Theme.cellBackground
+        c.frame = bounds
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let t = touches.first { lastTouch = t.location(in: self) }
+        super.touchesBegan(touches, with: event)
+    }
+
     private func applyShape() {
+        if Mat.active { applyMaterial(); return }
+        card?.isHidden = true
+        press.isHidden = false
+        layer.masksToBounds = true
         layer.cornerRadius = M3.cardRadius
         if #available(iOS 11.0, *) {
             switch position {
@@ -142,6 +179,12 @@ final class M3Cell: UITableViewCell {
     }
 
     private func applyPress(_ on: Bool, animated: Bool) {
+        if Mat.active, let c = card {
+            guard selectionStyle != .none else { c.setPressed(false, animated: true); return }
+            if on { c.ripple(from: lastTouch) }
+            c.setPressed(on, animated: animated)
+            return
+        }
         guard selectionStyle != .none else { press.alpha = 0; return }
         press.backgroundColor = Theme.chip
         let change = { self.press.alpha = on ? 1 : 0 }
@@ -152,6 +195,7 @@ final class M3Cell: UITableViewCell {
         super.layoutSubviews()
         let h = 1.0 / UIScreen.main.scale
         press.frame = bounds
+        if Mat.active { applyMaterial() }
         divider.frame = CGRect(x: 16, y: bounds.height - h, width: bounds.width - 32, height: h)
     }
 }

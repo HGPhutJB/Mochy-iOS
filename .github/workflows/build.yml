@@ -82,7 +82,7 @@ jobs:
           else
             gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
             gh release create "$TAG" dist/* --target "$GITHUB_SHA" --latest \
-              --title "Mochy iOS $VERSION" --notes-file RELEASE_NOTES.md
+              --title "Mochy Remake $VERSION" --notes-file RELEASE_NOTES.md
           fi
 
       - name: Upload build output

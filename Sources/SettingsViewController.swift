@@ -4,6 +4,7 @@ import UIKit
 final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIDocumentPickerDelegate {
     private enum Row {
         case theme
+        case uiStyle
         case quality
         case reverb
         case translateLang
@@ -100,7 +101,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
         sections = accountSections + [
             Section(title: L("Giao diện"), footer: L("\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối."),
-                    rows: [.theme, .language]),
+                    rows: [.theme, .uiStyle, .language]),
             Section(title: L("Âm thanh"), footer: L("\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp."),
                     rows: [.quality, .crossfade, .reverb, .translateLang, .hidePast, .videoBackdrop]),
             Section(title: L("Tính năng"), footer: nil, rows: [.recap, .importList, .advanced]),
@@ -116,7 +117,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             ]),
             Section(title: L("Giới thiệu"), footer: nil, rows: [
                 .credits,
-                .link(L("Mã nguồn Mochy iOS"), "GitHub", UpdateConfig.repoPage)
+                .link(L("Mã nguồn Mochy Remake"), "GitHub", UpdateConfig.repoPage)
             ])
         ]
     }
@@ -170,6 +171,14 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             control.addTarget(self, action: #selector(themeChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
             cell.textLabel?.text = L("Chế độ")
+            cell.selectionStyle = .none
+
+        case .uiStyle:
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
+            let control = M3Segmented(items: [L("Gốc"), "Material 3"], selected: UIStyle.material ? 1 : 0)
+            control.addTarget(self, action: #selector(uiStyleChanged(_:)), for: .valueChanged)
+            cell.accessoryView = control
+            cell.textLabel?.text = L("Kiểu giao diện")
             cell.selectionStyle = .none
 
         case .quality:
@@ -402,6 +411,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     @objc private func themeChanged(_ sender: M3Segmented) {
         guard let mode = ThemeMode(rawValue: sender.selectedSegmentIndex) else { return }
         Theme.mode = mode
+        NotificationCenter.default.post(name: .themeChanged, object: nil)
+    }
+
+    @objc private func uiStyleChanged(_ sender: M3Segmented) {
+        UIStyle.material = sender.selectedSegmentIndex == 1
         NotificationCenter.default.post(name: .themeChanged, object: nil)
     }
 
