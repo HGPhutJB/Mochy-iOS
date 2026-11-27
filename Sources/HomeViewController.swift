@@ -252,10 +252,9 @@ final class HomeViewController: UIViewController, UITableViewDataSource, UITable
         avatar.addTarget(self, action: #selector(openAccount), for: .touchUpInside)
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: avatar)
         // Logo app ở góc trái: màn khởi động sẽ bay xuống đây.
-        let logo = UIImageView(image: SplashView.logoImage())
-        logo.contentMode = .scaleAspectFill
-        logo.clipsToBounds = true
-        logo.layer.cornerRadius = 15
+        let logo = UIImageView(image: SplashView.logoImage()?.withRenderingMode(.alwaysTemplate))
+        logo.contentMode = .scaleAspectFit
+        logo.tintColor = Theme.primaryText
         logo.translatesAutoresizingMaskIntoConstraints = false
         logo.widthAnchor.constraint(equalToConstant: 30).isActive = true
         logo.heightAnchor.constraint(equalToConstant: 30).isActive = true

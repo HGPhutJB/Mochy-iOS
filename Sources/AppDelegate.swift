@@ -13,15 +13,22 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        _ = PlayerEngine.shared
-        ScrobbleTracker.shared.start()
         let window = UIWindow(frame: UIScreen.main.bounds)
         Theme.applyWindowStyle(window)
-        window.rootViewController = RootViewController()
+        // Hiện logo ngay khung hình đầu tiên (khớp màn hình chờ của hệ thống); phần nặng dựng ngay sau đó.
+        window.rootViewController = SplashHostController()
         SplashView.landing = true
         window.makeKeyAndVisible()
         self.window = window
         SplashView.show(on: window)
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self = self, let window = window else { return }
+            _ = PlayerEngine.shared
+            ScrobbleTracker.shared.start()
+            window.rootViewController = RootViewController()
+            SplashView.bringToFront(in: window)
+            _ = self
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
                                                name: .themeChanged, object: nil)
         return true

@@ -1,3 +1,9 @@
+Mochy Remake 0.17.0 — logo khởi động mới, tim theo video mẫu, sửa xoay ngang
+
+- Màn khởi động: logo Mochy không nền hiện ngay từ màn hình chờ (logo nằm sẵn trong màn hình chờ của hệ thống, phần dựng giao diện nặng dời ra sau khung hình đầu tiên). Tải xong thì logo núng nính (ịch xuống, nảy to, xoáy nhẹ), hiện vòng tròn quanh logo rồi bay theo đường vòng cung lên góc trái Trang chủ.
+- Tim khi thích bài dựng lại theo từng khung hình của video mẫu: tim trắng nhỏ phóng to và trượt xuống, giữ trắng, bật đỏ kèm vòng mảnh và hạt li ti, co lại và nhạt dần sang hồng rồi trắng, bay lên và tan.
+- Xoay ngang: các nút phía trên dùng được lại (vùng kéo xuống đã chắn mất các nút); nút tua/phát không còn tự ẩn; bìa, thông tin và nút điều khiển canh giữa cân đối trong nửa trái.
+
 Mochy Remake 0.16.0 — hiệu ứng thích bài và màn khởi động
 
 - Nút thích: dấu cộng đổi thành trái tim (tim viền khi chưa thích, tim đặc nền đỏ khi đã thích). Bấm thích thì tim trắng lớn nảy lên giữa màn hình, đổi đỏ kèm vòng sóng và hạt nhỏ bung ra rồi mờ dần.

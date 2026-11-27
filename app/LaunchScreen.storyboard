@@ -15,6 +15,19 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <color key="backgroundColor" red="0.11372549" green="0.11372549" blue="0.11372549" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <subviews>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="MochyLogo" translatesAutoresizingMaskIntoConstraints="NO" id="Lg1-Ab-c01">
+                                <rect key="frame" x="139.5" y="285.5" width="96" height="96"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="96" id="Lg1-W"/>
+                                    <constraint firstAttribute="height" constant="96" id="Lg1-H"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
+                        <constraints>
+                            <constraint firstItem="Lg1-Ab-c01" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="Lg1-X"/>
+                            <constraint firstItem="Lg1-Ab-c01" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="Lg1-Y"/>
+                        </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
                 </viewController>
@@ -22,4 +35,7 @@
             </objects>
         </scene>
     </scenes>
+    <resources>
+        <image name="MochyLogo" width="96" height="96"/>
+    </resources>
 </document>

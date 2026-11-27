@@ -75,23 +75,23 @@ final class LandscapeStage: UIView {
         let safe = safeAreaInsets
         let w = bounds.width, h = bounds.height
         let panel = w * 0.47
-        let pad = max(safe.left, 16) + 52               // chừa cột bên trái cho nút đóng
-        let inner = max(140, panel - pad - 16)
-        let top = max(safe.top, 8) + 8
-        let closeBottom = top
-        let bottomMargin = max(safe.bottom, 10) + 10
-        // Dưới bìa: tên/nghệ sĩ 46 + tiến trình 22 + giờ 14 + điều khiển 56 và các khoảng cách
-        let rest: CGFloat = 10 + 46 + 4 + 22 + 14 + 6 + 56
-        let s = max(80, min(inner, h - closeBottom - bottomMargin - rest))
-        var y = closeBottom
-        let x = pad
+        let leftEdge = max(safe.left, 12) + 56                 // chừa cột nút đóng bên trái
+        let zoneW = max(160, panel - leftEdge - 12)
+        let topEdge = max(safe.top, 8) + 12
+        let bottomEdge = max(safe.bottom, 10) + 12
+        // Khối dưới bìa: tên/nghệ sĩ 46 + tiến trình 22 + giờ 14 + điều khiển 56 và các khoảng cách.
+        let rest: CGFloat = 12 + 46 + 4 + 22 + 14 + 8 + 56
+        let s = max(80, min(zoneW, h - topEdge - bottomEdge - rest))
+        // Cả khối (bìa + thông tin + điều khiển) rộng bằng bìa, canh giữa theo cả hai chiều trong vùng bên trái.
+        let tw = s
+        let x = leftEdge + (zoneW - tw) / 2
+        var y = max(topEdge, (h - (s + rest)) / 2)
         cover.frame = CGRect(x: x, y: y, width: s, height: s)
         cover.layer.cornerRadius = 12
         cover.layer.masksToBounds = true
         coverShadow.frame = cover.frame
         coverShadow.layer.shadowPath = UIBezierPath(roundedRect: coverShadow.bounds, cornerRadius: 12).cgPath
-        y += s + 10
-        let tw = max(s, min(inner, 320))
+        y += s + 12
         titleLabel.frame = CGRect(x: x, y: y, width: tw, height: 26)
         artistLabel.frame = CGRect(x: x, y: y + 24, width: tw, height: 20)
         y += 50
@@ -99,13 +99,14 @@ final class LandscapeStage: UIView {
         y += 22
         elapsed.frame = CGRect(x: x, y: y, width: tw / 2, height: 14)
         remaining.frame = CGRect(x: x + tw / 2, y: y, width: tw / 2, height: 14)
-        y += 20
-        // Hàng điều khiển: tua lùi – phát/dừng – tua tới, canh đều quanh giữa thanh tiến trình, nút phát lớn hơn.
+        y += 22
+        // Hàng điều khiển canh giữa dưới thanh tiến trình: tua lùi – phát/dừng – tua tới.
         let cy = y + 28
         let mid = x + tw / 2
+        let gap = min(78, max(56, tw / 4))
         playBtn.frame = CGRect(x: 0, y: 0, width: 56, height: 56); playBtn.center = CGPoint(x: mid, y: cy)
-        prevBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); prevBtn.center = CGPoint(x: mid - 78, y: cy)
-        nextBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); nextBtn.center = CGPoint(x: mid + 78, y: cy)
+        prevBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); prevBtn.center = CGPoint(x: mid - gap, y: cy)
+        nextBtn.frame = CGRect(x: 0, y: 0, width: 52, height: 52); nextBtn.center = CGPoint(x: mid + gap, y: cy)
 
         close.frame = CGRect(x: max(safe.left, 12) + 2, y: max(safe.top, 8) + 4, width: 44, height: 44)
         var rx = w - max(safe.right, 12) - 8

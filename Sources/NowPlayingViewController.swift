@@ -615,6 +615,8 @@ final class NowPlayingViewController: UIViewController {
         guard on != isLandscape else { return }
         isLandscape = on
         LyricCell.landscape = on
+        dragZone.isUserInteractionEnabled = !on   // vùng kéo xuống chắn mất các nút phía trên khi xoay ngang
+        view.bringSubviewToFront(stage)
         if on {
             modeBeforeLandscape = mode == .immersive ? .lyrics : mode
             lyricsView.resetFollow()
@@ -682,11 +684,8 @@ final class NowPlayingViewController: UIViewController {
         idleTimer?.invalidate()
         idleTimer = nil
         if isLandscape {
-            guard weightPanel == nil else { return }
-            idleTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
-                guard let self = self, !self.stage.progress.isDragging else { return }
-                self.stage.setControls(visible: false, animated: true)
-            }
+            // Xoay ngang: các nút tua/phát và nút phía trên luôn hiện, không tự ẩn.
+            if !stage.controlsVisible { stage.setControls(visible: true, animated: true) }
             return
         }
         guard mode == .lyrics, weightPanel == nil else { return }
@@ -987,7 +986,7 @@ final class NowPlayingViewController: UIViewController {
         let nowLiked = Library.shared.toggleLike(song)
         LastFM.shared.love(song, loved: nowLiked)
         if nowLiked && !isLandscape {
-            HeartBurstView.play(in: view, at: CGPoint(x: view.bounds.midX, y: view.bounds.height * 0.3))
+            HeartBurstView.play(in: view, at: CGPoint(x: view.bounds.midX, y: view.bounds.height * 0.36))
         }
     }
 

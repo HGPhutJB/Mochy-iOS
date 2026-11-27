@@ -15,21 +15,31 @@ enum HeartShape {
     }
 }
 
-/// Tim lớn bung ra khi thích bài: tim trắng nảy lên, đổi đỏ, vòng sóng lan ra cùng các hạt nhỏ, rồi mờ dần.
+/// Tim lớn khi thích bài, dựng theo video mẫu (20 khung/giây):
+/// 0–0,25 s tim trắng nhỏ xíu hiện ở trên rồi phóng to và trượt xuống giữa; 0,25–0,55 s giữ trắng;
+/// 0,55 s bật đỏ phồng to kèm vòng mảnh lan ra và hạt li ti; 0,6–0,85 s co về ~65% và nhạt dần sang hồng;
+/// 0,85–1,2 s ngả trắng, bay nhẹ lên và tan.
 final class HeartBurstView: UIView {
     private static let red = UIColor(red: 1, green: 0.1, blue: 0.27, alpha: 1)
+    private static let pink = UIColor(red: 1, green: 0.55, blue: 0.62, alpha: 1)
+    private static let pale = UIColor(red: 1, green: 0.9, blue: 0.92, alpha: 1)
     private let heart = CAShapeLayer()
     private let size: CGFloat
+    private let drop: CGFloat
 
-    static func play(in host: UIView, at center: CGPoint, size: CGFloat = 96) {
-        let v = HeartBurstView(center: center, size: size)
+    /// `center` là vị trí nghỉ của tim; tim xuất phát cao hơn một đoạn rồi trượt xuống.
+    static func play(in host: UIView, at center: CGPoint, size: CGFloat? = nil) {
+        let s = size ?? max(80, min(130, host.bounds.width * 0.3))
+        let v = HeartBurstView(center: center, size: s)
         host.addSubview(v)
         v.run()
     }
 
     private init(center: CGPoint, size: CGFloat) {
         self.size = size
-        super.init(frame: CGRect(x: center.x - size * 1.4, y: center.y - size * 1.4, width: size * 2.8, height: size * 2.8))
+        self.drop = size * 0.55
+        let side = size * 3
+        super.init(frame: CGRect(x: center.x - side / 2, y: center.y - side / 2, width: side, height: side))
         isUserInteractionEnabled = false
         backgroundColor = .clear
     }
@@ -44,129 +54,133 @@ final class HeartBurstView: UIView {
         heart.path = HeartShape.path(in: heart.bounds).cgPath
         heart.fillColor = UIColor.white.cgColor
         heart.shadowColor = UIColor.black.cgColor
-        heart.shadowOpacity = 0.25
-        heart.shadowRadius = 8
+        heart.shadowOpacity = 0.3
+        heart.shadowRadius = 10
         heart.shadowOffset = .zero
-        heart.opacity = 0
         layer.addSublayer(heart)
 
         if UIAccessibility.isReduceMotionEnabled {
             heart.fillColor = HeartBurstView.red.cgColor
-            heart.opacity = 1
-            UIView.animate(withDuration: 0.4, delay: 0.6, options: [], animations: { self.alpha = 0 }, completion: { _ in self.removeFromSuperview() })
+            UIView.animate(withDuration: 0.4, delay: 0.7, options: [], animations: { self.alpha = 0 }, completion: { _ in self.removeFromSuperview() })
             return
         }
 
-        // 1) Tim trắng nảy lên bằng lò xo.
-        heart.opacity = 1
-        let pop = CASpringAnimation(keyPath: "transform.scale")
-        pop.fromValue = 0.25
-        pop.toValue = 1
-        pop.mass = 1
-        pop.stiffness = 260
-        pop.damping = 12
-        pop.duration = pop.settlingDuration
-        heart.add(pop, forKey: "pop")
-        let appear = CABasicAnimation(keyPath: "opacity")
-        appear.fromValue = 0
-        appear.toValue = 1
-        appear.duration = 0.1
+        // Pha 1 (0–0,25 s): nhỏ xíu → phóng to, trượt từ trên xuống vị trí nghỉ.
+        let appear = CAAnimationGroup()
+        let scale = CABasicAnimation(keyPath: "transform.scale")
+        scale.fromValue = 0.12
+        scale.toValue = 1
+        let move = CABasicAnimation(keyPath: "position.y")
+        move.fromValue = mid.y - drop
+        move.toValue = mid.y
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0
+        fade.toValue = 1
+        fade.duration = 0.08
+        appear.animations = [scale, move]
+        appear.duration = 0.27
+        appear.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.3, 1)
         heart.add(appear, forKey: "appear")
+        heart.add(fade, forKey: "fade")
 
-        // 2) Đổi sang đỏ kèm một nhịp phồng, rồi vòng sóng và hạt.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.turnRed() }
-        // 3) Mờ dần, hơi nhỏ lại.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.95) { [weak self] in self?.fadeOut() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in self?.removeFromSuperview() }
+        // Pha 2 (0,27–0,55 s): giữ trắng, hơi co lại như đang nén.
+        let hold = CABasicAnimation(keyPath: "transform.scale")
+        hold.fromValue = 1
+        hold.toValue = 0.93
+        hold.beginTime = CACurrentMediaTime() + 0.27
+        hold.duration = 0.28
+        hold.fillMode = .both
+        hold.isRemovedOnCompletion = false
+        heart.add(hold, forKey: "hold")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { [weak self] in self?.flash() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) { [weak self] in self?.removeFromSuperview() }
     }
 
-    private func turnRed() {
-        let color = CABasicAnimation(keyPath: "fillColor")
-        color.fromValue = UIColor.white.cgColor
-        color.toValue = HeartBurstView.red.cgColor
-        color.duration = 0.2
-        heart.fillColor = HeartBurstView.red.cgColor
-        heart.add(color, forKey: "color")
+    /// Pha 3 (0,55 s): bật đỏ phồng to, vòng mảnh + hạt, rồi co lại và nhạt dần.
+    private func flash() {
+        heart.removeAnimation(forKey: "hold")
+        heart.fillColor = HeartBurstView.pale.cgColor
+        heart.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        heart.position = CGPoint(x: mid.x, y: mid.y - size * 0.1)
+        heart.opacity = 0
 
-        let beat = CAKeyframeAnimation(keyPath: "transform.scale")
-        beat.values = [1, 1.18, 1]
-        beat.keyTimes = [0, 0.4, 1]
-        beat.duration = 0.35
-        beat.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        heart.add(beat, forKey: "beat")
+        let pop = CAKeyframeAnimation(keyPath: "transform.scale")
+        pop.values = [0.93, 1.28, 1.1, 0.62]
+        pop.keyTimes = [0, 0.12, 0.35, 1]
+        pop.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeInEaseOut), CAMediaTimingFunction(name: .easeInEaseOut)]
+        let colors = CAKeyframeAnimation(keyPath: "fillColor")
+        colors.values = [UIColor.white.cgColor, HeartBurstView.red.cgColor, HeartBurstView.red.cgColor, HeartBurstView.pink.cgColor, HeartBurstView.pale.cgColor]
+        colors.keyTimes = [0, 0.06, 0.4, 0.7, 1]
+        let rise = CABasicAnimation(keyPath: "position.y")
+        rise.fromValue = mid.y
+        rise.toValue = mid.y - size * 0.1
+        rise.beginTime = 0.3
+        rise.duration = 0.4
+        rise.fillMode = .both
+        let g = CAAnimationGroup()
+        g.animations = [pop, colors, rise]
+        g.duration = 0.7
+        g.beginTime = CACurrentMediaTime()
+        heart.add(g, forKey: "flash")
 
-        // Vòng sóng đỏ lan ra.
+        let out = CABasicAnimation(keyPath: "opacity")
+        out.fromValue = 1
+        out.toValue = 0
+        out.beginTime = CACurrentMediaTime() + 0.45
+        out.duration = 0.25
+        out.fillMode = .both
+        heart.add(out, forKey: "out")
+
+        // Vòng mảnh lan ra quanh tim.
         let ring = CAShapeLayer()
         ring.bounds = CGRect(x: 0, y: 0, width: size, height: size)
         ring.position = mid
         ring.path = UIBezierPath(ovalIn: ring.bounds).cgPath
         ring.fillColor = nil
         ring.strokeColor = HeartBurstView.red.cgColor
-        ring.lineWidth = 3
+        ring.lineWidth = 1.6
         ring.opacity = 0
         layer.insertSublayer(ring, below: heart)
         let grow = CABasicAnimation(keyPath: "transform.scale")
-        grow.fromValue = 0.75
-        grow.toValue = 1.7
-        grow.duration = 0.6
-        grow.timingFunction = CAMediaTimingFunction(controlPoints: 0.05, 0.7, 0.1, 1)
+        grow.fromValue = 0.85
+        grow.toValue = 1.45
         let fade = CAKeyframeAnimation(keyPath: "opacity")
-        fade.values = [0.9, 0.7, 0]
+        fade.values = [0.9, 0.55, 0]
         fade.keyTimes = [0, 0.5, 1]
-        fade.duration = 0.6
-        let group = CAAnimationGroup()
-        group.animations = [grow, fade]
-        group.duration = 0.6
-        ring.add(group, forKey: "ring")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { ring.removeFromSuperlayer() }
+        let rg = CAAnimationGroup()
+        rg.animations = [grow, fade]
+        rg.duration = 0.38
+        rg.timingFunction = CAMediaTimingFunction(controlPoints: 0.05, 0.7, 0.1, 1)
+        ring.add(rg, forKey: "ring")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { ring.removeFromSuperlayer() }
 
-        // Hạt nhỏ bắn ra theo vòng tròn.
-        let count = 12
-        let palette: [UIColor] = [HeartBurstView.red, UIColor(red: 1, green: 0.55, blue: 0.65, alpha: 1), .white]
-        for i in 0..<count {
-            let angle = CGFloat(i) / CGFloat(count) * 2 * .pi + CGFloat(i % 3) * 0.08
-            let radius = CGFloat(3 + i % 3)
+        // Hạt li ti nằm trong và quanh vòng.
+        let palette: [UIColor] = [HeartBurstView.red, HeartBurstView.pink, .white]
+        for i in 0..<10 {
+            let angle = CGFloat(i) / 10 * 2 * .pi + 0.2
+            let r = CGFloat(1.5 + CGFloat(i % 3) * 0.7)
             let dot = CAShapeLayer()
-            dot.bounds = CGRect(x: 0, y: 0, width: radius * 2, height: radius * 2)
+            dot.bounds = CGRect(x: 0, y: 0, width: r * 2, height: r * 2)
             dot.path = UIBezierPath(ovalIn: dot.bounds).cgPath
-            dot.fillColor = palette[i % palette.count].cgColor
-            let from = CGPoint(x: mid.x + cos(angle) * size * 0.55, y: mid.y + sin(angle) * size * 0.55)
-            let reach = size * (0.95 + CGFloat(i % 4) * 0.12)
-            let to = CGPoint(x: mid.x + cos(angle) * reach, y: mid.y + sin(angle) * reach)
+            dot.fillColor = palette[i % 3].cgColor
+            let from = CGPoint(x: mid.x + cos(angle) * size * 0.5, y: mid.y + sin(angle) * size * 0.5)
+            let to = CGPoint(x: mid.x + cos(angle) * size * (0.7 + CGFloat(i % 3) * 0.08), y: mid.y + sin(angle) * size * (0.7 + CGFloat(i % 3) * 0.08))
             dot.position = to
             dot.opacity = 0
             layer.addSublayer(dot)
-            let move = CABasicAnimation(keyPath: "position")
-            move.fromValue = from
-            move.toValue = to
-            move.timingFunction = CAMediaTimingFunction(controlPoints: 0.05, 0.7, 0.1, 1)
-            let shrink = CABasicAnimation(keyPath: "transform.scale")
-            shrink.fromValue = 1
-            shrink.toValue = 0.2
-            let out = CAKeyframeAnimation(keyPath: "opacity")
-            out.values = [1, 1, 0]
-            out.keyTimes = [0, 0.55, 1]
-            let g = CAAnimationGroup()
-            g.animations = [move, shrink, out]
-            g.duration = 0.62
-            dot.add(g, forKey: "dot")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.66) { dot.removeFromSuperlayer() }
+            let mv = CABasicAnimation(keyPath: "position")
+            mv.fromValue = from
+            mv.toValue = to
+            let op = CAKeyframeAnimation(keyPath: "opacity")
+            op.values = [0.9, 0.9, 0]
+            op.keyTimes = [0, 0.5, 1]
+            let dg = CAAnimationGroup()
+            dg.animations = [mv, op]
+            dg.duration = 0.4
+            dg.timingFunction = CAMediaTimingFunction(controlPoints: 0.05, 0.7, 0.1, 1)
+            dot.add(dg, forKey: "dot")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) { dot.removeFromSuperlayer() }
         }
-    }
-
-    private func fadeOut() {
-        let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 1
-        scale.toValue = 0.82
-        let fade = CABasicAnimation(keyPath: "opacity")
-        fade.fromValue = 1
-        fade.toValue = 0
-        let g = CAAnimationGroup()
-        g.animations = [scale, fade]
-        g.duration = 0.4
-        g.timingFunction = CAMediaTimingFunction(name: .easeIn)
-        heart.opacity = 0
-        heart.transform = CATransform3DMakeScale(0.82, 0.82, 1)
-        heart.add(g, forKey: "out")
     }
 }
