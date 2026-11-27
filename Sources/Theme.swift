@@ -17,11 +17,35 @@ enum ThemeMode: Int {
 
 extension Notification.Name {
     static let themeChanged = Notification.Name("MochyiOSThemeChanged")
+    static let accentChanged = Notification.Name("MochyiOSAccentChanged")
 }
 
 /// Màu sắc và kiểu chữ. Màu đổi theo chế độ sáng/tối; khi đổi chế độ cả app được dựng lại (xem AppDelegate).
 enum Theme {
-    static let accent = UIColor(red: 250.0 / 255.0, green: 45.0 / 255.0, blue: 72.0 / 255.0, alpha: 1)
+    static let defaultAccent = UIColor(red: 250.0 / 255.0, green: 45.0 / 255.0, blue: 72.0 / 255.0, alpha: 1)
+    private(set) static var songAccent: UIColor?
+
+    /// Màu nhấn: theo ảnh bìa bài đang phát (nếu bật trong Cài đặt), không thì đỏ mặc định.
+    static var accent: UIColor {
+        if AppSettings.dynamicAccent, let c = songAccent { return c }
+        return defaultAccent
+    }
+
+    /// Lấy tông màu của bìa nhưng giữ đủ đậm và sáng để không bị chìm (bìa xám/đen trắng thì dùng màu mặc định).
+    static func updateSongAccent(from image: UIImage?) {
+        var color: UIColor?
+        if let image = image, let avg = image.averageColor() {
+            var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            avg.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+            if s >= 0.14 {
+                let sat = max(0.62, min(1, s * 1.15))
+                let bright: CGFloat = isDark ? 0.96 : 0.78
+                color = UIColor(hue: h, saturation: sat, brightness: bright, alpha: 1)
+            }
+        }
+        songAccent = color
+        NotificationCenter.default.post(name: .accentChanged, object: nil)
+    }
 
     static var mode: ThemeMode {
         get { return ThemeMode(rawValue: UserDefaults.standard.integer(forKey: "ui.theme")) ?? .system }
@@ -112,9 +136,7 @@ enum Theme {
         cell.backgroundColor = grouped ? cellBackground : background
         cell.textLabel?.textColor = primaryText
         cell.detailTextLabel?.textColor = secondaryText
-        let selected = UIView()
-        selected.backgroundColor = chip
-        cell.selectedBackgroundView = selected
+        cell.selectedBackgroundView = selectionView()
     }
 
     static func spinnerStyle() -> UIActivityIndicatorView.Style {

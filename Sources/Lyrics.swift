@@ -721,7 +721,7 @@ final class LyricDotsView: UIView {
 
     /// progress 0...1: ba chấm sáng lần lượt; cả cụm phồng nhẹ theo nhịp thở.
     func update(progress: Double, time: Double) {
-        if dismissed { dismissed = false; alpha = 1 }
+        if dismissed { dismissed = false; alpha = 1; isHidden = false; layer.removeAllAnimations() }
         let breath = 1 + 0.08 * CGFloat(sin(time * 2.6))
         for (i, d) in dots.enumerated() {
             let fill = CGFloat(min(1, max(0, progress * 3 - Double(i))))
@@ -735,10 +735,13 @@ final class LyricDotsView: UIView {
     func dismiss() {
         guard !dismissed else { return }
         dismissed = true
-        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn, .beginFromCurrentState], animations: {
+        UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseIn, .beginFromCurrentState], animations: {
             self.alpha = 0
             for d in self.dots { d.transform = CGAffineTransform(scaleX: 0.2, y: 0.2) }
-        }, completion: nil)
+        }, completion: { _ in
+            // Ẩn hẳn để ba chấm không còn trôi theo lời lên đầu màn hình.
+            if self.dismissed { self.isHidden = true }
+        })
     }
 }
 
@@ -935,6 +938,7 @@ final class LyricsView: UIView, UITableViewDataSource, UITableViewDelegate {
         }
         if dotsShown {
             if idx < 0 {
+                dotsView.isHidden = false
                 dotsView.alpha = 1
                 dotsView.update(progress: time / max(0.5, lines[0].time), time: time)
             } else {

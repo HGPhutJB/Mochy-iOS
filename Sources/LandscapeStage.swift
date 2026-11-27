@@ -9,14 +9,14 @@ final class LandscapeStage: UIView {
     let progress = ProgressBar()
     private let elapsed = UILabel()
     private let remaining = UILabel()
-    let prevBtn = UIButton(type: .custom)
-    let playBtn = UIButton(type: .custom)
-    let nextBtn = UIButton(type: .custom)
-    let close = UIButton(type: .custom)
-    let translate = UIButton(type: .custom)
-    let reverb = UIButton(type: .custom)
-    let queue = UIButton(type: .custom)
-    let more = UIButton(type: .custom)
+    let prevBtn = ControlButton(type: .custom)
+    let playBtn = ControlButton(type: .custom)
+    let nextBtn = ControlButton(type: .custom)
+    let close = ControlButton(type: .custom)
+    let translate = ControlButton(type: .custom)
+    let reverb = ControlButton(type: .custom)
+    let queue = ControlButton(type: .custom)
+    let more = ControlButton(type: .custom)
     /// Các nút tự ẩn khi không chạm; bìa và tên bài luôn hiện.
     private var controls: [UIView] { return [progress, elapsed, remaining, prevBtn, playBtn, nextBtn, close, translate, reverb, queue, more] }
 
@@ -131,7 +131,7 @@ final class LandscapeStage: UIView {
     }
 
     func setPlaying(_ playing: Bool) {
-        playBtn.setImage(playing ? Icons.pause(52) : Icons.play(52), for: .normal)
+        playBtn.setImageAnimated(playing ? Icons.pause(52) : Icons.play(52))
     }
 
     func setControls(visible: Bool, animated: Bool) {

@@ -12,9 +12,7 @@ final class LibraryRowCell: UITableViewCell {
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = Theme.background
-        let selected = UIView()
-        selected.backgroundColor = Theme.chip
-        selectedBackgroundView = selected
+        selectedBackgroundView = Theme.selectionView()
         accessoryType = .disclosureIndicator
 
         tile.translatesAutoresizingMaskIntoConstraints = false

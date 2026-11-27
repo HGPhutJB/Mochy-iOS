@@ -1,3 +1,11 @@
+Mochy Remake 0.15.0 — Material 3 mở rộng, màu nhấn theo bài, trang chủ nhạc trẻ
+
+- Trang chủ chỉ gợi ý nhạc Việt của nghệ sĩ trẻ và các bài hot TikTok bản gốc; loại bolero, remix, lofi, cover, karaoke, live; bỏ hàng nhạc quốc tế.
+- Màu nhấn của app đổi theo ảnh bìa bài đang phát (đủ đậm và sáng để không bị chìm); tắt được ở Cài đặt ▸ Màu nhấn theo bài hát.
+- Nút điều khiển có vòng sáng tròn khi chạm, icon phát/tạm dừng chuyển cảnh mượt, tua có cú đẩy; nút trên cùng thu nhỏ và nhún khi chạm.
+- Sửa ba chấm chờ lời còn đọng lại khi lời bắt đầu chạy.
+- Material 3: thanh phát nhỏ dạng tonal, ô chọn bo tròn nở bằng lò xo ở danh sách, hàng bài hát hiện lần lượt, bìa Trang chủ bo lớn.
+
 Mochy Remake 0.14.0 — đổi tên, Material 3
 
 - Đổi tên hiển thị thành Mochy Remake (bundle id giữ nguyên nên cập nhật đè lên bản cũ).

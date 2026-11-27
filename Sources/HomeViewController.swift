@@ -15,7 +15,7 @@ final class SongCardCell: UICollectionViewCell {
         art.translatesAutoresizingMaskIntoConstraints = false
         art.contentMode = .scaleAspectFill
         art.clipsToBounds = true
-        art.layer.cornerRadius = 14
+        art.layer.cornerRadius = Mat.active ? 24 : 14
         art.backgroundColor = Theme.placeholder
         contentView.addSubview(art)
         titleLabel.font = Theme.bold(14)

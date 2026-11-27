@@ -194,6 +194,16 @@ final class GlassView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
+    private func dip(_ on: Bool) {
+        UIView.animate(withDuration: on ? 0.2 : 0.5, delay: 0, usingSpringWithDamping: on ? 0.8 : 0.5, initialSpringVelocity: on ? 0 : 5,
+                       options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+            self.transform = on ? CGAffineTransform(scaleX: 0.9, y: 0.9) : .identity
+        }, completion: nil)
+    }
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesBegan(touches, with: event); dip(true) }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesEnded(touches, with: event); dip(false) }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesCancelled(touches, with: event); dip(false) }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         layer.cornerRadius = bounds.height / 2
@@ -585,5 +595,71 @@ final class VideoBackdrop {
             p.seek(to: CMTime(seconds: max(0, position), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         }
         if p.rate == 0 { p.play() }
+    }
+}
+
+/// Nút điều khiển kiểu bộ phát của iOS: chạm thì hiện vòng sáng tròn mờ sau icon (nở ra bằng lò xo) và icon thu nhẹ,
+/// nhả tay thì vòng sáng tan dần; đổi icon phát/tạm dừng có chuyển cảnh mượt, tua có cú đẩy theo hướng.
+final class ControlButton: UIButton {
+    private let bubble = UIView()
+
+    private func prepareBubble() {
+        if bubble.superview != nil { return }
+        bubble.isUserInteractionEnabled = false
+        bubble.backgroundColor = UIColor(white: 1, alpha: 0.22)
+        bubble.alpha = 0
+        insertSubview(bubble, at: 0)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        prepareBubble()
+        let d = min(bounds.width, bounds.height)
+        let t = bubble.transform
+        bubble.transform = .identity
+        bubble.bounds = CGRect(x: 0, y: 0, width: d, height: d)
+        bubble.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        bubble.layer.cornerRadius = d / 2
+        bubble.transform = t
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            guard isHighlighted != oldValue else { return }
+            prepareBubble()
+            let on = isHighlighted
+            if on {
+                bubble.layer.removeAllAnimations()
+                bubble.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
+                UIView.animate(withDuration: 0.12, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: { self.bubble.alpha = 1 }, completion: nil)
+                UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5,
+                               options: [.allowUserInteraction, .beginFromCurrentState], animations: { self.bubble.transform = .identity }, completion: nil)
+            } else {
+                UIView.animate(withDuration: 0.38, delay: 0.05, options: [.allowUserInteraction, .beginFromCurrentState, .curveEaseOut], animations: { self.bubble.alpha = 0 }, completion: nil)
+            }
+            UIView.animate(withDuration: on ? 0.22 : 0.5, delay: 0, usingSpringWithDamping: on ? 0.8 : 0.5, initialSpringVelocity: on ? 0 : 6,
+                           options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+                self.imageView?.transform = on ? CGAffineTransform(scaleX: 0.88, y: 0.88) : .identity
+            }, completion: nil)
+        }
+    }
+
+    /// Đổi icon bằng chuyển cảnh mờ + nảy (phát ↔ tạm dừng).
+    func setImageAnimated(_ image: UIImage) {
+        if currentImage === image { return }
+        guard window != nil else { setImage(image, for: .normal); return }
+        UIView.transition(with: self, duration: 0.2, options: [.transitionCrossDissolve, .allowUserInteraction], animations: {
+            self.setImage(image, for: .normal)
+        }, completion: nil)
+        imageView?.transform = CGAffineTransform(scaleX: 0.78, y: 0.78)
+        UIView.animate(withDuration: 0.55, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 4,
+                       options: [.allowUserInteraction], animations: { self.imageView?.transform = .identity }, completion: nil)
+    }
+
+    /// Cú đẩy icon theo hướng (tua tới +, tua lui −) rồi bật lại.
+    func nudge(_ dx: CGFloat) {
+        imageView?.transform = CGAffineTransform(translationX: dx, y: 0)
+        UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.45, initialSpringVelocity: 5,
+                       options: [.allowUserInteraction], animations: { self.imageView?.transform = .identity }, completion: nil)
     }
 }

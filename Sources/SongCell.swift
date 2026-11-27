@@ -8,7 +8,7 @@ final class SongCell: UITableViewCell {
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
     private let downloadedIcon = UIImageView()
-    private let moreButton = PressableButton(type: .custom)
+    private let moreButton = ControlButton(type: .custom)
     private var representedURL: URL?
     var onMore: (() -> Void)?
 
@@ -16,9 +16,7 @@ final class SongCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         selectionStyle = .default
         backgroundColor = Theme.background
-        let selected = UIView()
-        selected.backgroundColor = Theme.chip
-        selectedBackgroundView = selected
+        selectedBackgroundView = Theme.selectionView()
 
         thumb.translatesAutoresizingMaskIntoConstraints = false
         thumb.contentMode = .scaleAspectFill
@@ -72,6 +70,15 @@ final class SongCell: UITableViewCell {
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private var entered = false
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil, !entered else { return }
+        entered = true
+        materialEntrance(force: true)
     }
 
     override func prepareForReuse() {

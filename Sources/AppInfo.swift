@@ -69,6 +69,15 @@ enum AppSettings {
     }
 
     /// Dùng video MV làm nền màn hình đang phát (nếu bài có).
+    /// Màu nhấn của app đổi theo ảnh bìa bài đang phát.
+    static var dynamicAccent: Bool {
+        get {
+            if defaults.object(forKey: "ui.dynamicAccent") == nil { return true }
+            return defaults.bool(forKey: "ui.dynamicAccent")
+        }
+        set { defaults.set(newValue, forKey: "ui.dynamicAccent") }
+    }
+
     static var videoBackdrop: Bool {
         get {
             if defaults.object(forKey: "player.video") == nil { return true }

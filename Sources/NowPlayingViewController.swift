@@ -160,16 +160,16 @@ final class NowPlayingViewController: UIViewController {
     private let progress = ProgressBar()
     private let elapsedLabel = UILabel()
     private let remainingLabel = UILabel()
-    private let shuffleButton = UIButton(type: .custom)
+    private let shuffleButton = ControlButton(type: .custom)
     private let shuffleDot = UIView()
-    private let prevButton = UIButton(type: .custom)
-    private let playButton = UIButton(type: .custom)
-    private let nextButton = UIButton(type: .custom)
-    private let repeatButton = UIButton(type: .custom)
-    private let lyricsButton = UIButton(type: .custom)
-    private let deviceButton = UIButton(type: .custom)
+    private let prevButton = ControlButton(type: .custom)
+    private let playButton = ControlButton(type: .custom)
+    private let nextButton = ControlButton(type: .custom)
+    private let repeatButton = ControlButton(type: .custom)
+    private let lyricsButton = ControlButton(type: .custom)
+    private let deviceButton = ControlButton(type: .custom)
     private let routePicker = AVRoutePickerView()
-    private let queueButton = UIButton(type: .custom)
+    private let queueButton = ControlButton(type: .custom)
 
     private var chromeTop: [UIView] = []
     private var chromeBottom: [UIView] = []
@@ -358,13 +358,13 @@ final class NowPlayingViewController: UIViewController {
 
         // Thanh trên cùng.
         chevron.translatesAutoresizingMaskIntoConstraints = false
-        chevron.iconView.image = Icons.chevronDown(26)
+        chevron.iconView.image = Icons.chevronDown(20)
         chevron.onTap = { [weak self] in self?.dismiss(animated: true, completion: nil) }
         contextPill.translatesAutoresizingMaskIntoConstraints = false
-        contextPill.titleLabel.font = RoundedFont.font(15, index: 5)
+        contextPill.titleLabel.font = RoundedFont.font(13, index: 5)
         contextPill.onTap = nil
         moreGlass.translatesAutoresizingMaskIntoConstraints = false
-        moreGlass.iconView.image = Icons.more(26)
+        moreGlass.iconView.image = Icons.more(20)
         moreGlass.onTap = { [weak self] in self?.moreTapped() }
         [chevron, contextPill, moreGlass].forEach { view.addSubview($0) }
         chromeTop = [chevron, contextPill, moreGlass]
@@ -421,19 +421,19 @@ final class NowPlayingViewController: UIViewController {
 
         NSLayoutConstraint.activate([
             chevron.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 17),
-            chevron.topAnchor.constraint(equalTo: guide.topAnchor, constant: 16),
-            chevron.widthAnchor.constraint(equalToConstant: 52),
-            chevron.heightAnchor.constraint(equalToConstant: 52),
+            chevron.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+            chevron.widthAnchor.constraint(equalToConstant: 40),
+            chevron.heightAnchor.constraint(equalToConstant: 40),
             moreGlass.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -17),
             moreGlass.topAnchor.constraint(equalTo: chevron.topAnchor),
-            moreGlass.widthAnchor.constraint(equalToConstant: 52),
-            moreGlass.heightAnchor.constraint(equalToConstant: 52),
+            moreGlass.widthAnchor.constraint(equalToConstant: 40),
+            moreGlass.heightAnchor.constraint(equalToConstant: 40),
             contextPill.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             contextPill.centerYAnchor.constraint(equalTo: chevron.centerYAnchor),
-            contextPill.heightAnchor.constraint(equalToConstant: 40),
+            contextPill.heightAnchor.constraint(equalToConstant: 32),
             pw,
 
-            infoB.topAnchor.constraint(equalTo: chevron.bottomAnchor, constant: 13),
+            infoB.topAnchor.constraint(equalTo: chevron.bottomAnchor, constant: 10),
             infoB.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: side),
             infoB.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -side),
             infoB.heightAnchor.constraint(equalToConstant: 62),
@@ -512,7 +512,7 @@ final class NowPlayingViewController: UIViewController {
             lyricsTop?.constant = 0
             lyricsBottom?.constant = 0
         } else {
-            lyricsTop?.constant = safe.top + 16 + 52 + 13 + 62 + 8
+            lyricsTop?.constant = safe.top + 8 + 40 + 10 + 62 + 8
             lyricsBottom?.constant = -(safe.bottom + 236)
         }
     }
@@ -703,7 +703,7 @@ final class NowPlayingViewController: UIViewController {
         if contextPill.titleLabel.text != context {
             contextPill.titleLabel.text = context
             let width = (context as NSString).size(withAttributes: [.font: contextPill.titleLabel.font as Any]).width
-            pillWidth?.constant = min(190, ceil(width) + 40)
+            pillWidth?.constant = min(190, ceil(width) + 32)
         }
 
         if let image = engine.artwork, shownArtwork !== image {
@@ -725,7 +725,7 @@ final class NowPlayingViewController: UIViewController {
             applyTone(from: image)
         }
 
-        playButton.setImage(engine.isPlaying || engine.isLoading ? Icons.pause(64) : Icons.play(64), for: .normal)
+        playButton.setImageAnimated(engine.isPlaying || engine.isLoading ? Icons.pause(64) : Icons.play(64))
         shuffleButton.tintColor = engine.shuffleOn ? NowPlayingViewController.green : iconColor.withAlphaComponent(0.7)
         shuffleDot.alpha = engine.shuffleOn && mode != .immersive ? 1 : 0
         switch engine.repeatMode {
@@ -1079,11 +1079,15 @@ final class NowPlayingViewController: UIViewController {
 
     @objc private func nextTapped() {
         Haptics.tap()
+        nextButton.nudge(10)
+        stage.nextBtn.nudge(10)
         PlayerEngine.shared.next()
     }
 
     @objc private func prevTapped() {
         Haptics.tap()
+        prevButton.nudge(-10)
+        stage.prevBtn.nudge(-10)
         PlayerEngine.shared.previous()
     }
 

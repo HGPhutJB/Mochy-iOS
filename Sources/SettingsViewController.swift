@@ -12,6 +12,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case hidePast
         case language
         case videoBackdrop
+        case dynamicAccent
         case downloadsInfo
         case clearDownloads
         case clearHistory
@@ -101,7 +102,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
         sections = accountSections + [
             Section(title: L("Giao diện"), footer: L("\"Tự động\" theo chế độ sáng/tối của hệ thống (iOS 13 trở lên). Trên iOS 12 chế độ tự động dùng giao diện tối."),
-                    rows: [.theme, .uiStyle, .language]),
+                    rows: [.theme, .uiStyle, .dynamicAccent, .language]),
             Section(title: L("Âm thanh"), footer: L("\"Cao nhất\" chọn luồng âm thanh bitrate cao nhất mà YouTube Music cung cấp (tối đa khoảng 256 kbps, định dạng nén). YouTube không có nhạc lossless thật nên Mochy không ghi nhãn Lossless. \"Tiết kiệm\" chọn bitrate thấp nhất. Áp dụng từ bài kế tiếp."),
                     rows: [.quality, .crossfade, .reverb, .translateLang, .hidePast, .videoBackdrop]),
             Section(title: L("Tính năng"), footer: nil, rows: [.recap, .importList, .advanced]),
@@ -283,6 +284,15 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             let control = M3Segmented(items: [UpdateChannel.stable.title, UpdateChannel.dev.title], selected: AppSettings.channel == .stable ? 0 : 1)
             control.addTarget(self, action: #selector(channelChanged(_:)), for: .valueChanged)
             cell.accessoryView = control
+            cell.selectionStyle = .none
+
+        case .dynamicAccent:
+            cell = M3Cell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = L("Màu nhấn theo bài hát")
+            let toggle = M3Switch()
+            toggle.isOn = AppSettings.dynamicAccent
+            toggle.addTarget(self, action: #selector(dynamicAccentChanged(_:)), for: .valueChanged)
+            cell.accessoryView = toggle
             cell.selectionStyle = .none
 
         case .videoBackdrop:
@@ -505,6 +515,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     @objc private func channelChanged(_ sender: M3Segmented) {
         AppSettings.channel = sender.selectedSegmentIndex == 0 ? .stable : .dev
         Updater.shared.channelDidChange()
+    }
+
+    @objc private func dynamicAccentChanged(_ sender: M3Switch) {
+        AppSettings.dynamicAccent = sender.isOn
+        NotificationCenter.default.post(name: .accentChanged, object: nil)
     }
 
     @objc private func videoBackdropChanged(_ sender: M3Switch) {

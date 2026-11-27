@@ -87,6 +87,16 @@ final class FloatingTabBar: UIView {
         pan.cancelsTouchesInView = true
         addGestureRecognizer(pan)
         applyLook(light: !Theme.isDark, animated: false)
+        NotificationCenter.default.addObserver(self, selector: #selector(accentChanged), name: .accentChanged, object: nil)
+    }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func accentChanged() {
+        UIView.animate(withDuration: 0.5) {
+            self.badge.backgroundColor = Theme.accent
+            self.updateTints()
+        }
     }
 
     required init?(coder aDecoder: NSCoder) {

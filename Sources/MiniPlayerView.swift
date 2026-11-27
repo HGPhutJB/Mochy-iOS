@@ -13,8 +13,8 @@ final class MiniPlayerView: UIView {
     private let art = UIImageView()
     private let titleLabel = UILabel()
     private let artistLabel = UILabel()
-    private let playButton = PressableButton(type: .custom)
-    private let nextButton = PressableButton(type: .custom)
+    private let playButton = ControlButton(type: .custom)
+    private let nextButton = ControlButton(type: .custom)
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var shownVideoId: String?
@@ -28,8 +28,15 @@ final class MiniPlayerView: UIView {
 
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.clipsToBounds = true
-        blur.layer.cornerRadius = 20
+        blur.layer.cornerRadius = Mat.active ? 24 : 20
         addSubview(blur)
+        if Mat.active {
+            blur.effect = nil
+            blur.backgroundColor = tonalColor()
+            layer.shadowOpacity = Theme.isDark ? 0.3 : 0.12
+            layer.shadowRadius = 10
+            layer.shadowOffset = CGSize(width: 0, height: 3)
+        }
 
         art.translatesAutoresizingMaskIntoConstraints = false
         art.contentMode = .scaleAspectFill
@@ -96,6 +103,19 @@ final class MiniPlayerView: UIView {
 
         NotificationCenter.default.addObserver(self, selector: #selector(timeChanged),
                                                name: .playerTimeChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(accentChanged), name: .accentChanged, object: nil)
+    }
+
+    /// Nền tonal Material 3: màu bề mặt pha một chút màu nhấn.
+    private func tonalColor() -> UIColor {
+        return Mat.mix(Theme.isDark ? UIColor(white: 0.13, alpha: 1) : UIColor(white: 0.97, alpha: 1), Theme.accent, Theme.isDark ? 0.16 : 0.12)
+    }
+
+    @objc private func accentChanged() {
+        UIView.animate(withDuration: 0.5) {
+            self.progressFill.backgroundColor = Theme.accent
+            if Mat.active { self.blur.backgroundColor = self.tonalColor() }
+        }
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -104,7 +124,7 @@ final class MiniPlayerView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: 20).cgPath
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: Mat.active ? 24 : 20).cgPath
         updateProgress()
     }
 
@@ -117,6 +137,7 @@ final class MiniPlayerView: UIView {
 
     @objc private func nextTapped() {
         Haptics.tap()
+        nextButton.nudge(8)
         PlayerEngine.shared.next()
     }
 
@@ -136,7 +157,7 @@ final class MiniPlayerView: UIView {
         titleLabel.text = song.title
         artistLabel.text = engine.isLoading ? L("Đang tải…") : song.artist
         let icon = engine.isPlaying ? Icons.pause(26) : Icons.play(26)
-        playButton.setImage(icon, for: .normal)
+        playButton.setImageAnimated(icon)
         if shownVideoId != song.videoId {
             shownVideoId = song.videoId
             art.image = nil

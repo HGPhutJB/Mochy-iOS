@@ -108,6 +108,7 @@ final class RootViewController: UIViewController {
 
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(playerChanged), name: .playerStateChanged, object: nil)
+        center.addObserver(self, selector: #selector(accentChanged), name: .accentChanged, object: nil)
         center.addObserver(self, selector: #selector(playbackFailed(_:)), name: .playerFailed, object: nil)
         center.addObserver(self, selector: #selector(downloadFailed(_:)), name: .downloadFailed, object: nil)
         center.addObserver(self, selector: #selector(handleUpdateState), name: .updateStateChanged, object: nil)
@@ -296,7 +297,22 @@ final class RootViewController: UIViewController {
         }
     }
 
+    private weak var accentArtwork: UIImage?
+
+    @objc private func accentChanged() {
+        let accent = Theme.accent
+        UIView.animate(withDuration: 0.5) {
+            self.view.window?.tintColor = accent
+            self.controllers.forEach { $0.navigationBar.tintColor = accent }
+        }
+    }
+
     @objc private func playerChanged() {
+        let art = PlayerEngine.shared.currentSong == nil ? nil : PlayerEngine.shared.artwork
+        if art !== accentArtwork {
+            accentArtwork = art
+            Theme.updateSongAccent(from: art)
+        }
         let hasSong = PlayerEngine.shared.currentSong != nil
         if hasSong { mini.update() }
         if hasSong == miniVisible { return }

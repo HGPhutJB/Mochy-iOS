@@ -468,6 +468,16 @@ final class MaterialNavBar: UIView, TabBarControl {
         badge.isUserInteractionEnabled = false
         addSubview(badge)
         accessibilityTraits = .tabBar
+        NotificationCenter.default.addObserver(self, selector: #selector(accentChanged), name: .accentChanged, object: nil)
+    }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func accentChanged() {
+        UIView.animate(withDuration: 0.5) {
+            for pill in self.indicators { pill.backgroundColor = Theme.accent.withAlphaComponent(Theme.isDark ? 0.30 : 0.20) }
+            self.badge.backgroundColor = Theme.accent
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
@@ -553,5 +563,60 @@ final class MaterialNavBar: UIView, TabBarControl {
         if badge.isHidden == !visible { return }
         badge.isHidden = !visible
         if visible { badge.pop() }
+    }
+}
+
+// MARK: - Nền chọn bo tròn cho các hàng thường
+
+/// Thay hình chữ nhật chọn mặc định: viên thuốc bo tròn nở ra bằng lò xo khi chạm (nhún từ góc nhỏ sang góc lớn).
+final class MaterialSelectionView: UIView {
+    private let pill = UIView()
+
+    init() {
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        pill.backgroundColor = Theme.chip
+        addSubview(pill)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
+
+    private var restRadius: CGFloat { return min(28, max(0, pill.bounds.height / 2)) }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        pill.frame = bounds.insetBy(dx: 8, dy: 2)
+        pill.layer.cornerRadius = restRadius
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil, !Mat.reduceMotion else { return }
+        layoutIfNeeded()
+        let end = restRadius
+        pill.layer.add(Mat.spring("cornerRadius", from: 8, to: end, Mat.spatial(.fast)), forKey: "morph")
+        pill.layer.add(Mat.spring("transform.scale", from: 0.97, to: 1, Mat.spatial(.fast)), forKey: "dip")
+    }
+}
+
+extension Theme {
+    /// Nền chọn của một hàng: viên thuốc bo tròn ở Material 3, hình chữ nhật mờ ở giao diện gốc.
+    static func selectionView() -> UIView {
+        if Mat.active { return MaterialSelectionView() }
+        let v = UIView()
+        v.backgroundColor = chip
+        return v
+    }
+}
+
+extension UITableViewCell {
+    /// Hiện dần + trượt lên khi hàng xuất hiện lần đầu (so le theo vị trí), chỉ ở Material 3.
+    func materialEntrance(force: Bool = false) {
+        guard Mat.active, !Mat.reduceMotion, force || window == nil, frame.minY < 1100 else { return }
+        let delay = Double(max(0, min(frame.minY, 900))) / 3200
+        contentView.alpha = 0
+        contentView.transform = CGAffineTransform(translationX: 0, y: 22)
+        Mat.animateSpatial(.normal, delay: delay) { self.contentView.transform = .identity }
+        UIView.animate(withDuration: 0.3, delay: delay, options: [.allowUserInteraction], animations: { self.contentView.alpha = 1 }, completion: nil)
     }
 }
