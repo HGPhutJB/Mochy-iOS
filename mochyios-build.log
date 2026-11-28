@@ -1,4 +1,4 @@
-Version 0.18.1, package version 0.18.1, build 140, channel stable, commit 3379e1e
+Version 0.18.2, package version 0.18.2.141, build 141, channel dev, commit 5b8b727
 SDK: /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk
 swift-driver version: 1.148.6 <unknown>:0: warning: using sysroot for 'iPhoneOS' but targeting 'MacOSX'
 Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
@@ -12,13 +12,13 @@ Sources/FloatingTabBar.swift:206:17: warning: immutable value 'button' was never
 207 |             let c = i == selectedIndex ? Theme.accent : inkColor.withAlphaComponent(0.78)
 208 |             iconViews[i].tintColor = c
 
-Sources/FloatingTabBar.swift:360:21: warning: immutable value 'b' was never used; consider replacing with '_' or removing it [#no-usage]
-358 |             let width = bounds.width / CGFloat(buttons.count)
-359 |             let hover = min(buttons.count - 1, max(0, Int(x / width)))
-360 |             for (i, b) in buttons.enumerated() {
+Sources/FloatingTabBar.swift:353:21: warning: immutable value 'b' was never used; consider replacing with '_' or removing it [#no-usage]
+351 |             let width = bounds.width / CGFloat(buttons.count)
+352 |             let hover = min(buttons.count - 1, max(0, Int(x / width)))
+353 |             for (i, b) in buttons.enumerated() {
     |                     `- warning: immutable value 'b' was never used; consider replacing with '_' or removing it [#no-usage]
-361 |                 let c = i == hover ? Theme.accent : inkColor.withAlphaComponent(0.78)
-362 |                 iconViews[i].tintColor = c
+354 |                 let c = i == hover ? Theme.accent : inkColor.withAlphaComponent(0.78)
+355 |                 iconViews[i].tintColor = c
 ==> Binary info
 build/pkg/Applications/MochyiOS.app/MochyiOS: Mach-O 64-bit executable arm64
 build/pkg/Applications/MochyiOS.app/MochyiOS:
@@ -70,20 +70,20 @@ LaunchScreen.storyboardc OK
 ==> Preparing the .ipa payload (before the jailbreak entitlements are applied)
 ==> Pseudo-signing the .deb binary with ldid (jailbreak entitlements)
 ==> Packaging .deb
-dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.18.1_iphoneos-arm.deb'.
+dpkg-deb: building package 'com.puc.mochyios' in 'dist/com.puc.mochyios_0.18.2.141_iphoneos-arm.deb'.
 ==> Packaging .ipa
 ==> Done
-total 6696
--rw-r--r--  1 runner  staff  1704228 Nov 28 14:55 com.puc.mochyios_0.18.1_iphoneos-arm.deb
--rw-r--r--  1 runner  staff  1719411 Nov 28 14:55 MochyiOS_0.18.1.ipa
+total 6688
+-rw-r--r--  1 runner  staff  1702430 Nov 28 15:05 com.puc.mochyios_0.18.2.141_iphoneos-arm.deb
+-rw-r--r--  1 runner  staff  1718342 Nov 28 15:05 MochyiOS_0.18.2.141.ipa
  new Debian package, version 2.0.
- size 1704228 bytes: control archive=613 bytes.
-     447 bytes,    10 lines      control
+ size 1702430 bytes: control archive=617 bytes.
+     451 bytes,    10 lines      control
      183 bytes,     5 lines   *  postinst             #!/bin/sh
       86 bytes,     5 lines   *  postrm               #!/bin/sh
  Package: com.puc.mochyios
  Name: Mochy Remake
- Version: 0.18.1
+ Version: 0.18.2.141
  Architecture: iphoneos-arm
  Description: Music player for iOS 12+ (rootful), a Swift port of Mochy Music. Search and stream from YouTube Music, background playback and lock screen controls.
  Depends: firmware (>= 12.2)
