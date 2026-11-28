@@ -43,20 +43,20 @@ final class FloatingTabBar: UIView {
         addSubview(glass)
         tint.isUserInteractionEnabled = false
         glass.contentView.addSubview(tint)
-        sheen.colors = [UIColor(white: 1, alpha: 0.16).cgColor, UIColor(white: 1, alpha: 0).cgColor]
+        // Ánh trắng loang từ mép trên xuống, cực nhẹ (màu được đặt theo sáng/tối ở applyLook).
         sheen.startPoint = CGPoint(x: 0.5, y: 0)
-        sheen.endPoint = CGPoint(x: 0.5, y: 0.7)
+        sheen.endPoint = CGPoint(x: 0.5, y: 1)
+        sheen.locations = [0, 0.7]
+        glass.contentView.layer.insertSublayer(sheen, at: 0)
 
         lens.isUserInteractionEnabled = false
         lens.layer.shadowColor = UIColor.black.cgColor
-        lens.layer.shadowOpacity = 0.22
-        lens.layer.shadowRadius = 8
-        lens.layer.shadowOffset = CGSize(width: 0, height: 3)
-        lensSheen.colors = [UIColor(white: 1, alpha: 0.5).cgColor, UIColor(white: 1, alpha: 0.04).cgColor, UIColor(white: 1, alpha: 0.12).cgColor]
+        lens.layer.shadowOpacity = 0
+        lensSheen.colors = [UIColor(white: 1, alpha: 0.05).cgColor, UIColor(white: 1, alpha: 0).cgColor, UIColor(white: 1, alpha: 0.02).cgColor]
         lensSheen.locations = [0, 0.55, 1]
         lensSheen.startPoint = CGPoint(x: 0.5, y: 0)
         lensSheen.endPoint = CGPoint(x: 0.5, y: 1)
-        lensRim.colors = [UIColor(white: 1, alpha: 0.85).cgColor, UIColor(white: 1, alpha: 0.12).cgColor, UIColor(white: 1, alpha: 0.5).cgColor]
+        lensRim.colors = [UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0.02).cgColor, UIColor(white: 1, alpha: 0.06).cgColor]
         lensRim.startPoint = CGPoint(x: 0.2, y: 0)
         lensRim.endPoint = CGPoint(x: 0.8, y: 1)
         lensRimMask.fillColor = UIColor.clear.cgColor
@@ -66,14 +66,14 @@ final class FloatingTabBar: UIView {
         glass.contentView.addSubview(lens)
 
         // Viền kính: sáng rõ ở mép trên, mờ ở hai bên, sáng nhẹ lại ở mép dưới (như thanh tab iOS mới).
-        rim.colors = [UIColor(white: 1, alpha: 0.42).cgColor, UIColor(white: 1, alpha: 0.06).cgColor,
-                      UIColor(white: 1, alpha: 0.06).cgColor, UIColor(white: 1, alpha: 0.26).cgColor]
+        rim.colors = [UIColor(white: 1, alpha: 0.22).cgColor, UIColor(white: 1, alpha: 0.05).cgColor,
+                      UIColor(white: 1, alpha: 0.05).cgColor, UIColor(white: 1, alpha: 0.13).cgColor]
         rim.locations = [0, 0.28, 0.72, 1]
         rim.startPoint = CGPoint(x: 0.5, y: 0)
         rim.endPoint = CGPoint(x: 0.5, y: 1)
         rimMask.fillColor = UIColor.clear.cgColor
         rimMask.strokeColor = UIColor.black.cgColor
-        rimMask.lineWidth = 0.7
+        rimMask.lineWidth = 0.6
         rim.mask = rimMask
         layer.addSublayer(rim)
 
@@ -131,6 +131,7 @@ final class FloatingTabBar: UIView {
         glass.frame = bounds
         glass.layer.cornerRadius = bounds.height / 2
         tint.frame = glass.bounds
+        sheen.frame = glass.bounds
         rim.frame = bounds
         rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.35, dy: 0.35), cornerRadius: bounds.height / 2).cgPath
         let path = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height / 2)
@@ -194,8 +195,12 @@ final class FloatingTabBar: UIView {
         onLookChanged?(light)
         let changes = {
             self.glass.effect = UIBlurEffect(style: light ? .extraLight : .dark)
-            self.tint.backgroundColor = light ? UIColor(white: 1, alpha: 0.26) : UIColor(white: 0.12, alpha: 0.32)
-            self.lens.backgroundColor = light ? UIColor(white: 0, alpha: 0.10) : UIColor(white: 1, alpha: 0.13)
+            // Bản tối: xám blur nhẹ (~#262626 trên nền đen), viên chọn tối hơn nền gần đen như thanh tab iOS thật.
+            self.tint.backgroundColor = light ? UIColor(white: 1, alpha: 0.30) : UIColor(white: 0.30, alpha: 0.50)
+            self.lens.backgroundColor = light ? UIColor(white: 0, alpha: 0.09) : UIColor(white: 0.02, alpha: 0.78)
+            self.sheen.colors = light
+                ? [UIColor(white: 1, alpha: 0.30).cgColor, UIColor(white: 1, alpha: 0).cgColor]
+                : [UIColor(white: 1, alpha: 0.07).cgColor, UIColor(white: 1, alpha: 0).cgColor]
             self.updateTints()
         }
         if animated { UIView.animate(withDuration: 0.35, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: changes, completion: nil) } else { changes() }

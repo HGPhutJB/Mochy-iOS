@@ -1,3 +1,8 @@
+Mochy Remake 0.18.5 — thanh tab giống iOS thật
+
+- Thanh tab xám blur nhẹ, ánh trắng loang từ mép trên xuống cực nhẹ, viền kính rất mỏng và mờ.
+- Viên chọn tối hơn nền thanh (gần đen) như thanh tab iOS thật; nút Tìm kiếm tròn và thanh phát nhỏ cùng tông.
+
 Mochy Remake 0.18.4 — mở màn hình đang phát mượt hơn
 
 - Dựng sẵn màn hình đang phát lúc rảnh (ẩn), nên khi chạm mở không còn khựng ở những khung hình đầu.
