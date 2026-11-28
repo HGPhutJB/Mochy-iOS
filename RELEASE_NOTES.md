@@ -1,3 +1,9 @@
+Mochy Remake 0.18.6 — viền kính loang sáng đúng ảnh iOS thật
+
+- Đo trực tiếp từ ảnh mẫu: nền thanh xám #1F1F1F, viên chọn #0A0A0A phẳng gần kín chiều cao thanh.
+- Ánh sáng loang vào trong từ mép trên (~13% chiều cao) và mép dưới (~11%), hai bên không có viền.
+- Nút Tìm kiếm tròn và thanh phát nhỏ cùng tông.
+
 Mochy Remake 0.18.5 — thanh tab giống iOS thật
 
 - Thanh tab xám blur nhẹ, ánh trắng loang từ mép trên xuống cực nhẹ, viền kính rất mỏng và mờ.

@@ -44,8 +44,8 @@ final class MiniPlayerView: UIView {
 
         if !Mat.active {
             // Viên thuốc kính như thanh tab: viền sáng ở mép trên và mép dưới.
-            rim.colors = [UIColor(white: 1, alpha: 0.22).cgColor, UIColor(white: 1, alpha: 0.05).cgColor,
-                          UIColor(white: 1, alpha: 0.05).cgColor, UIColor(white: 1, alpha: 0.13).cgColor]
+            rim.colors = [UIColor(white: 1, alpha: 0.14).cgColor, UIColor(white: 1, alpha: 0.0).cgColor,
+                          UIColor(white: 1, alpha: 0.0).cgColor, UIColor(white: 1, alpha: 0.08).cgColor]
             rim.locations = [0, 0.3, 0.7, 1]
             rim.startPoint = CGPoint(x: 0.5, y: 0)
             rim.endPoint = CGPoint(x: 0.5, y: 1)

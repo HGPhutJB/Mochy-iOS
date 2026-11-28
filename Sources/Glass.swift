@@ -53,8 +53,8 @@ final class GlassCircleButton: UIControl {
         addSubview(blur)
         tint.isUserInteractionEnabled = false
         blur.contentView.addSubview(tint)
-        rim.colors = [UIColor(white: 1, alpha: 0.22).cgColor, UIColor(white: 1, alpha: 0.05).cgColor,
-                      UIColor(white: 1, alpha: 0.05).cgColor, UIColor(white: 1, alpha: 0.13).cgColor]
+        rim.colors = [UIColor(white: 1, alpha: 0.14).cgColor, UIColor(white: 1, alpha: 0.0).cgColor,
+                      UIColor(white: 1, alpha: 0.0).cgColor, UIColor(white: 1, alpha: 0.08).cgColor]
         rim.locations = [0, 0.28, 0.72, 1]
         rim.startPoint = CGPoint(x: 0.5, y: 0)
         rim.endPoint = CGPoint(x: 0.5, y: 1)
@@ -85,7 +85,7 @@ final class GlassCircleButton: UIControl {
 
     func setLook(light: Bool) {
         blur.effect = UIBlurEffect(style: light ? .extraLight : .dark)
-        tint.backgroundColor = light ? UIColor(white: 1, alpha: 0.26) : UIColor(white: 0.30, alpha: 0.50)
+        tint.backgroundColor = light ? UIColor(white: 1, alpha: 0.26) : UIColor(white: 0.14, alpha: 0.86)
         iconView.tintColor = light ? UIColor(white: 0.08, alpha: 1) : .white
         layer.shadowOpacity = light ? 0.16 : 0.32
     }
