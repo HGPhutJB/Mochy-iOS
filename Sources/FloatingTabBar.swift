@@ -4,7 +4,7 @@ import UIKit
 /// "thấu kính" chọn tab trượt bằng lò xo và co giãn như giọt nước, chạm thì nảy, kéo ngón tay để lướt qua các tab.
 /// Khi cuộn xuống thanh thu gọn thành viên tròn chỉ còn icon tab đang chọn.
 final class FloatingTabBar: UIView {
-    static let height: CGFloat = 66
+    static let height: CGFloat = 58
 
     var onSelect: ((Int) -> Void)?
     var onTapWhileCollapsed: (() -> Void)?
@@ -61,21 +61,20 @@ final class FloatingTabBar: UIView {
         lensRim.endPoint = CGPoint(x: 0.8, y: 1)
         lensRimMask.fillColor = UIColor.clear.cgColor
         lensRimMask.strokeColor = UIColor.black.cgColor
-        lensRimMask.lineWidth = 1.4
+        lensRimMask.lineWidth = 0.9
         lensRim.mask = lensRimMask
         glass.contentView.addSubview(lens)
 
         // Viền kính: sáng rõ ở mép trên, mờ ở hai bên, sáng nhẹ lại ở mép dưới (như thanh tab iOS mới).
-        rim.colors = [UIColor(white: 1, alpha: 0.62).cgColor, UIColor(white: 1, alpha: 0.10).cgColor,
-                      UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0.38).cgColor]
+        rim.colors = [UIColor(white: 1, alpha: 0.42).cgColor, UIColor(white: 1, alpha: 0.06).cgColor,
+                      UIColor(white: 1, alpha: 0.06).cgColor, UIColor(white: 1, alpha: 0.26).cgColor]
         rim.locations = [0, 0.28, 0.72, 1]
         rim.startPoint = CGPoint(x: 0.5, y: 0)
         rim.endPoint = CGPoint(x: 0.5, y: 1)
         rimMask.fillColor = UIColor.clear.cgColor
         rimMask.strokeColor = UIColor.black.cgColor
-        rimMask.lineWidth = 1.2
+        rimMask.lineWidth = 0.7
         rim.mask = rimMask
-        glass.contentView.layer.insertSublayer(sheen, at: 0)
         layer.addSublayer(rim)
 
         for (i, icon) in icons.enumerated() {
@@ -132,9 +131,8 @@ final class FloatingTabBar: UIView {
         glass.frame = bounds
         glass.layer.cornerRadius = bounds.height / 2
         tint.frame = glass.bounds
-        sheen.frame = glass.bounds
         rim.frame = bounds
-        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.6, dy: 0.6), cornerRadius: bounds.height / 2).cgPath
+        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.35, dy: 0.35), cornerRadius: bounds.height / 2).cgPath
         let path = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height / 2)
         layer.shadowPath = path.cgPath
         layoutItems()

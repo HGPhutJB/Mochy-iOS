@@ -15,6 +15,8 @@ final class MiniPlayerView: UIView {
     private let artistLabel = UILabel()
     private let playButton = ControlButton(type: .custom)
     private let nextButton = ControlButton(type: .custom)
+    private let prevButton = ControlButton(type: .custom)
+    private var stackRef: UIStackView?
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var shownVideoId: String?
@@ -42,14 +44,14 @@ final class MiniPlayerView: UIView {
 
         if !Mat.active {
             // Viên thuốc kính như thanh tab: viền sáng ở mép trên và mép dưới.
-            rim.colors = [UIColor(white: 1, alpha: 0.55).cgColor, UIColor(white: 1, alpha: 0.10).cgColor,
-                          UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0.34).cgColor]
+            rim.colors = [UIColor(white: 1, alpha: 0.40).cgColor, UIColor(white: 1, alpha: 0.06).cgColor,
+                          UIColor(white: 1, alpha: 0.06).cgColor, UIColor(white: 1, alpha: 0.24).cgColor]
             rim.locations = [0, 0.3, 0.7, 1]
             rim.startPoint = CGPoint(x: 0.5, y: 0)
             rim.endPoint = CGPoint(x: 0.5, y: 1)
             rimMask.fillColor = UIColor.clear.cgColor
             rimMask.strokeColor = UIColor.black.cgColor
-            rimMask.lineWidth = 1.2
+            rimMask.lineWidth = 0.7
             rim.mask = rimMask
             layer.addSublayer(rim)
         }
@@ -71,12 +73,17 @@ final class MiniPlayerView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         blur.contentView.addSubview(stack)
 
-        for button in [playButton, nextButton] {
+        stackRef = stack
+        for button in [prevButton, playButton, nextButton] {
             button.translatesAutoresizingMaskIntoConstraints = false
             button.tintColor = Theme.primaryText
             blur.contentView.addSubview(button)
         }
         nextButton.setImage(Icons.next(26), for: .normal)
+        prevButton.setImage(Icons.previous(26), for: .normal)
+        prevButton.alpha = 0
+        prevButton.isUserInteractionEnabled = false
+        prevButton.addTarget(self, action: #selector(prevTapped), for: .touchUpInside)
         playButton.addTarget(self, action: #selector(playTapped), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextTapped), for: .touchUpInside)
 
@@ -104,6 +111,10 @@ final class MiniPlayerView: UIView {
             nextButton.heightAnchor.constraint(equalToConstant: 44),
             playButton.trailingAnchor.constraint(equalTo: nextButton.leadingAnchor, constant: -2),
             playButton.centerYAnchor.constraint(equalTo: blur.contentView.centerYAnchor),
+            prevButton.trailingAnchor.constraint(equalTo: playButton.leadingAnchor, constant: -2),
+            prevButton.centerYAnchor.constraint(equalTo: blur.contentView.centerYAnchor),
+            prevButton.widthAnchor.constraint(equalToConstant: 44),
+            prevButton.heightAnchor.constraint(equalToConstant: 44),
             playButton.widthAnchor.constraint(equalToConstant: 44),
             playButton.heightAnchor.constraint(equalToConstant: 44),
             progressTrack.leadingAnchor.constraint(equalTo: blur.contentView.leadingAnchor, constant: 16),
@@ -144,7 +155,7 @@ final class MiniPlayerView: UIView {
         blur.layer.cornerRadius = radius
         layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: radius).cgPath
         rim.frame = bounds
-        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.6, dy: 0.6), cornerRadius: radius).cgPath
+        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.35, dy: 0.35), cornerRadius: radius).cgPath
         updateProgress()
     }
 
@@ -153,6 +164,22 @@ final class MiniPlayerView: UIView {
     @objc private func playTapped() {
         Haptics.tap()
         PlayerEngine.shared.togglePlayPause()
+    }
+
+    /// Thu gọn (giữa hai nút tròn): bỏ tên bài + nghệ sĩ, thay bằng nút quay lại bài trước.
+    func setCompact(_ on: Bool, animated: Bool) {
+        let changes = {
+            self.stackRef?.alpha = on ? 0 : 1
+            self.prevButton.alpha = on ? 1 : 0
+        }
+        prevButton.isUserInteractionEnabled = on
+        if animated { UIView.animate(withDuration: 0.25, delay: 0, options: [.allowUserInteraction], animations: changes, completion: nil) } else { changes() }
+    }
+
+    @objc private func prevTapped() {
+        Haptics.tap()
+        prevButton.nudge(-8)
+        PlayerEngine.shared.previous()
     }
 
     @objc private func nextTapped() {

@@ -555,33 +555,28 @@ final class NowPlayingViewController: UIViewController {
 
     private func apply(mode new: Mode, animated: Bool) {
         let previous = mode
-        if animated && !isLandscape && ((previous == .cover) != (new == .cover)) { flyCover(toLyrics: new != .cover) }
-        // Như video: tên bài + nghệ sĩ trượt lên/xuống cùng lúc bìa co/phóng (không chỉ mờ chéo).
+        // Bìa lớn đứng yên (chỉ mờ chéo). Tên bài + nghệ sĩ trượt gọn giữa hai vị trí: bản cũ trượt đi nửa đường và mờ,
+        // bản mới trượt vào từ nửa đường còn lại, không bao giờ chồng lên bìa.
+        let toggle = animated && !isLandscape && ((previous == .cover) != (new == .cover))
         let slide = animated && !isLandscape && ((previous == .cover && new == .lyrics) || (previous == .lyrics && new == .cover))
         var slideDest: InfoRow?
+        var slideShift = CGPoint.zero
         if slide {
             view.layoutIfNeeded()
             let src = new == .lyrics ? infoA : infoB
             let dst = new == .lyrics ? infoB : infoA
-            let wasHidden = src.thumb.isHidden
-            src.thumb.isHidden = true
-            if let snap = src.snapshotView(afterScreenUpdates: false) {
-                snap.frame = src.frame
-                snap.isUserInteractionEnabled = false
-                view.insertSubview(snap, aboveSubview: dst)
-                let a = src.titleLabel.convert(src.titleLabel.bounds, to: view).origin
-                let b = dst.titleLabel.convert(dst.titleLabel.bounds, to: view).origin
-                UIView.animate(withDuration: 0.55, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0,
-                               options: [], animations: {
-                    snap.transform = CGAffineTransform(translationX: b.x - a.x, y: b.y - a.y)
-                }, completion: nil)
-                UIView.animate(withDuration: 0.2, delay: 0.3, options: [.curveEaseIn], animations: { snap.alpha = 0 },
-                               completion: { _ in snap.removeFromSuperview() })
-            }
-            src.thumb.isHidden = wasHidden
+            let a = src.titleLabel.convert(src.titleLabel.bounds, to: view).origin
+            let b = dst.titleLabel.convert(dst.titleLabel.bounds, to: view).origin
+            slideShift = CGPoint(x: b.x - a.x, y: b.y - a.y)
             src.layer.removeAllAnimations()
-            src.alpha = 0
+            dst.layer.removeAllAnimations()
+            src.transform = .identity
+            UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseIn, .allowUserInteraction], animations: {
+                src.alpha = 0
+                src.transform = CGAffineTransform(translationX: slideShift.x * 0.5, y: slideShift.y * 0.5)
+            }, completion: { _ in src.transform = .identity })
             dst.alpha = 0
+            dst.transform = CGAffineTransform(translationX: -slideShift.x * 0.5, y: -slideShift.y * 0.5)
             slideDest = dst
         }
         mode = new
@@ -605,15 +600,20 @@ final class NowPlayingViewController: UIViewController {
                 self.infoB.alpha = new == .lyrics ? 1 : 0
             }
             self.lyricsView.alpha = lyr ? 1 : 0
+            if toggle { self.lyricsView.transform = lyr ? .identity : CGAffineTransform(translationX: 0, y: 70) }
             chromeViews.forEach { $0.alpha = chromeAlpha }
             self.view.layoutIfNeeded()
         }
+        if toggle && lyr { lyricsView.transform = CGAffineTransform(translationX: 0, y: 70) }   // trồi lên từ dưới
         if new == .immersive { chromeViews.forEach { $0.isUserInteractionEnabled = false } }
         if let d = slideDest {
-            UIView.animate(withDuration: 0.25, delay: 0.3, options: [.curveEaseOut, .allowUserInteraction], animations: { d.alpha = 1 }, completion: nil)
+            UIView.animate(withDuration: 0.4, delay: 0.12, usingSpringWithDamping: 0.9, initialSpringVelocity: 0,
+                           options: [.allowUserInteraction], animations: { d.alpha = 1; d.transform = .identity }, completion: nil)
         }
         if animated {
-            UIView.animate(withDuration: 0.5, delay: 0, options: [.curveEaseInOut, .allowUserInteraction], animations: changes, completion: nil)
+            UIView.animate(withDuration: 0.5, delay: 0, options: [.curveEaseInOut, .allowUserInteraction], animations: changes, completion: { _ in
+                if toggle && self.mode == .cover { self.lyricsView.transform = .identity }
+            })
         } else {
             changes()
         }

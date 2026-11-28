@@ -319,9 +319,22 @@ final class GlassBackdropView: UIView {
     private var layers: [ClearBlurView] = []
     private var masks: [CAGradientLayer] = []
 
+    /// iOS 12 không gỡ được lớp phủ màu của hiệu ứng mờ nên bị vệt xám/trắng ở đầu màn hình (thấy rõ ở Cài đặt);
+    /// bản đó dùng dải chuyển màu nền thay cho lớp mờ.
+    private let fade = CAGradientLayer()
+    private var useFade = false
+
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
+        if #available(iOS 13.0, *) {} else {
+            useFade = true
+            fade.colors = [Theme.background.withAlphaComponent(0.92).cgColor, Theme.background.withAlphaComponent(0.55).cgColor,
+                           Theme.background.withAlphaComponent(0).cgColor]
+            fade.locations = [0, 0.6, 1]
+            layer.addSublayer(fade)
+            return
+        }
         let radii: [CGFloat] = [3, 7, 13]
         for (i, r) in radii.enumerated() {
             let v = ClearBlurView(radius: r)
@@ -344,6 +357,7 @@ final class GlassBackdropView: UIView {
         super.layoutSubviews()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        if useFade { fade.frame = bounds }
         for (i, v) in layers.enumerated() {
             v.frame = bounds
             masks[i].frame = v.bounds

@@ -53,14 +53,14 @@ final class GlassCircleButton: UIControl {
         addSubview(blur)
         tint.isUserInteractionEnabled = false
         blur.contentView.addSubview(tint)
-        rim.colors = [UIColor(white: 1, alpha: 0.62).cgColor, UIColor(white: 1, alpha: 0.10).cgColor,
-                      UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0.38).cgColor]
+        rim.colors = [UIColor(white: 1, alpha: 0.42).cgColor, UIColor(white: 1, alpha: 0.06).cgColor,
+                      UIColor(white: 1, alpha: 0.06).cgColor, UIColor(white: 1, alpha: 0.26).cgColor]
         rim.locations = [0, 0.28, 0.72, 1]
         rim.startPoint = CGPoint(x: 0.5, y: 0)
         rim.endPoint = CGPoint(x: 0.5, y: 1)
         rimMask.fillColor = UIColor.clear.cgColor
         rimMask.strokeColor = UIColor.black.cgColor
-        rimMask.lineWidth = 1.2
+        rimMask.lineWidth = 0.7
         rim.mask = rimMask
         layer.addSublayer(rim)
         iconView.image = icon.withRenderingMode(.alwaysTemplate)
@@ -78,7 +78,7 @@ final class GlassCircleButton: UIControl {
         blur.layer.cornerRadius = bounds.height / 2
         tint.frame = blur.bounds
         rim.frame = bounds
-        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.6, dy: 0.6), cornerRadius: bounds.height / 2).cgPath
+        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.35, dy: 0.35), cornerRadius: bounds.height / 2).cgPath
         layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height / 2).cgPath
         iconView.frame = bounds
     }

@@ -11,8 +11,7 @@ final class RootViewController: UIViewController {
             return MaterialNavBar(icons: [Icons.home(24), Icons.library(24), Icons.sliders(24), Icons.search(24)],
                                   titles: [L("Trang chủ"), L("Thư viện"), L("Cài đặt"), L("Tìm kiếm")])
         }
-        return FloatingTabBar(icons: [Icons.home(25), Icons.library(25), Icons.sliders(25), Icons.search(25)],
-                              titles: [L("Trang chủ"), L("Thư viện"), L("Cài đặt"), L("Tìm kiếm")])
+        return FloatingTabBar(icons: [Icons.home(25), Icons.library(25), Icons.sliders(25), Icons.search(25)])
     }()
     /// Nút Tìm kiếm tròn bên phải: chỉ hiện khi thanh tab thu gọn (Trang chủ tròn | thanh phát | Tìm kiếm tròn).
     private let searchCircle = GlassCircleButton(icon: Icons.search(25))
@@ -167,6 +166,7 @@ final class RootViewController: UIViewController {
         guard value != compact else { return }
         compact = value
         tabBar.setCollapsed(value, animated: true)
+        mini.setCompact(value, animated: true)
         if value {
             searchCircle.isHidden = false
             searchCircle.alpha = 0

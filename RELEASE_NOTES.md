@@ -1,3 +1,10 @@
+Mochy Remake 0.18.1 — chỉnh viền kính, sửa vệt trắng Cài đặt, mượt hơn khi bật/tắt lời
+
+- Viền kính mỏng và nhạt hơn; bỏ lớp sáng bóng trong thanh tab; thanh tab về lại icon ở giữa, không có chữ.
+- Sửa vệt xám trắng ở đầu màn Cài đặt (iOS 12).
+- Bật/tắt lời: bìa lớn đứng yên, không bay/phóng nữa; lời trồi lên khi bật và lặn xuống khi tắt; tên bài trượt gọn, không chồng lên bìa.
+- Thanh phát nhỏ khi thu gọn: bỏ tên bài + nghệ sĩ, thay bằng nút bài trước.
+
 Mochy Remake 0.18.0 — tab bar kính, nút kéo giãn, đổi lời mượt hơn
 
 - Thanh tab kính mới: có nhãn dưới icon, viền kính sáng ở mép trên và mép dưới, mờ hơn; thứ tự Trang chủ / Thư viện / Cài đặt / Tìm kiếm.
