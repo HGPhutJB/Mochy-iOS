@@ -1,3 +1,7 @@
+Mochy Remake 0.18.2 — icon thanh tab đứng yên
+
+- Icon trên thanh tab nằm im một chỗ, không còn nhún/nhếch lên khi chạm hay chuyển tab; chỉ viên chọn trượt.
+
 Mochy Remake 0.18.1 — chỉnh viền kính, sửa vệt trắng Cài đặt, mượt hơn khi bật/tắt lời
 
 - Viền kính mỏng và nhạt hơn; bỏ lớp sáng bóng trong thanh tab; thanh tab về lại icon ở giữa, không có chữ.

@@ -22,7 +22,7 @@ final class FloatingTabBar: UIView {
     private let lensRim = CAGradientLayer()
     private let lensRimMask = CAShapeLayer()
     private let lensSheen = CAGradientLayer()
-    private var buttons: [PressableButton] = []
+    private var buttons: [UIButton] = []
     private var iconViews: [UIImageView] = []
     private var labelViews: [UILabel] = []
     /// Báo khi giao diện đổi sáng/tối để nút tròn bên cạnh (Tìm kiếm) đổi theo.
@@ -78,7 +78,7 @@ final class FloatingTabBar: UIView {
         layer.addSublayer(rim)
 
         for (i, icon) in icons.enumerated() {
-            let button = PressableButton(type: .custom)
+            let button = UIButton(type: .custom)
             let iv = UIImageView(image: icon.withRenderingMode(.alwaysTemplate))
             iv.contentMode = .center
             iv.isUserInteractionEnabled = false
@@ -155,13 +155,13 @@ final class FloatingTabBar: UIView {
             if collapsed {
                 button.frame = bounds
                 button.alpha = i == selectedIndex ? 1 : 0
-                iconViews[i].frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
+                iconViews[i].frame = button.bounds
                 labelViews[i].alpha = 0
             } else {
                 button.frame = itemFrame(i)
                 button.alpha = 1
                 let hasLabel = !(labelViews[i].text ?? "").isEmpty
-                iconViews[i].frame = CGRect(x: 0, y: hasLabel ? 7 : 0, width: button.bounds.width, height: hasLabel ? 30 : bounds.height)
+                iconViews[i].frame = hasLabel ? CGRect(x: 0, y: 7, width: button.bounds.width, height: 30) : button.bounds
                 labelViews[i].frame = CGRect(x: 2, y: bounds.height - 25, width: button.bounds.width - 4, height: 14)
                 labelViews[i].alpha = hasLabel ? 1 : 0
             }
@@ -307,15 +307,8 @@ final class FloatingTabBar: UIView {
         }, completion: nil)
     }
 
-    private func bounce(_ button: UIButton) {
-        guard button.tag < iconViews.count else { return }
-        let iv = iconViews[button.tag]
-        iv.transform = CGAffineTransform(scaleX: 0.62, y: 0.62)
-        UIView.animate(withDuration: 0.7, delay: 0, usingSpringWithDamping: 0.38, initialSpringVelocity: 9,
-                       options: [.allowUserInteraction], animations: {
-            iv.transform = .identity
-        }, completion: nil)
-    }
+    /// Icon đứng yên một chỗ; chỉ viên chọn trượt.
+    private func bounce(_ button: UIButton) {}
 
     @objc private func touchDown(_ sender: UIButton) {
         guard !collapsed else { return }
