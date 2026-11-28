@@ -603,45 +603,13 @@ final class VideoBackdrop {
     }
 }
 
-/// Nút điều khiển kiểu bộ phát của iOS: chạm thì hiện vòng sáng tròn mờ sau icon (nở ra bằng lò xo) và icon thu nhẹ,
-/// nhả tay thì vòng sáng tan dần; đổi icon phát/tạm dừng có chuyển cảnh mượt, tua có cú đẩy theo hướng.
+/// Nút điều khiển kiểu bộ phát của iOS: chạm thì icon thu nhẹ rồi nảy lại (không có vòng sáng),
+/// đổi icon phát/tạm dừng có chuyển cảnh co-phóng, tua có icon trượt theo hướng.
 final class ControlButton: UIButton {
-    private let bubble = UIView()
-
-    private func prepareBubble() {
-        if bubble.superview != nil { return }
-        bubble.isUserInteractionEnabled = false
-        bubble.backgroundColor = UIColor(white: 1, alpha: 0.14)
-        bubble.alpha = 0
-        insertSubview(bubble, at: 0)
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        prepareBubble()
-        let d = min(bounds.width, bounds.height)
-        let t = bubble.transform
-        bubble.transform = .identity
-        bubble.bounds = CGRect(x: 0, y: 0, width: d, height: d)
-        bubble.center = CGPoint(x: bounds.midX, y: bounds.midY)
-        bubble.layer.cornerRadius = d / 2
-        bubble.transform = t
-    }
-
     override var isHighlighted: Bool {
         didSet {
             guard isHighlighted != oldValue else { return }
-            prepareBubble()
             let on = isHighlighted
-            if on {
-                bubble.layer.removeAllAnimations()
-                bubble.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
-                UIView.animate(withDuration: 0.12, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: { self.bubble.alpha = 1 }, completion: nil)
-                UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5,
-                               options: [.allowUserInteraction, .beginFromCurrentState], animations: { self.bubble.transform = .identity }, completion: nil)
-            } else {
-                UIView.animate(withDuration: 0.38, delay: 0.05, options: [.allowUserInteraction, .beginFromCurrentState, .curveEaseOut], animations: { self.bubble.alpha = 0 }, completion: nil)
-            }
             UIView.animate(withDuration: on ? 0.22 : 0.5, delay: 0, usingSpringWithDamping: on ? 0.8 : 0.5, initialSpringVelocity: on ? 0 : 6,
                            options: [.allowUserInteraction, .beginFromCurrentState], animations: {
                 self.imageView?.transform = on ? CGAffineTransform(scaleX: 0.88, y: 0.88) : .identity
@@ -671,19 +639,6 @@ final class ControlButton: UIButton {
         UIView.animate(withDuration: 0.18, delay: 0.04, options: [.curveEaseOut, .allowUserInteraction], animations: { iv.alpha = 1 }, completion: nil)
         UIView.animate(withDuration: 0.5, delay: 0.04, usingSpringWithDamping: 0.62, initialSpringVelocity: 0.8,
                        options: [.allowUserInteraction], animations: { iv.transform = .identity }, completion: nil)
-        flashBubble()
-    }
-
-    /// Vòng tối hiện nhanh rồi tan (khi đổi trạng thái không do chạm, ví dụ phát từ nơi khác).
-    private func flashBubble() {
-        if isHighlighted { return }
-        prepareBubble()
-        bubble.layer.removeAllAnimations()
-        bubble.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
-        bubble.alpha = 0
-        UIView.animate(withDuration: 0.1, animations: { self.bubble.alpha = 1; self.bubble.transform = .identity }, completion: { _ in
-            UIView.animate(withDuration: 0.4, delay: 0.1, options: [.curveEaseOut, .allowUserInteraction], animations: { self.bubble.alpha = 0 }, completion: nil)
-        })
     }
 
     /// Nút tua: icon cũ co nhỏ và trượt ra theo hướng tua (mờ dần), icon mới trượt vào từ phía ngược lại.
@@ -706,6 +661,5 @@ final class ControlButton: UIButton {
         UIView.animate(withDuration: 0.16, delay: 0.06, options: [.curveEaseOut, .allowUserInteraction], animations: { iv.alpha = 1 }, completion: nil)
         UIView.animate(withDuration: 0.5, delay: 0.06, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.6,
                        options: [.allowUserInteraction], animations: { iv.transform = .identity }, completion: nil)
-        flashBubble()
     }
 }

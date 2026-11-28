@@ -1,3 +1,7 @@
+Mochy Remake 0.17.4 — bỏ vòng trắng khi bấm nút
+
+- Các nút điều khiển không còn vòng sáng khi bấm, chỉ thu nhẹ và nảy lại.
+
 Mochy Remake 0.17.3 — nút phát/tua theo video iOS
 
 - Nút phát/tạm dừng: icon cũ co nhỏ và tắt rất nhanh, icon mới phóng từ nhỏ lên có nảy nhẹ; vòng sáng tối sau nút.
