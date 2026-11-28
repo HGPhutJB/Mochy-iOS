@@ -1,3 +1,7 @@
+Mochy Remake 0.18.3 — giữ ảnh bìa, không tự nhảy sang MV
+
+- Màn đang phát không còn tự đổi sang MV YouTube sau vài giây (bị phóng to, nhảy cảnh); ảnh bìa đứng yên. Canvas ngắn vẫn dùng nếu đã cấu hình.
+
 Mochy Remake 0.18.2 — icon thanh tab đứng yên
 
 - Icon trên thanh tab nằm im một chỗ, không còn nhún/nhếch lên khi chạm hay chuyển tab; chỉ viên chọn trượt.

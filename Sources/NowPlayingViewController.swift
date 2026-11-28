@@ -913,14 +913,9 @@ final class NowPlayingViewController: UIViewController {
                 }
             }
         }
-        // 2) MV YouTube; 3) không có thì giữ ảnh bìa.
-        guard let info = engine.streamInfo, let url = info.videoURL, !engine.isLocal else {
-            if video.key != nil { video.stop() }
-            return
-        }
-        let key = song.videoId + "|" + url.absoluteString
-        if video.key == key { return }
-        video.load(url: url, userAgent: info.userAgent, key: key, position: engine.livePosition)
+        // Không tự đổi sang MV YouTube nữa: khung 16:9 phủ kín màn hình bị phóng to và nhảy cảnh so với ảnh bìa.
+        // Không có Canvas thì giữ nguyên ảnh bìa.
+        if video.key != nil { video.stop() }
     }
 
     private func loadLyrics() {
