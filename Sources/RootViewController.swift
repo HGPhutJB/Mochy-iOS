@@ -344,6 +344,26 @@ final class RootViewController: UIViewController {
         }
     }
 
+    private var warmNowPlaying: NowPlayingViewController?
+    private var warmScheduled = false
+
+    /// Dựng sẵn màn hình đang phát lúc rảnh (ẩn, chưa hiện). Nhờ vậy khi mở không bị khựng ở những khung hình đầu
+    /// do phải tạo hàng chục view, lớp làm mờ và tải ảnh trong lúc đang chạy hiệu ứng.
+    func scheduleWarmNowPlaying() {
+        guard !warmScheduled, warmNowPlaying == nil else { return }
+        warmScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            self.warmScheduled = false
+            guard self.warmNowPlaying == nil, self.presentedViewController == nil, self.view.window != nil,
+                  PlayerEngine.shared.currentSong != nil else { return }
+            let vc = NowPlayingViewController()
+            vc.view.frame = self.view.bounds
+            vc.view.layoutIfNeeded()
+            self.warmNowPlaying = vc
+        }
+    }
+
     @objc private func playerChanged() {
         let art = PlayerEngine.shared.currentSong == nil ? nil : PlayerEngine.shared.artwork
         if art !== accentArtwork {
@@ -351,7 +371,7 @@ final class RootViewController: UIViewController {
             Theme.updateSongAccent(from: art)
         }
         let hasSong = PlayerEngine.shared.currentSong != nil
-        if hasSong { mini.update() }
+        if hasSong { mini.update(); scheduleWarmNowPlaying() } else { warmNowPlaying = nil }
         if hasSong == miniVisible { return }
         miniVisible = hasSong
         if hasSong {
@@ -372,7 +392,10 @@ final class RootViewController: UIViewController {
 
     func presentNowPlaying() {
         guard PlayerEngine.shared.currentSong != nil, presentedViewController == nil else { return }
-        let vc = NowPlayingViewController()
+        // Dùng bản đã dựng sẵn (xem scheduleWarmNowPlaying) để lúc chạm không phải dựng cả màn hình giữa lúc bắt đầu trượt.
+        let vc = warmNowPlaying ?? NowPlayingViewController()
+        warmNowPlaying = nil
+        vc.prepareForPresent()
         vc.modalPresentationStyle = .overFullScreen
         vc.transitioningDelegate = vc.transition
         present(vc, animated: true, completion: nil)

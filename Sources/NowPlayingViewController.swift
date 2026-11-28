@@ -115,6 +115,7 @@ final class NowPlayingAnimator: NSObject, UIViewControllerAnimatedTransitioning 
                 flying.removeFromSuperview()
                 miniArt?.alpha = 1
                 transitionContext.completeTransition(!transitionContext.transitionWasCancelled)
+                RootViewController.shared?.scheduleWarmNowPlaying()
             })
         }
     }
@@ -252,6 +253,14 @@ final class NowPlayingViewController: UIViewController {
     }
 
     private var didAppearOnce = false
+
+    /// Gọi ngay trước khi hiện (bản dựng sẵn có thể đã cũ so với cài đặt/giờ hiện tại).
+    func prepareForPresent() {
+        _ = view
+        refreshBackdrop(animated: false)
+        refreshHidesPast()
+        timeChanged()
+    }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -776,18 +785,26 @@ final class NowPlayingViewController: UIViewController {
 
         if let image = engine.artwork, shownArtwork !== image {
             shownArtwork = image
-            UIView.transition(with: mediaView, duration: 0.45, options: .transitionCrossDissolve, animations: {
-                self.artView.image = image
-            }, completion: nil)
+            if didAppearOnce {
+                UIView.transition(with: mediaView, duration: 0.45, options: .transitionCrossDissolve, animations: {
+                    self.artView.image = image
+                }, completion: nil)
+            } else {
+                artView.image = image   // chưa hiện: không chạy chuyển cảnh mờ chéo cả màn hình (tốn GPU đúng lúc trượt lên)
+            }
             infoA.thumb.image = image
             infoB.thumb.image = image
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let soft = FluidBackgroundView.makeAmbient(image) else { return }
                 DispatchQueue.main.async {
                     guard let self = self, self.shownArtwork === image else { return }
-                    UIView.transition(with: self.backFill, duration: 0.45, options: .transitionCrossDissolve, animations: {
+                    if self.didAppearOnce {
+                        UIView.transition(with: self.backFill, duration: 0.45, options: .transitionCrossDissolve, animations: {
+                            self.backFill.image = UIImage(cgImage: soft)
+                        }, completion: nil)
+                    } else {
                         self.backFill.image = UIImage(cgImage: soft)
-                    }, completion: nil)
+                    }
                 }
             }
             fluidView.setImage(image)
@@ -818,7 +835,7 @@ final class NowPlayingViewController: UIViewController {
         guard let color = image.songTone() else { return }
         tone = color
         coverLuminance = image.bottomLuminance() ?? 0.2
-        refreshBackdrop(animated: true)
+        refreshBackdrop(animated: didAppearOnce)
     }
 
     /// Chỉnh dải mờ, bóng, chữ và nút theo độ sáng của nền (bìa sáng → mờ sáng + chữ tối).

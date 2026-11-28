@@ -1,3 +1,9 @@
+Mochy Remake 0.18.4 — mở màn hình đang phát mượt hơn
+
+- Dựng sẵn màn hình đang phát lúc rảnh (ẩn), nên khi chạm mở không còn khựng ở những khung hình đầu.
+- Khi mở lần đầu không chạy chuyển cảnh mờ chéo cả màn hình và các hiệu ứng đổi màu nền nữa (tốn GPU đúng lúc trượt lên); sau khi hiện xong mọi hiệu ứng vẫn như cũ.
+- Không bỏ tính năng nào.
+
 Mochy Remake 0.18.3 — giữ ảnh bìa, không tự nhảy sang MV
 
 - Màn đang phát không còn tự đổi sang MV YouTube sau vài giây (bị phóng to, nhảy cảnh); ảnh bìa đứng yên. Canvas ngắn vẫn dùng nếu đã cấu hình.
