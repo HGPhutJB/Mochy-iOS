@@ -1,3 +1,9 @@
+Mochy Remake 0.17.3 — nút phát/tua theo video iOS
+
+- Nút phát/tạm dừng: icon cũ co nhỏ và tắt rất nhanh, icon mới phóng từ nhỏ lên có nảy nhẹ; vòng sáng tối sau nút.
+- Nút tua: mũi tên cũ trượt ra theo hướng tua, mũi tên mới trượt vào từ phía ngược lại.
+- Màn xoay ngang: bìa co lại và tối khi tạm dừng, nở ra có nảy khi phát.
+
 Mochy Remake 0.17.2 — icon ngẫu nhiên và lặp lại mới
 
 - Thay icon ngẫu nhiên và lặp lại bằng đúng hình icon bạn gửi (kèm biến thể lặp một bài có số 1).

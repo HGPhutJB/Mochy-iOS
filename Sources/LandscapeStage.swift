@@ -86,10 +86,15 @@ final class LandscapeStage: UIView {
         let tw = s
         let x = leftEdge + (zoneW - tw) / 2
         var y = max(topEdge, (h - (s + rest)) / 2)
+        let keepT = cover.transform
+        cover.transform = .identity
+        coverShadow.transform = .identity
         cover.frame = CGRect(x: x, y: y, width: s, height: s)
+        cover.transform = keepT
         cover.layer.cornerRadius = 12
         cover.layer.masksToBounds = true
-        coverShadow.frame = cover.frame
+        coverShadow.frame = CGRect(x: x, y: y, width: s, height: s)
+        coverShadow.transform = keepT
         coverShadow.layer.shadowPath = UIBezierPath(roundedRect: coverShadow.bounds, cornerRadius: 12).cgPath
         y += s + 12
         titleLabel.frame = CGRect(x: x, y: y, width: tw, height: 26)
@@ -133,6 +138,14 @@ final class LandscapeStage: UIView {
 
     func setPlaying(_ playing: Bool) {
         playBtn.setImageAnimated(playing ? Icons.pause(52) : Icons.play(52))
+        // Như video iOS: tạm dừng thì bìa co lại và tối đi, phát thì nở ra có nảy nhẹ.
+        let t = playing ? CGAffineTransform.identity : CGAffineTransform(scaleX: 0.84, y: 0.84)
+        UIView.animate(withDuration: 0.55, delay: 0, usingSpringWithDamping: playing ? 0.6 : 0.85, initialSpringVelocity: 0.5,
+                       options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+            self.cover.transform = t
+            self.coverShadow.transform = t
+            self.cover.alpha = playing ? 1 : 0.72
+        }, completion: nil)
     }
 
     func setControls(visible: Bool, animated: Bool) {

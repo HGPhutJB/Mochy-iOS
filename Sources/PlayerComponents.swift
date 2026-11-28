@@ -611,7 +611,7 @@ final class ControlButton: UIButton {
     private func prepareBubble() {
         if bubble.superview != nil { return }
         bubble.isUserInteractionEnabled = false
-        bubble.backgroundColor = UIColor(white: 1, alpha: 0.22)
+        bubble.backgroundColor = UIColor(white: 1, alpha: 0.14)
         bubble.alpha = 0
         insertSubview(bubble, at: 0)
     }
@@ -649,22 +649,63 @@ final class ControlButton: UIButton {
         }
     }
 
-    /// Đổi icon bằng chuyển cảnh mờ + nảy (phát ↔ tạm dừng).
+    /// Đổi icon phát ↔ tạm dừng theo video iOS: icon cũ co về ~0.4 và mờ đi rất nhanh (~2 khung),
+    /// icon mới phóng từ ~0.3 lên đầy đủ (hơi vượt rồi về) trong ~0.35s, mờ dần hiện.
     func setImageAnimated(_ image: UIImage) {
         if currentImage === image { return }
-        guard window != nil else { setImage(image, for: .normal); return }
-        UIView.transition(with: self, duration: 0.2, options: [.transitionCrossDissolve, .allowUserInteraction], animations: {
-            self.setImage(image, for: .normal)
-        }, completion: nil)
-        imageView?.transform = CGAffineTransform(scaleX: 0.78, y: 0.78)
-        UIView.animate(withDuration: 0.55, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 4,
-                       options: [.allowUserInteraction], animations: { self.imageView?.transform = .identity }, completion: nil)
+        guard window != nil, let iv = imageView else { setImage(image, for: .normal); return }
+        let old = iv.snapshotView(afterScreenUpdates: false)
+        setImage(image, for: .normal)
+        layoutIfNeeded()
+        if let o = old {
+            o.frame = iv.frame
+            insertSubview(o, aboveSubview: iv)
+            UIView.animate(withDuration: 0.07, delay: 0, options: [.curveEaseIn], animations: {
+                o.alpha = 0
+                o.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
+            }, completion: { _ in o.removeFromSuperview() })
+        }
+        iv.layer.removeAllAnimations()
+        iv.alpha = 0
+        iv.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+        UIView.animate(withDuration: 0.18, delay: 0.04, options: [.curveEaseOut, .allowUserInteraction], animations: { iv.alpha = 1 }, completion: nil)
+        UIView.animate(withDuration: 0.5, delay: 0.04, usingSpringWithDamping: 0.62, initialSpringVelocity: 0.8,
+                       options: [.allowUserInteraction], animations: { iv.transform = .identity }, completion: nil)
+        flashBubble()
     }
 
-    /// Cú đẩy icon theo hướng (tua tới +, tua lui −) rồi bật lại.
+    /// Vòng tối hiện nhanh rồi tan (khi đổi trạng thái không do chạm, ví dụ phát từ nơi khác).
+    private func flashBubble() {
+        if isHighlighted { return }
+        prepareBubble()
+        bubble.layer.removeAllAnimations()
+        bubble.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
+        bubble.alpha = 0
+        UIView.animate(withDuration: 0.1, animations: { self.bubble.alpha = 1; self.bubble.transform = .identity }, completion: { _ in
+            UIView.animate(withDuration: 0.4, delay: 0.1, options: [.curveEaseOut, .allowUserInteraction], animations: { self.bubble.alpha = 0 }, completion: nil)
+        })
+    }
+
+    /// Nút tua: icon cũ co nhỏ và trượt ra theo hướng tua (mờ dần), icon mới trượt vào từ phía ngược lại.
+    /// dx > 0: tua tới (trượt sang phải), dx < 0: tua lui (trượt sang trái).
     func nudge(_ dx: CGFloat) {
-        imageView?.transform = CGAffineTransform(translationX: dx, y: 0)
-        UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.45, initialSpringVelocity: 5,
-                       options: [.allowUserInteraction], animations: { self.imageView?.transform = .identity }, completion: nil)
+        guard let iv = imageView, window != nil else { return }
+        let dir: CGFloat = dx >= 0 ? 1 : -1
+        let travel = iv.bounds.width * 0.55 * dir
+        iv.layer.removeAllAnimations()
+        if let o = iv.snapshotView(afterScreenUpdates: false) {
+            o.frame = iv.frame
+            insertSubview(o, aboveSubview: iv)
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseIn], animations: {
+                o.alpha = 0
+                o.transform = CGAffineTransform(translationX: travel, y: 0).scaledBy(x: 0.6, y: 0.6)
+            }, completion: { _ in o.removeFromSuperview() })
+        }
+        iv.alpha = 0
+        iv.transform = CGAffineTransform(translationX: -travel, y: 0).scaledBy(x: 0.6, y: 0.6)
+        UIView.animate(withDuration: 0.16, delay: 0.06, options: [.curveEaseOut, .allowUserInteraction], animations: { iv.alpha = 1 }, completion: nil)
+        UIView.animate(withDuration: 0.5, delay: 0.06, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.6,
+                       options: [.allowUserInteraction], animations: { iv.transform = .identity }, completion: nil)
+        flashBubble()
     }
 }
