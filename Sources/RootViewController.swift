@@ -8,11 +8,14 @@ final class RootViewController: UIViewController {
     private let contentView = UIView()
     private let tabBar: UIView & TabBarControl = {
         if Mat.active {
-            return MaterialNavBar(icons: [Icons.home(24), Icons.search(24), Icons.library(24), Icons.sliders(24)],
-                                  titles: [L("Trang chủ"), L("Tìm kiếm"), L("Thư viện"), L("Cài đặt")])
+            return MaterialNavBar(icons: [Icons.home(24), Icons.library(24), Icons.sliders(24), Icons.search(24)],
+                                  titles: [L("Trang chủ"), L("Thư viện"), L("Cài đặt"), L("Tìm kiếm")])
         }
-        return FloatingTabBar(icons: [Icons.home(25), Icons.search(25), Icons.library(25), Icons.sliders(25)])
+        return FloatingTabBar(icons: [Icons.home(25), Icons.library(25), Icons.sliders(25), Icons.search(25)],
+                              titles: [L("Trang chủ"), L("Thư viện"), L("Cài đặt"), L("Tìm kiếm")])
     }()
+    /// Nút Tìm kiếm tròn bên phải: chỉ hiện khi thanh tab thu gọn (Trang chủ tròn | thanh phát | Tìm kiếm tròn).
+    private let searchCircle = GlassCircleButton(icon: Icons.search(25))
     private let mini = MiniPlayerView()
     private var controllers: [UINavigationController] = []
     private(set) var selectedIndex = 0
@@ -47,8 +50,8 @@ final class RootViewController: UIViewController {
         RootViewController.shared = self
         view.backgroundColor = Theme.background
 
-        let roots: [UIViewController] = [HomeViewController(), SearchViewController(),
-                                         LibraryViewController(), SettingsViewController()]
+        let roots: [UIViewController] = [HomeViewController(), LibraryViewController(),
+                                         SettingsViewController(), SearchViewController()]
         controllers = roots.map { vc in
             let nav = GlassNavigationController(rootViewController: vc)
             Theme.style(navigationBar: nav.navigationBar)
@@ -64,6 +67,13 @@ final class RootViewController: UIViewController {
         tabBar.translatesAutoresizingMaskIntoConstraints = false
         tabBar.onSelect = { [weak self] index in self?.select(index, animated: true) }
         view.addSubview(tabBar)
+
+        searchCircle.translatesAutoresizingMaskIntoConstraints = false
+        searchCircle.alpha = 0
+        searchCircle.isHidden = true
+        searchCircle.addTarget(self, action: #selector(searchCircleTapped), for: .touchUpInside)
+        view.addSubview(searchCircle)
+        (tabBar as? FloatingTabBar)?.onLookChanged = { [weak self] light in self?.searchCircle.setLook(light: light) }
 
         mini.translatesAutoresizingMaskIntoConstraints = false
         mini.alpha = 0
@@ -82,9 +92,15 @@ final class RootViewController: UIViewController {
         ]
         miniCompact = [
             mini.leadingAnchor.constraint(equalTo: tabBar.trailingAnchor, constant: 8),
-            mini.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+            mini.trailingAnchor.constraint(equalTo: searchCircle.leadingAnchor, constant: -8),
             mini.centerYAnchor.constraint(equalTo: tabBar.centerYAnchor)
         ]
+        NSLayoutConstraint.activate([
+            searchCircle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            searchCircle.centerYAnchor.constraint(equalTo: tabBar.centerYAnchor),
+            searchCircle.widthAnchor.constraint(equalToConstant: FloatingTabBar.height),
+            searchCircle.heightAnchor.constraint(equalToConstant: FloatingTabBar.height)
+        ])
         if Mat.active {
             NSLayoutConstraint.activate([
                 tabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -152,6 +168,21 @@ final class RootViewController: UIViewController {
         compact = value
         tabBar.setCollapsed(value, animated: true)
         if value {
+            searchCircle.isHidden = false
+            searchCircle.alpha = 0
+            searchCircle.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
+            UIView.animate(withDuration: 0.5, delay: 0.05, usingSpringWithDamping: 0.62, initialSpringVelocity: 0.6,
+                           options: [.allowUserInteraction], animations: {
+                self.searchCircle.alpha = 1
+                self.searchCircle.transform = .identity
+            }, completion: nil)
+        } else {
+            UIView.animate(withDuration: 0.22, delay: 0, options: [.allowUserInteraction, .curveEaseIn], animations: {
+                self.searchCircle.alpha = 0
+                self.searchCircle.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
+            }, completion: { _ in if !self.compact { self.searchCircle.isHidden = true } })
+        }
+        if value {
             NSLayoutConstraint.deactivate(miniExpanded)
             tabTrailing.isActive = false
             tabWidth.isActive = true
@@ -168,6 +199,12 @@ final class RootViewController: UIViewController {
                        options: [.allowUserInteraction, .beginFromCurrentState], animations: {
             self.view.layoutIfNeeded()
         }, completion: nil)
+    }
+
+    @objc private func searchCircleTapped() {
+        Haptics.tap()
+        setCompact(false)
+        select(3, animated: true)
     }
 
     private func primaryScroll(in v: UIView) -> UIScrollView? {
@@ -373,7 +410,7 @@ final class RootViewController: UIViewController {
                                       message: Lf("Mochy Remake %@ (build %@) đã sẵn sàng.", info.version, info.build),
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Xem", style: .default) { [weak self] _ in
-            self?.select(3, animated: true)
+            self?.select(2, animated: true)
         })
         alert.addAction(UIAlertAction(title: L("Để sau"), style: .cancel, handler: nil))
         present(alert, animated: true, completion: nil)

@@ -4,7 +4,7 @@ import UIKit
 /// "thấu kính" chọn tab trượt bằng lò xo và co giãn như giọt nước, chạm thì nảy, kéo ngón tay để lướt qua các tab.
 /// Khi cuộn xuống thanh thu gọn thành viên tròn chỉ còn icon tab đang chọn.
 final class FloatingTabBar: UIView {
-    static let height: CGFloat = 58
+    static let height: CGFloat = 66
 
     var onSelect: ((Int) -> Void)?
     var onTapWhileCollapsed: (() -> Void)?
@@ -23,12 +23,16 @@ final class FloatingTabBar: UIView {
     private let lensRimMask = CAShapeLayer()
     private let lensSheen = CAGradientLayer()
     private var buttons: [PressableButton] = []
+    private var iconViews: [UIImageView] = []
+    private var labelViews: [UILabel] = []
+    /// Báo khi giao diện đổi sáng/tối để nút tròn bên cạnh (Tìm kiếm) đổi theo.
+    var onLookChanged: ((Bool) -> Void)?
     private let badge = UIView()
     private var lightBackdrop: Bool?
     private var dragging = false
     private var dragCenterX: CGFloat = 0
 
-    init(icons: [UIImage]) {
+    init(icons: [UIImage], titles: [String] = []) {
         super.init(frame: .zero)
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.35
@@ -61,17 +65,35 @@ final class FloatingTabBar: UIView {
         lensRim.mask = lensRimMask
         glass.contentView.addSubview(lens)
 
-        rim.colors = [UIColor(white: 1, alpha: 0.5).cgColor, UIColor(white: 1, alpha: 0.06).cgColor, UIColor(white: 1, alpha: 0.28).cgColor]
-        rim.startPoint = CGPoint(x: 0.1, y: 0)
-        rim.endPoint = CGPoint(x: 0.9, y: 1)
+        // Viền kính: sáng rõ ở mép trên, mờ ở hai bên, sáng nhẹ lại ở mép dưới (như thanh tab iOS mới).
+        rim.colors = [UIColor(white: 1, alpha: 0.62).cgColor, UIColor(white: 1, alpha: 0.10).cgColor,
+                      UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0.38).cgColor]
+        rim.locations = [0, 0.28, 0.72, 1]
+        rim.startPoint = CGPoint(x: 0.5, y: 0)
+        rim.endPoint = CGPoint(x: 0.5, y: 1)
         rimMask.fillColor = UIColor.clear.cgColor
         rimMask.strokeColor = UIColor.black.cgColor
         rimMask.lineWidth = 1.2
         rim.mask = rimMask
+        glass.contentView.layer.insertSublayer(sheen, at: 0)
+        layer.addSublayer(rim)
 
         for (i, icon) in icons.enumerated() {
             let button = PressableButton(type: .custom)
-            button.setImage(icon.withRenderingMode(.alwaysTemplate), for: .normal)
+            let iv = UIImageView(image: icon.withRenderingMode(.alwaysTemplate))
+            iv.contentMode = .center
+            iv.isUserInteractionEnabled = false
+            button.addSubview(iv)
+            iconViews.append(iv)
+            let lb = UILabel()
+            lb.text = i < titles.count ? titles[i] : nil
+            lb.font = UIFont.systemFont(ofSize: 10.5, weight: .semibold)
+            lb.textAlignment = .center
+            lb.adjustsFontSizeToFitWidth = true
+            lb.minimumScaleFactor = 0.8
+            lb.isUserInteractionEnabled = false
+            button.addSubview(lb)
+            labelViews.append(lb)
             button.tag = i
             button.addTarget(self, action: #selector(tapped(_:)), for: .touchUpInside)
             button.addTarget(self, action: #selector(touchDown(_:)), for: .touchDown)
@@ -110,6 +132,9 @@ final class FloatingTabBar: UIView {
         glass.frame = bounds
         glass.layer.cornerRadius = bounds.height / 2
         tint.frame = glass.bounds
+        sheen.frame = glass.bounds
+        rim.frame = bounds
+        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.6, dy: 0.6), cornerRadius: bounds.height / 2).cgPath
         let path = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height / 2)
         layer.shadowPath = path.cgPath
         layoutItems()
@@ -132,9 +157,15 @@ final class FloatingTabBar: UIView {
             if collapsed {
                 button.frame = bounds
                 button.alpha = i == selectedIndex ? 1 : 0
+                iconViews[i].frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
+                labelViews[i].alpha = 0
             } else {
                 button.frame = itemFrame(i)
                 button.alpha = 1
+                let hasLabel = !(labelViews[i].text ?? "").isEmpty
+                iconViews[i].frame = CGRect(x: 0, y: hasLabel ? 7 : 0, width: button.bounds.width, height: hasLabel ? 30 : bounds.height)
+                labelViews[i].frame = CGRect(x: 2, y: bounds.height - 25, width: button.bounds.width - 4, height: 14)
+                labelViews[i].alpha = hasLabel ? 1 : 0
             }
         }
         if !dragging {
@@ -162,10 +193,11 @@ final class FloatingTabBar: UIView {
 
     private func applyLook(light: Bool, animated: Bool) {
         lightBackdrop = light
+        onLookChanged?(light)
         let changes = {
             self.glass.effect = UIBlurEffect(style: light ? .extraLight : .dark)
-            self.tint.backgroundColor = light ? UIColor(white: 1, alpha: 0.18) : UIColor(white: 0, alpha: 0.16)
-            self.lens.backgroundColor = light ? UIColor(white: 0, alpha: 0.09) : UIColor(white: 1, alpha: 0.14)
+            self.tint.backgroundColor = light ? UIColor(white: 1, alpha: 0.26) : UIColor(white: 0.12, alpha: 0.32)
+            self.lens.backgroundColor = light ? UIColor(white: 0, alpha: 0.10) : UIColor(white: 1, alpha: 0.13)
             self.updateTints()
         }
         if animated { UIView.animate(withDuration: 0.35, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: changes, completion: nil) } else { changes() }
@@ -174,7 +206,9 @@ final class FloatingTabBar: UIView {
 
     private func updateTints() {
         for (i, button) in buttons.enumerated() {
-            button.tintColor = i == selectedIndex ? Theme.accent : inkColor.withAlphaComponent(0.78)
+            let c = i == selectedIndex ? Theme.accent : inkColor.withAlphaComponent(0.78)
+            iconViews[i].tintColor = c
+            labelViews[i].textColor = c
         }
     }
 
@@ -276,10 +310,12 @@ final class FloatingTabBar: UIView {
     }
 
     private func bounce(_ button: UIButton) {
-        button.imageView?.transform = CGAffineTransform(scaleX: 0.62, y: 0.62)
+        guard button.tag < iconViews.count else { return }
+        let iv = iconViews[button.tag]
+        iv.transform = CGAffineTransform(scaleX: 0.62, y: 0.62)
         UIView.animate(withDuration: 0.7, delay: 0, usingSpringWithDamping: 0.38, initialSpringVelocity: 9,
                        options: [.allowUserInteraction], animations: {
-            button.imageView?.transform = .identity
+            iv.transform = .identity
         }, completion: nil)
     }
 
@@ -324,7 +360,9 @@ final class FloatingTabBar: UIView {
             let width = bounds.width / CGFloat(buttons.count)
             let hover = min(buttons.count - 1, max(0, Int(x / width)))
             for (i, b) in buttons.enumerated() {
-                b.tintColor = i == hover ? Theme.accent : inkColor.withAlphaComponent(0.78)
+                let c = i == hover ? Theme.accent : inkColor.withAlphaComponent(0.78)
+                iconViews[i].tintColor = c
+                labelViews[i].textColor = c
             }
         case .ended, .cancelled, .failed:
             dragging = false

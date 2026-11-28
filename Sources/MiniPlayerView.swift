@@ -18,6 +18,8 @@ final class MiniPlayerView: UIView {
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var shownVideoId: String?
+    private let rim = CAGradientLayer()
+    private let rimMask = CAShapeLayer()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -36,6 +38,20 @@ final class MiniPlayerView: UIView {
             layer.shadowOpacity = Theme.isDark ? 0.3 : 0.12
             layer.shadowRadius = 10
             layer.shadowOffset = CGSize(width: 0, height: 3)
+        }
+
+        if !Mat.active {
+            // Viên thuốc kính như thanh tab: viền sáng ở mép trên và mép dưới.
+            rim.colors = [UIColor(white: 1, alpha: 0.55).cgColor, UIColor(white: 1, alpha: 0.10).cgColor,
+                          UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0.34).cgColor]
+            rim.locations = [0, 0.3, 0.7, 1]
+            rim.startPoint = CGPoint(x: 0.5, y: 0)
+            rim.endPoint = CGPoint(x: 0.5, y: 1)
+            rimMask.fillColor = UIColor.clear.cgColor
+            rimMask.strokeColor = UIColor.black.cgColor
+            rimMask.lineWidth = 1.2
+            rim.mask = rimMask
+            layer.addSublayer(rim)
         }
 
         art.translatesAutoresizingMaskIntoConstraints = false
@@ -124,7 +140,11 @@ final class MiniPlayerView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: Mat.active ? 24 : 20).cgPath
+        let radius: CGFloat = Mat.active ? 24 : bounds.height / 2
+        blur.layer.cornerRadius = radius
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: radius).cgPath
+        rim.frame = bounds
+        rimMask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 0.6, dy: 0.6), cornerRadius: radius).cgPath
         updateProgress()
     }
 

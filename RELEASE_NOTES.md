@@ -1,3 +1,11 @@
+Mochy Remake 0.18.0 — tab bar kính, nút kéo giãn, đổi lời mượt hơn
+
+- Thanh tab kính mới: có nhãn dưới icon, viền kính sáng ở mép trên và mép dưới, mờ hơn; thứ tự Trang chủ / Thư viện / Cài đặt / Tìm kiếm.
+- Cuộn xuống thanh tab thu thành 3 phần: Trang chủ tròn | thanh phát | Tìm kiếm tròn (có animation nảy), cuộn lên bung lại.
+- Nút kính (trên màn đang phát, nút tìm kiếm tròn) và các nút điều khiển: chạm thì phình, kéo thì giãn theo ngón tay, thả thì nảy.
+- Thanh phát nhỏ thành viên thuốc kính có viền sáng.
+- Bật/tắt lời: tên bài trượt cùng lúc bìa co về góc, thay vì chỉ mờ chéo.
+
 Mochy Remake 0.17.4 — bỏ vòng trắng khi bấm nút
 
 - Các nút điều khiển không còn vòng sáng khi bấm, chỉ thu nhẹ và nảy lại.

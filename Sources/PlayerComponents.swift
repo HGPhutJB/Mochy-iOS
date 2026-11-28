@@ -194,15 +194,19 @@ final class GlassView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) chưa được hỗ trợ") }
 
-    private func dip(_ on: Bool) {
-        UIView.animate(withDuration: on ? 0.2 : 0.5, delay: 0, usingSpringWithDamping: on ? 0.8 : 0.5, initialSpringVelocity: on ? 0 : 5,
-                       options: [.allowUserInteraction, .beginFromCurrentState], animations: {
-            self.transform = on ? CGAffineTransform(scaleX: 0.9, y: 0.9) : .identity
-        }, completion: nil)
+    private var startPoint = CGPoint.zero
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+        startPoint = touches.first?.location(in: nil) ?? .zero
+        Elastic.begin(self, pressedScale: 1.08)
     }
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesBegan(touches, with: event); dip(true) }
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesEnded(touches, with: event); dip(false) }
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesCancelled(touches, with: event); dip(false) }
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesMoved(touches, with: event)
+        guard let p = touches.first?.location(in: nil) else { return }
+        Elastic.move(self, delta: CGPoint(x: p.x - startPoint.x, y: p.y - startPoint.y), pressedScale: 1.08)
+    }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesEnded(touches, with: event); Elastic.end(self) }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { super.touchesCancelled(touches, with: event); Elastic.end(self) }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -606,6 +610,24 @@ final class VideoBackdrop {
 /// Nút điều khiển kiểu bộ phát của iOS: chạm thì icon thu nhẹ rồi nảy lại (không có vòng sáng),
 /// đổi icon phát/tạm dừng có chuyển cảnh co-phóng, tua có icon trượt theo hướng.
 final class ControlButton: UIButton {
+    private var startPoint = CGPoint.zero
+    override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        startPoint = touch.location(in: nil)
+        return super.beginTracking(touch, with: event)
+    }
+    override func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        let p = touch.location(in: nil)
+        Elastic.move(self, delta: CGPoint(x: p.x - startPoint.x, y: p.y - startPoint.y), pressedScale: 1)
+        return super.continueTracking(touch, with: event)
+    }
+    override func endTracking(_ touch: UITouch?, with event: UIEvent?) {
+        super.endTracking(touch, with: event)
+        Elastic.end(self)
+    }
+    override func cancelTracking(with event: UIEvent?) {
+        super.cancelTracking(with: event)
+        Elastic.end(self)
+    }
     override var isHighlighted: Bool {
         didSet {
             guard isHighlighted != oldValue else { return }

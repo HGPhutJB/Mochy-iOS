@@ -556,6 +556,34 @@ final class NowPlayingViewController: UIViewController {
     private func apply(mode new: Mode, animated: Bool) {
         let previous = mode
         if animated && !isLandscape && ((previous == .cover) != (new == .cover)) { flyCover(toLyrics: new != .cover) }
+        // Như video: tên bài + nghệ sĩ trượt lên/xuống cùng lúc bìa co/phóng (không chỉ mờ chéo).
+        let slide = animated && !isLandscape && ((previous == .cover && new == .lyrics) || (previous == .lyrics && new == .cover))
+        var slideDest: InfoRow?
+        if slide {
+            view.layoutIfNeeded()
+            let src = new == .lyrics ? infoA : infoB
+            let dst = new == .lyrics ? infoB : infoA
+            let wasHidden = src.thumb.isHidden
+            src.thumb.isHidden = true
+            if let snap = src.snapshotView(afterScreenUpdates: false) {
+                snap.frame = src.frame
+                snap.isUserInteractionEnabled = false
+                view.insertSubview(snap, aboveSubview: dst)
+                let a = src.titleLabel.convert(src.titleLabel.bounds, to: view).origin
+                let b = dst.titleLabel.convert(dst.titleLabel.bounds, to: view).origin
+                UIView.animate(withDuration: 0.55, delay: 0, usingSpringWithDamping: 0.9, initialSpringVelocity: 0,
+                               options: [], animations: {
+                    snap.transform = CGAffineTransform(translationX: b.x - a.x, y: b.y - a.y)
+                }, completion: nil)
+                UIView.animate(withDuration: 0.2, delay: 0.3, options: [.curveEaseIn], animations: { snap.alpha = 0 },
+                               completion: { _ in snap.removeFromSuperview() })
+            }
+            src.thumb.isHidden = wasHidden
+            src.layer.removeAllAnimations()
+            src.alpha = 0
+            dst.alpha = 0
+            slideDest = dst
+        }
         mode = new
         let lyr = new != .cover
         lyricsView.immersive = new == .immersive
@@ -572,13 +600,18 @@ final class NowPlayingViewController: UIViewController {
             self.bandBlur.alpha = lyr ? 0 : 1
             self.bandShade.alpha = lyr ? 0 : 1
             self.topShade.alpha = lyr ? 0 : 1
-            self.infoA.alpha = new == .cover ? 1 : 0
-            self.infoB.alpha = new == .lyrics ? 1 : 0
+            if !slide {
+                self.infoA.alpha = new == .cover ? 1 : 0
+                self.infoB.alpha = new == .lyrics ? 1 : 0
+            }
             self.lyricsView.alpha = lyr ? 1 : 0
             chromeViews.forEach { $0.alpha = chromeAlpha }
             self.view.layoutIfNeeded()
         }
         if new == .immersive { chromeViews.forEach { $0.isUserInteractionEnabled = false } }
+        if let d = slideDest {
+            UIView.animate(withDuration: 0.25, delay: 0.3, options: [.curveEaseOut, .allowUserInteraction], animations: { d.alpha = 1 }, completion: nil)
+        }
         if animated {
             UIView.animate(withDuration: 0.5, delay: 0, options: [.curveEaseInOut, .allowUserInteraction], animations: changes, completion: nil)
         } else {
